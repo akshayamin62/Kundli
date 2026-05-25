@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Literal
+from typing import Literal, Optional
 
 
 class ChartRequest(BaseModel):
@@ -76,6 +76,8 @@ class ChartMeta(BaseModel):
     julian_day: float
     house_system: str
     zodiac: str
+    varga_n: Optional[int] = None
+    varga_name: Optional[str] = None
 
 
 class ChartAngles(BaseModel):
@@ -90,3 +92,7 @@ class ChartResponse(BaseModel):
     angles: ChartAngles
     houses: list[HouseCusp]
     planets: list[PlanetPosition]
+
+
+class VargaRequest(ChartRequest):
+    n: int = 9  # which D-chart (1–60)

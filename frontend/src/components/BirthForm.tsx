@@ -5,7 +5,7 @@ import { calculateChart } from "@/services/api";
 import { ChartRequest, ChartResponse } from "@/types/chart";
 
 interface Props {
-  onResult: (chart: ChartResponse) => void;
+  onResult: (chart: ChartResponse, req: ChartRequest) => void;
 }
 
 interface PlaceSuggestion {
@@ -78,7 +78,7 @@ export default function BirthForm({ onResult }: Props) {
     setError(null);
     try {
       const result = await calculateChart(form);
-      onResult(result);
+      onResult(result, form);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Calculation failed");
     } finally {

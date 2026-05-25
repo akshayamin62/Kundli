@@ -66,29 +66,29 @@ function signToHouse(sign: number, lagnaSign: number): number {
   return ((sign - lagnaSign + 12) % 12) + 1;
 }
 
-function buildPolygons(size: number): Record<number, Pt[]> {
-  const c = size / 2;
-  const q = size / 4;
-  const q3 = (3 * size) / 4;
+function buildPolygons(W: number, H: number): Record<number, Pt[]> {
+  const cx = W / 2, cy = H / 2;
+  const qx = W / 4, qy = H / 4;
+  const q3x = (3 * W) / 4, q3y = (3 * H) / 4;
 
   return {
-    1: [[c, 0], [q3, q], [c, c], [q, q]],
-    2: [[0, 0], [c, 0], [q, q]],
-    3: [[0, 0], [q, q], [0, c]],
-    4: [[0, c], [q, q], [c, c], [q, q3]],
-    5: [[0, size], [0, c], [q, q3]],
-    6: [[c, size], [0, size], [q, q3]],
-    7: [[c, size], [q, q3], [c, c], [q3, q3]],
-    8: [[c, size], [size, size], [q3, q3]],
-    9: [[size, c], [size, size], [q3, q3]],
-    10: [[size, c], [q3, q3], [c, c], [q3, q]],
-    11: [[size, 0], [size, c], [q3, q]],
-    12: [[c, 0], [size, 0], [q3, q]],
+    1:  [[cx, 0],  [q3x, qy],  [cx, cy],  [qx, qy]],
+    2:  [[0, 0],   [cx, 0],    [qx, qy]],
+    3:  [[0, 0],   [qx, qy],   [0, cy]],
+    4:  [[0, cy],  [qx, qy],   [cx, cy],  [qx, q3y]],
+    5:  [[0, H],   [0, cy],    [qx, q3y]],
+    6:  [[cx, H],  [0, H],     [qx, q3y]],
+    7:  [[cx, H],  [qx, q3y],  [cx, cy],  [q3x, q3y]],
+    8:  [[cx, H],  [W, H],     [q3x, q3y]],
+    9:  [[W, cy],  [W, H],     [q3x, q3y]],
+    10: [[W, cy],  [q3x, q3y], [cx, cy],  [q3x, qy]],
+    11: [[W, 0],   [W, cy],    [q3x, qy]],
+    12: [[cx, 0],  [W, 0],     [q3x, qy]],
   };
 }
 
-function buildCentroids(size: number): Record<number, Pt> {
-  const polygons = buildPolygons(size);
+function buildCentroids(W: number, H: number): Record<number, Pt> {
+  const polygons = buildPolygons(W, H);
   const centroids: Record<number, Pt> = {};
 
   for (const [key, points] of Object.entries(polygons)) {
@@ -103,7 +103,8 @@ function buildCentroids(size: number): Record<number, Pt> {
 }
 
 export default function ChartWheel({ chart }: Props) {
-  const size = 760;
+  const W = 900;
+  const H = 640;
 
   // In Vedic/Whole Sign mode, House 1 cusp sign is the authoritative Lagna sign.
   const house1 = chart.houses.find((h) => h.number === 1);
@@ -137,8 +138,8 @@ export default function ChartWheel({ chart }: Props) {
   for (let h = 1; h <= 12; h++) planetsByHouse[h] = [];
   for (const p of planets) planetsByHouse[p.house].push(p);
 
-  const polygons = buildPolygons(size);
-  const centroids = buildCentroids(size);
+  const polygons = buildPolygons(W, H);
+  const centroids = buildCentroids(W, H);
   const diamondHouses = new Set([1, 4, 7, 10]);
 
   return (
@@ -147,8 +148,9 @@ export default function ChartWheel({ chart }: Props) {
         <span className="font-semibold text-amber-700">Lagna:</span> {SIGN_NAMES[lagnaSign - 1]} ({lagnaSign})
       </div>
 
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ width: "100%", height: "auto" }}>
-        <rect width={size} height={size} fill="#ffffff" />
+      <div style={{ width: "min(100%, calc((100vh - 260px) * 1.40625))", margin: "0 auto" }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
+        <rect width={W} height={H} fill="#ffffff" />
 
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((house) => {
           const points = polygons[house];
@@ -213,8 +215,9 @@ export default function ChartWheel({ chart }: Props) {
           );
         })}
 
-        <rect width={size} height={size} fill="none" stroke="#6b7280" strokeWidth={2} />
+        <rect width={W} height={H} fill="none" stroke="#6b7280" strokeWidth={2} />
       </svg>
+      </div>
     </div>
   );
 }

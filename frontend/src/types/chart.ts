@@ -51,6 +51,8 @@ export interface ChartMeta {
   julian_day: number;
   house_system: string;
   zodiac: string;
+  varga_n?: number;
+  varga_name?: string;
 }
 
 export interface ChartResponse {
@@ -66,4 +68,8 @@ export interface ChartRequest {
   birth_place: string;
   house_system: string;
   zodiac: string;
+}
+
+export interface VargaRequest extends ChartRequest {
+  n: number;
 }
