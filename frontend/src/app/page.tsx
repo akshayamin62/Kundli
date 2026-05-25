@@ -11,13 +11,13 @@ export default function HomePage() {
   const [tab, setTab] = useState<"wheel" | "table">("wheel");
 
   return (
-    <main className="min-h-screen bg-cosmos-900 text-white px-4 py-8">
+    <main className="min-h-screen bg-white text-gray-900 px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2">
+        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-purple-600 mb-2">
           ✦ Astrology ✦
         </h1>
-        <p className="text-purple-400 text-sm tracking-widest uppercase">
+        <p className="text-indigo-500 text-sm tracking-widest uppercase">
           Birth Chart & 12-House Calculator
         </p>
       </div>
@@ -39,8 +39,8 @@ export default function HomePage() {
                   onClick={() => setTab(t)}
                   className={`px-5 py-2 rounded-xl text-sm font-semibold transition-colors ${
                     tab === t
-                      ? "bg-purple-700 text-white"
-                      : "bg-cosmos-800 text-purple-400 hover:bg-purple-900"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   {t === "wheel" ? "North Indian Chart" : "House & Planet Details"}
@@ -49,7 +49,7 @@ export default function HomePage() {
             </div>
 
             {tab === "wheel" ? (
-              <div className="bg-cosmos-800 border border-purple-800 rounded-2xl p-4 lg:p-6">
+              <div className="bg-white border border-gray-200 rounded-2xl p-4 lg:p-6 shadow-sm">
                 <ChartWheel chart={chart} />
               </div>
             ) : (
@@ -57,8 +57,8 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          <div className="bg-cosmos-800 border border-purple-900 rounded-2xl p-5 text-sm text-purple-400 space-y-2">
-            <p className="text-purple-300 font-semibold">How it works:</p>
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-sm text-gray-600 space-y-2">
+            <p className="text-gray-800 font-semibold">How it works:</p>
             <p>1. Enter your exact birth date, time, and place</p>
             <p>2. The engine geocodes your city to precise coordinates</p>
             <p>3. Calculates Julian Day, sidereal time and obliquity</p>

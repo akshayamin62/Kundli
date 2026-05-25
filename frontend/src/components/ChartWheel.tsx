@@ -27,18 +27,18 @@ const PLANET_SHORT: Record<string, string> = {
 };
 
 const PLANET_COLORS: Record<string, string> = {
-  Sun: "#fbbf24",
-  Moon: "#e2e8f0",
-  Mars: "#f87171",
-  Mercury: "#34d399",
-  Jupiter: "#fb923c",
-  Venus: "#f472b6",
-  Saturn: "#94a3b8",
-  Uranus: "#38bdf8",
-  Neptune: "#818cf8",
-  Pluto: "#c084fc",
-  "North Node": "#4ade80",
-  "South Node": "#4ade80",
+  Sun: "#b45309",
+  Moon: "#64748b",
+  Mars: "#dc2626",
+  Mercury: "#059669",
+  Jupiter: "#c2410c",
+  Venus: "#be185d",
+  Saturn: "#475569",
+  Uranus: "#0369a1",
+  Neptune: "#4338ca",
+  Pluto: "#7c3aed",
+  "North Node": "#1d4ed8",
+  "South Node": "#92400e",
 };
 
 interface Props {
@@ -141,23 +141,14 @@ export default function ChartWheel({ chart }: Props) {
   const centroids = buildCentroids(size);
   const diamondHouses = new Set([1, 4, 7, 10]);
 
-  const degreeRows = [...chart.planets]
-    .sort((a, b) => a.longitude - b.longitude)
-    .map((p) => ({
-      key: p.name,
-      label: PLANET_SHORT[p.name] ?? p.name,
-      color: PLANET_COLORS[p.name] ?? "#e2e8f0",
-      value: `${p.formatted} (${p.longitude.toFixed(2)}deg)${p.retrograde ? " R" : ""}`,
-    }));
-
   return (
     <div className="flex flex-col items-center gap-5 w-full">
-      <div className="text-sm text-purple-300 text-center">
-        <span className="font-semibold text-yellow-400">Lagna:</span> {SIGN_NAMES[lagnaSign - 1]} ({lagnaSign})
+      <div className="text-sm text-gray-600 text-center">
+        <span className="font-semibold text-amber-700">Lagna:</span> {SIGN_NAMES[lagnaSign - 1]} ({lagnaSign})
       </div>
 
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ width: "100%", maxWidth: `${size}px`, height: "auto" }}>
-        <rect width={size} height={size} fill="#111126" />
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ width: "100%", height: "auto" }}>
+        <rect width={size} height={size} fill="#ffffff" />
 
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((house) => {
           const points = polygons[house];
@@ -176,8 +167,8 @@ export default function ChartWheel({ chart }: Props) {
             <g key={house}>
               <polygon
                 points={pointStr}
-                fill={isLagna ? "#1f1140" : "#111126"}
-                stroke="#9ca3af"
+                fill={isLagna ? "#ede9fe" : "#ffffff"}
+                stroke="#6b7280"
                 strokeWidth={1.4}
               />
 
@@ -185,7 +176,7 @@ export default function ChartWheel({ chart }: Props) {
                 x={x}
                 y={signY}
                 textAnchor="middle"
-                fill="#e5e7eb"
+                fill="#374151"
                 fontSize={inDiamond ? 28 : 22}
                 fontWeight="600"
               >
@@ -197,7 +188,7 @@ export default function ChartWheel({ chart }: Props) {
                   x={x}
                   y={y + 4}
                   textAnchor="middle"
-                  fill="#fbbf24"
+                  fill="#6d28d9"
                   fontSize={18}
                   fontWeight="700"
                 >
@@ -222,20 +213,8 @@ export default function ChartWheel({ chart }: Props) {
           );
         })}
 
-        <rect width={size} height={size} fill="none" stroke="#9ca3af" strokeWidth={2} />
+        <rect width={size} height={size} fill="none" stroke="#6b7280" strokeWidth={2} />
       </svg>
-
-      <div className="w-full rounded-xl border border-purple-800 bg-cosmos-900/40 p-3">
-        <div className="text-purple-300 font-semibold text-sm mb-2">Planet Degrees</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 text-sm">
-          {degreeRows.map((row) => (
-            <div key={row.key} className="rounded-lg border border-purple-900 bg-cosmos-800/70 px-3 py-2">
-              <div className="font-semibold" style={{ color: row.color }}>{row.label}</div>
-              <div className="text-purple-100">{row.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
