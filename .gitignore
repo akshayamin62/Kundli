@@ -1,0 +1,103 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+backend/venv/
+
+# Testing & coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============================================================
+# Environment variables (keep .example files)
+# ============================================================
+.env
+.env.local
+.env.*.local
+*.env
+!*.env.example
+!.env.example
+
+# ============================================================
+# Ephemeris data — large binary files, auto-downloaded at runtime
+# ============================================================
+backend/ephemeris_data/*.bsp
+backend/ephemeris_data/*.de
+backend/ephemeris_data/*.se1
+
+# ============================================================
+# Node.js / Next.js
+# ============================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+frontend/build/
+
+# ============================================================
+# IDE & editors
+# ============================================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ============================================================
+# OS-generated files
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+lerna-debug.log*
+
+# ============================================================
+# Misc
+# ============================================================
+*.bak
+*.tmp
+*.temp
