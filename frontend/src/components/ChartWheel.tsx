@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { ChartResponse } from "@/types/chart";
+import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_SHORT as PLANET_SHORT_I18N, UI } from "@/lib/translations";
 
+// English sign names used for sign→number lookup (always English from backend)
 const SIGN_NAMES = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
@@ -11,18 +13,6 @@ const SIGN_NAMES = [
 const SIGN_TO_NUM: Record<string, number> = Object.fromEntries(
   SIGN_NAMES.map((name, idx) => [name, idx + 1])
 );
-
-const PLANET_SHORT: Record<string, string> = {
-  Sun: "Sun",
-  Moon: "Moon",
-  Mars: "Mars",
-  Mercury: "Mer",
-  Jupiter: "Jup",
-  Venus: "Ven",
-  Saturn: "Sat",
-  "North Node": "Rah",
-  "South Node": "Ket",
-};
 
 // Dignity-based coloring: default black; overridden per planet below
 const DIGNITY_DEFAULT_COLOR = "#111827";
@@ -111,6 +101,7 @@ function getAspects(planetName: string, fromHouse: number): { house: number; str
 
 interface Props {
   chart: ChartResponse;
+  lang?: Lang;
 }
 
 type Pt = [number, number];
@@ -174,10 +165,13 @@ function buildCentroids(W: number, H: number): Record<number, Pt> {
   return centroids;
 }
 
-export default function ChartWheel({ chart }: Props) {
+export default function ChartWheel({ chart, lang = "en" }: Props) {
   const W = 900;
   const H = 640;
   const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null);
+  const planetShort = PLANET_SHORT_I18N[lang];
+  const signNamesLang = SIGN_NAMES_I18N[lang];
+  const ui = UI[lang];
 
   // In Vedic/Whole Sign mode, House 1 cusp sign is the authoritative Lagna sign.
   const house1 = chart.houses.find((h) => h.number === 1);
@@ -201,7 +195,7 @@ export default function ChartWheel({ chart }: Props) {
       const { color, suffix } = getDignity(p.name, p.sign);
       return {
         name: p.name,
-        label: PLANET_SHORT[p.name] ?? p.name,
+        label: planetShort[p.name] ?? p.name,
         color,
         suffix,
         retrograde: !!p.retrograde,
@@ -223,11 +217,11 @@ export default function ChartWheel({ chart }: Props) {
   return (
     <div className="flex flex-col items-center gap-5 w-full">
       <div className="text-sm text-gray-600 text-center">
-        <span className="font-semibold text-amber-700">Lagna:</span> {SIGN_NAMES[lagnaSign - 1]} ({lagnaSign})
+        <span className="font-semibold text-amber-700">{ui.lagna}:</span> {signNamesLang[lagnaSign - 1]} ({lagnaSign})
       </div>
 
       <div style={{ width: "min(100%, calc((100vh - 260px) * 1.40625))", margin: "0 auto" }}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif" }}>
         <rect width={W} height={H} fill="#ffffff" />
 
         {/* Pass 1: house polygons */}
@@ -253,7 +247,14 @@ export default function ChartWheel({ chart }: Props) {
           if (!hov) return null;
           const aspects = getAspects(hov.name, hov.house);
           const [x1, y1] = centroids[hov.house];
-          return aspects.map(({ house: targetHouse, strength }) => {
+          // Sort longest first so shorter (closer) lines are rendered last and appear on top,
+          // preventing a far-house line from visually overwriting a near-house line.
+          const sortedAspects = [...aspects].sort((a, b) => {
+            const dA = Math.hypot(centroids[a.house][0] - x1, centroids[a.house][1] - y1);
+            const dB = Math.hypot(centroids[b.house][0] - x1, centroids[b.house][1] - y1);
+            return dB - dA;
+          });
+          return sortedAspects.map(({ house: targetHouse, strength }) => {
             const [x2, y2] = centroids[targetHouse];
             return (
               <line
@@ -313,7 +314,7 @@ export default function ChartWheel({ chart }: Props) {
                     fontSize={16}
                     fontWeight="700"
                   >
-                    Lag
+                    {ui.lag}
                   </text>
                   <text
                     x={x}
@@ -351,7 +352,7 @@ export default function ChartWheel({ chart }: Props) {
                   >
                     {p.label}
                     {p.suffix && <tspan fill={p.color}>{p.suffix}</tspan>}
-                    {p.retrograde && <tspan fill="#dc2626"> R</tspan>}
+                    {p.retrograde && <tspan fill="#dc2626">-</tspan>}
                     {/* degree on its own sub-line so the name row stays narrow */}
                     <tspan x={px} dy={14} fontSize={10} fontWeight="400" fill="#374151">
                       {p.degree}°{String(p.minutes).padStart(2, "0")}′

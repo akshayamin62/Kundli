@@ -7,6 +7,7 @@ import HouseTable from "@/components/HouseTable";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateVarga } from "@/services/api";
+import { type Lang, UI } from "@/lib/translations";
 
 // D-chart quick-access tabs (shown inline)
 const VARGA_TABS = [
@@ -105,6 +106,7 @@ export default function HomePage() {
   const [vargaError, setVargaError] = useState<string | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+  const [lang, setLang] = useState<Lang>("en");
 
   // Close "More" dropdown on outside click
   useEffect(() => {
@@ -156,8 +158,22 @@ export default function HomePage() {
         </h1>
         <p className="text-indigo-500 text-sm tracking-widest uppercase">
           Birth Chart & 12-House Calculator
-        </p>
-      </div>
+        </p>        {/* Language toggle */}
+        <div className="flex justify-center gap-1 mt-3">
+          {(["en", "hi", "gu"] as Lang[]).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                lang === l
+                  ? "bg-indigo-700 text-white border-indigo-700"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400 hover:text-indigo-600"
+              }`}
+            >
+              {l === "en" ? "English" : l === "hi" ? "हिंदी" : "ગુજરાતી"}
+            </button>
+          ))}
+        </div>      </div>
 
       <div className="max-w-7xl mx-auto space-y-6">
         <BirthForm
@@ -236,15 +252,15 @@ export default function HomePage() {
 
             {/* Chart */}
             <div className="bg-white border border-gray-200 rounded-2xl p-4 lg:p-6 shadow-sm">
-              {displayChart && <ChartWheel chart={displayChart} />}
+              {displayChart && <ChartWheel chart={displayChart} lang={lang} />}
             </div>
 
             {/* Planet details — always shows natal (D1) data */}
-            <HouseTable chart={chart} />
+            <HouseTable chart={chart} lang={lang} />
 
             {/* Grahshil Chakra reference table */}
             <div className="bg-white border border-gray-200 rounded-2xl p-4 lg:p-6 shadow-sm">
-              <GrahshilChakraTable />
+              <GrahshilChakraTable lang={lang} />
             </div>
           </div>
         ) : (
