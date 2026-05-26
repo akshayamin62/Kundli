@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import BirthForm from "@/components/BirthForm";
 import ChartWheel from "@/components/ChartWheel";
 import HouseTable from "@/components/HouseTable";
+import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateVarga } from "@/services/api";
 
@@ -240,6 +241,11 @@ export default function HomePage() {
 
             {/* Planet details — always shows natal (D1) data */}
             <HouseTable chart={chart} />
+
+            {/* Grahshil Chakra reference table */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 lg:p-6 shadow-sm">
+              <GrahshilChakraTable />
+            </div>
           </div>
         ) : (
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 text-sm text-gray-600 space-y-2">

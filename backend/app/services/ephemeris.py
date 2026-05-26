@@ -24,9 +24,6 @@ PLANET_META = [
     {"name": "Mars", "symbol": "♂"},
     {"name": "Jupiter", "symbol": "♃"},
     {"name": "Saturn", "symbol": "♄"},
-    {"name": "Uranus", "symbol": "⛢"},
-    {"name": "Neptune", "symbol": "♆"},
-    {"name": "Pluto", "symbol": "♇"},
     {"name": "North Node", "symbol": "☊"},
 ]
 
@@ -56,9 +53,6 @@ def _get_positions_swisseph(jd_ut: float, ayanamsa: float) -> list[dict]:
         swe.MARS,
         swe.JUPITER,
         swe.SATURN,
-        swe.URANUS,
-        swe.NEPTUNE,
-        swe.PLUTO,
         swe.TRUE_NODE,
     ]
 
@@ -128,9 +122,6 @@ def _get_positions_skyfield(jd_ut: float, ayanamsa: float) -> list[dict]:
         "mars",
         "jupiter barycenter",
         "saturn barycenter",
-        "uranus barycenter",
-        "neptune barycenter",
-        "pluto barycenter",
     ]
 
     results: list[dict] = []
@@ -164,7 +155,7 @@ def _get_positions_skyfield(jd_ut: float, ayanamsa: float) -> list[dict]:
     node_lon = _norm(node_raw - ayanamsa)
     results.append(
         {
-            **PLANET_META[10],
+            **PLANET_META[7],
             "longitude_raw": node_raw,
             "longitude": node_lon,
             "latitude": 0.0,

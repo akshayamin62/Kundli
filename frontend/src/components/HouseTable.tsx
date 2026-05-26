@@ -20,9 +20,6 @@ const PLANET_COLORS: Record<string, string> = {
   Jupiter: "#c2410c",
   Venus: "#be185d",
   Saturn: "#475569",
-  Uranus: "#0369a1",
-  Neptune: "#4338ca",
-  Pluto: "#7c3aed",
   "North Node": "#1d4ed8",
   "South Node": "#92400e",
 };
@@ -144,7 +141,9 @@ export default function HouseTable({ chart }: Props) {
       house:         1,
       color:         "#6d28d9",
     },
-    ...chart.planets.map((p) => {
+    ...chart.planets
+      .filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name))
+      .map((p) => {
       const nak = getNakshatra(p.longitude);
       return {
         key:           p.name,

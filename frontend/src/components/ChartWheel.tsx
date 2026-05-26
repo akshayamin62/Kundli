@@ -20,27 +20,94 @@ const PLANET_SHORT: Record<string, string> = {
   Jupiter: "Jup",
   Venus: "Ven",
   Saturn: "Sat",
-  Uranus: "Ura",
-  Neptune: "Nep",
-  Pluto: "Plu",
   "North Node": "Rah",
   "South Node": "Ket",
 };
 
-const PLANET_COLORS: Record<string, string> = {
-  Sun: "#b45309",
-  Moon: "#64748b",
-  Mars: "#dc2626",
-  Mercury: "#059669",
-  Jupiter: "#c2410c",
-  Venus: "#be185d",
-  Saturn: "#475569",
-  Uranus: "#0369a1",
-  Neptune: "#4338ca",
-  Pluto: "#7c3aed",
-  "North Node": "#1d4ed8",
-  "South Node": "#92400e",
+// Dignity-based coloring: default black; overridden per planet below
+const DIGNITY_DEFAULT_COLOR = "#111827";
+
+// Swakshetra (own sign)
+const SWAKSHETRA: Record<string, string[]> = {
+  Sun:          ["Leo"],
+  Moon:         ["Cancer"],
+  Mars:         ["Aries", "Scorpio"],
+  Mercury:      ["Gemini", "Virgo"],
+  Jupiter:      ["Sagittarius", "Pisces"],
+  Venus:        ["Taurus", "Libra"],
+  Saturn:       ["Capricorn", "Aquarius"],
+  "North Node": ["Virgo"],
+  "South Node": ["Pisces"],
 };
+
+// Uchcha (exaltation) sign
+const UCHCHA: Record<string, string> = {
+  Sun:          "Aries",
+  Moon:         "Taurus",
+  Mars:         "Capricorn",
+  Mercury:      "Virgo",
+  Jupiter:      "Cancer",
+  Venus:        "Pisces",
+  Saturn:       "Libra",
+  "North Node": "Gemini",
+  "South Node": "Sagittarius",
+};
+
+// Neecha (debilitation) sign
+const NEECHA: Record<string, string> = {
+  Sun:          "Libra",
+  Moon:         "Scorpio",
+  Mars:         "Cancer",
+  Mercury:      "Pisces",
+  Jupiter:      "Capricorn",
+  Venus:        "Virgo",
+  Saturn:       "Aries",
+  "North Node": "Sagittarius",
+  "South Node": "Gemini",
+};
+
+type DignityResult = { color: string; suffix: string };
+function getDignity(planetName: string, sign: string): DignityResult {
+  if (SWAKSHETRA[planetName]?.includes(sign)) return { color: "#15803d", suffix: "++" };
+  if (UCHCHA[planetName] === sign)             return { color: "#1d4ed8", suffix: "+" };
+  if (NEECHA[planetName] === sign)             return { color: "#dc2626", suffix: "\u2193" };
+  return { color: DIGNITY_DEFAULT_COLOR, suffix: "" };
+}
+
+// Graha Drishti aspect strengths (from Grahshil Chakra / BPHS)
+type AspectStrength = "ekpaad" | "dwipaad" | "tripaad" | "sampurna";
+const ASPECT_COLORS: Record<AspectStrength, string> = {
+  ekpaad:   "#000000",  // 1/4 — black
+  dwipaad:  "#2563eb",  // 2/4 — blue
+  tripaad:  "#16a34a",  // 3/4 — green
+  sampurna: "#dc2626",  // 4/4 — red
+};
+
+function getAspects(planetName: string, fromHouse: number): { house: number; strength: AspectStrength }[] {
+  const nth = (n: number) => ((fromHouse - 1 + n - 1) % 12) + 1;
+  // Base aspects for ALL planets (Parashari Graha Drishti)
+  const asp = new Map<number, AspectStrength>([
+    [nth(3),  "ekpaad"],
+    [nth(4),  "tripaad"],
+    [nth(5),  "dwipaad"],
+    [nth(7),  "sampurna"],
+    [nth(8),  "tripaad"],
+    [nth(9),  "dwipaad"],
+    [nth(10), "ekpaad"],
+  ]);
+  // Special full-strength overrides
+  if (planetName === "Mars") {
+    asp.set(nth(4), "sampurna");
+    asp.set(nth(8), "sampurna");
+  } else if (planetName === "Jupiter") {
+    asp.set(nth(5), "sampurna");
+    asp.set(nth(9), "sampurna");
+  } else if (planetName === "Saturn") {
+    asp.set(nth(3), "sampurna");
+    asp.set(nth(10), "sampurna");
+  }
+  return Array.from(asp.entries()).map(([house, strength]) => ({ house, strength }));
+}
 
 interface Props {
   chart: ChartResponse;
@@ -52,6 +119,8 @@ interface PlanetEntry {
   name: string;
   label: string;
   color: string;
+  suffix: string;
+  retrograde: boolean;
   house: number;
   degree: number;
   minutes: number;
@@ -67,22 +136,6 @@ function houseToSign(house: number, lagnaSign: number): number {
 
 function signToHouse(sign: number, lagnaSign: number): number {
   return ((sign - lagnaSign + 12) % 12) + 1;
-}
-
-// Vedic drishti — returns list of house numbers aspected from `fromHouse`
-function getAspectedHouses(planetName: string, fromHouse: number): number[] {
-  const nth = (n: number) => ((fromHouse - 1 + n - 1) % 12) + 1;
-  const houses = [nth(7)]; // universal 7th-house aspect
-  if (planetName === "Jupiter") {
-    houses.push(nth(5), nth(9));
-  } else if (planetName === "Mars") {
-    houses.push(nth(4), nth(8));
-  } else if (planetName === "Saturn") {
-    houses.push(nth(3), nth(10));
-  } else if (planetName === "North Node" || planetName === "South Node") {
-    houses.push(nth(5), nth(9));
-  }
-  return houses;
 }
 
 function buildPolygons(W: number, H: number): Record<number, Pt[]> {
@@ -139,16 +192,19 @@ export default function ChartWheel({ chart }: Props) {
   }
 
   const planets: PlanetEntry[] = chart.planets
+    .filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name))
     .map((p) => {
       const signNum = SIGN_TO_NUM[p.sign];
       if (!signNum) return null;
 
-      // Prefer backend-computed house assignment. If unavailable, fallback to sign->house conversion.
       const derivedHouse = Number.isInteger(p.house) ? p.house : signToHouse(signNum, lagnaSign);
+      const { color, suffix } = getDignity(p.name, p.sign);
       return {
         name: p.name,
-        label: (PLANET_SHORT[p.name] ?? p.name) + (p.retrograde ? "R" : ""),
-        color: PLANET_COLORS[p.name] ?? "#e2e8f0",
+        label: PLANET_SHORT[p.name] ?? p.name,
+        color,
+        suffix,
+        retrograde: !!p.retrograde,
         house: derivedHouse,
         degree: p.degree,
         minutes: p.minutes,
@@ -195,16 +251,16 @@ export default function ChartWheel({ chart }: Props) {
           if (!hoveredPlanet) return null;
           const hov = planets.find((p) => p.name === hoveredPlanet);
           if (!hov) return null;
-          const aspHouses = getAspectedHouses(hov.name, hov.house);
+          const aspects = getAspects(hov.name, hov.house);
           const [x1, y1] = centroids[hov.house];
-          return aspHouses.map((targetHouse) => {
+          return aspects.map(({ house: targetHouse, strength }) => {
             const [x2, y2] = centroids[targetHouse];
             return (
               <line
                 key={`asp-${targetHouse}`}
                 x1={x1} y1={y1}
                 x2={x2} y2={y2}
-                stroke="#dc2626"
+                stroke={ASPECT_COLORS[strength]}
                 strokeWidth={2.5}
                 strokeDasharray="8 4"
                 opacity={0.85}
@@ -294,9 +350,11 @@ export default function ChartWheel({ chart }: Props) {
                     onMouseLeave={() => setHoveredPlanet(null)}
                   >
                     {p.label}
+                    {p.suffix && <tspan fill={p.color}>{p.suffix}</tspan>}
+                    {p.retrograde && <tspan fill="#dc2626"> R</tspan>}
                     {/* degree on its own sub-line so the name row stays narrow */}
-                    <tspan fontSize={10} fontWeight="400" fill="#000000">
-                      {"  "}{p.degree}°{String(p.minutes).padStart(2, "0")}′
+                    <tspan x={px} dy={14} fontSize={10} fontWeight="400" fill="#374151">
+                      {p.degree}°{String(p.minutes).padStart(2, "0")}′
                     </tspan>
                   </text>
                 );
