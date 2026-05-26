@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ChartResponse } from "@/types/chart";
 
 const SIGN_NAMES = [
@@ -52,6 +53,8 @@ interface PlanetEntry {
   label: string;
   color: string;
   house: number;
+  degree: number;
+  minutes: number;
 }
 
 function normalizeDeg360(x: number): number {
@@ -64,6 +67,22 @@ function houseToSign(house: number, lagnaSign: number): number {
 
 function signToHouse(sign: number, lagnaSign: number): number {
   return ((sign - lagnaSign + 12) % 12) + 1;
+}
+
+// Vedic drishti — returns list of house numbers aspected from `fromHouse`
+function getAspectedHouses(planetName: string, fromHouse: number): number[] {
+  const nth = (n: number) => ((fromHouse - 1 + n - 1) % 12) + 1;
+  const houses = [nth(7)]; // universal 7th-house aspect
+  if (planetName === "Jupiter") {
+    houses.push(nth(5), nth(9));
+  } else if (planetName === "Mars") {
+    houses.push(nth(4), nth(8));
+  } else if (planetName === "Saturn") {
+    houses.push(nth(3), nth(10));
+  } else if (planetName === "North Node" || planetName === "South Node") {
+    houses.push(nth(5), nth(9));
+  }
+  return houses;
 }
 
 function buildPolygons(W: number, H: number): Record<number, Pt[]> {
@@ -105,6 +124,7 @@ function buildCentroids(W: number, H: number): Record<number, Pt> {
 export default function ChartWheel({ chart }: Props) {
   const W = 900;
   const H = 640;
+  const [hoveredPlanet, setHoveredPlanet] = useState<string | null>(null);
 
   // In Vedic/Whole Sign mode, House 1 cusp sign is the authoritative Lagna sign.
   const house1 = chart.houses.find((h) => h.number === 1);
@@ -130,6 +150,8 @@ export default function ChartWheel({ chart }: Props) {
         label: (PLANET_SHORT[p.name] ?? p.name) + (p.retrograde ? "R" : ""),
         color: PLANET_COLORS[p.name] ?? "#e2e8f0",
         house: derivedHouse,
+        degree: p.degree,
+        minutes: p.minutes,
       };
     })
     .filter((p): p is PlanetEntry => p !== null);
@@ -152,28 +174,68 @@ export default function ChartWheel({ chart }: Props) {
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
         <rect width={W} height={H} fill="#ffffff" />
 
+        {/* Pass 1: house polygons */}
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((house) => {
           const points = polygons[house];
           const pointStr = points.map((p) => `${p[0]},${p[1]}`).join(" ");
+          const isLagna = house === 1;
+          return (
+            <polygon
+              key={`poly-${house}`}
+              points={pointStr}
+              fill={isLagna ? "#ede9fe" : "#ffffff"}
+              stroke="#6b7280"
+              strokeWidth={1.4}
+            />
+          );
+        })}
+
+        {/* Pass 2: Vedic drishti aspect lines (below text labels) */}
+        {(() => {
+          if (!hoveredPlanet) return null;
+          const hov = planets.find((p) => p.name === hoveredPlanet);
+          if (!hov) return null;
+          const aspHouses = getAspectedHouses(hov.name, hov.house);
+          const [x1, y1] = centroids[hov.house];
+          return aspHouses.map((targetHouse) => {
+            const [x2, y2] = centroids[targetHouse];
+            return (
+              <line
+                key={`asp-${targetHouse}`}
+                x1={x1} y1={y1}
+                x2={x2} y2={y2}
+                stroke="#dc2626"
+                strokeWidth={2.5}
+                strokeDasharray="8 4"
+                opacity={0.85}
+                strokeLinecap="round"
+              />
+            );
+          });
+        })()}
+
+        {/* Pass 3: sign numbers and planet labels (on top of lines) */}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((house) => {
           const [x, y] = centroids[house];
           const signNum = signByHouse[house] ?? houseToSign(house, lagnaSign);
           const inDiamond = diamondHouses.has(house);
           const isLagna = house === 1;
           const housePlanets = planetsByHouse[house];
 
-          const signY = y - (isLagna ? 10 : inDiamond ? 6 : 5);
-          const planetStartY = isLagna ? y + 18 : y + (inDiamond ? 10 : 8);
-          const lineHeight = inDiamond ? 15 : 13;
+          // House 1: sign(y-52) → Lag(y-22) → ASC deg(y-6) → planets(y+12)
+          // Other diamond: sign(y-10) → planets(y+12)
+          // Triangle:      sign(y-8)  → planets(y+10)
+          const signY = y - (isLagna ? 52 : inDiamond ? 10 : 8);
+          const planetStartY = isLagna ? y + 12 : y + (inDiamond ? 12 : 10);
+          // 32px per row: 14px name + 14px degree sub-line + 4px gap
+          const lineHeight = 32;
+
+          // Ascendant degree for House 1 display
+          const ascDeg   = chart.angles.ascendant.degree;
+          const ascMins  = chart.angles.ascendant.minutes;
 
           return (
-            <g key={house}>
-              <polygon
-                points={pointStr}
-                fill={isLagna ? "#ede9fe" : "#ffffff"}
-                stroke="#6b7280"
-                strokeWidth={1.4}
-              />
-
+            <g key={`text-${house}`}>
               <text
                 x={x}
                 y={signY}
@@ -186,31 +248,59 @@ export default function ChartWheel({ chart }: Props) {
               </text>
 
               {isLagna && (
-                <text
-                  x={x}
-                  y={y + 4}
-                  textAnchor="middle"
-                  fill="#6d28d9"
-                  fontSize={18}
-                  fontWeight="700"
-                >
-                  Lag
-                </text>
+                <>
+                  <text
+                    x={x}
+                    y={y - 22}
+                    textAnchor="middle"
+                    fill="#6d28d9"
+                    fontSize={16}
+                    fontWeight="700"
+                  >
+                    Lag
+                  </text>
+                  <text
+                    x={x}
+                    y={y - 6}
+                    textAnchor="middle"
+                    fill="#6d28d9"
+                    fontSize={10}
+                    fontWeight="400"
+                  >
+                    {ascDeg}°{String(ascMins).padStart(2, "0")}′
+                  </text>
+                </>
               )}
 
-              {housePlanets.map((p, idx) => (
-                <text
-                  key={`${house}-${p.name}-${idx}`}
-                  x={x}
-                  y={planetStartY + idx * lineHeight}
-                  textAnchor="middle"
-                  fill={p.color}
-                  fontSize={16}
-                  fontWeight="600"
-                >
-                  {p.label}
-                </text>
-              ))}
+              {housePlanets.map((p, idx) => {
+                const total = housePlanets.length;
+                const col = total > 1 ? idx % 2 : 0;
+                const row = total > 1 ? Math.floor(idx / 2) : idx;
+                const spread = inDiamond ? 40 : 40;
+                const colOff = total === 1 ? 0 : col === 0 ? -spread : spread;
+                const px = x + colOff;
+                const py = planetStartY + row * lineHeight;
+                return (
+                  <text
+                    key={`${house}-${p.name}-${idx}`}
+                    x={px}
+                    y={py}
+                    textAnchor="middle"
+                    fill={p.color}
+                    fontSize={14}
+                    fontWeight="600"
+                    style={{ cursor: "pointer" }}
+                    onMouseEnter={() => setHoveredPlanet(p.name)}
+                    onMouseLeave={() => setHoveredPlanet(null)}
+                  >
+                    {p.label}
+                    {/* degree on its own sub-line so the name row stays narrow */}
+                    <tspan fontSize={10} fontWeight="400" fill="#000000">
+                      {"  "}{p.degree}°{String(p.minutes).padStart(2, "0")}′
+                    </tspan>
+                  </text>
+                );
+              })}
             </g>
           );
         })}

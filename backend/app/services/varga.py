@@ -37,22 +37,62 @@ VARGA_NAMES: dict[int, str] = {
     1:  "D1 – Rashi",
     2:  "D2 – Hora",
     3:  "D3 – Drekkana",
-    4:  "D4 – Chaturthamsha",
-    5:  "D5 – Panchamsha",
-    6:  "D6 – Shashthamsha",
+    4:  "D4 – Chaturthamsa",
+    5:  "D5 – Panchamsa",
+    6:  "D6 – Shashthamsa",
     7:  "D7 – Saptamsa",
-    8:  "D8 – Ashtamsha",
+    8:  "D8 – Ashtamsa",
     9:  "D9 – Navamsa",
     10: "D10 – Dashamsa",
-    11: "D11 – Ekadashamsha",
+    11: "D11 – Rudramsa",
     12: "D12 – Dwadashamsa",
-    16: "D16 – Shodashamsha",
-    20: "D20 – Vimshamsha",
-    24: "D24 – Chaturvimshamsha",
-    27: "D27 – Bhamsha",
-    30: "D30 – Trimshamsha",
-    40: "D40 – Khavedamsha",
-    45: "D45 – Akshavedamsha",
+    13: "D13 – Trayodashamsa",
+    14: "D14 – Chaturdashamsa",
+    15: "D15 – Panchadashamsa",
+    16: "D16 – Shodashamsa",
+    17: "D17 – Saptadashamsa",
+    18: "D18 – Ashtadashamsa",
+    19: "D19 – Ekonavimshamsa",
+    20: "D20 – Vimshamsa",
+    21: "D21 – Ekavimshamsa",
+    22: "D22 – Chaturvimshamsa",
+    23: "D23 – Trayovimshamsa",
+    24: "D24 – Siddhamsa",
+    25: "D25 – Panchavimshamsa",
+    26: "D26 – Shadvimshamsa",
+    27: "D27 – Nakshatramsa",
+    28: "D28 – Ashtavimshamsa",
+    29: "D29 – Navavimshamsa",
+    30: "D30 – Trimshamsa",
+    31: "D31 – Ekatrimshamsa",
+    32: "D32 – Dvatrimshamsa",
+    33: "D33 – Trayatrimshamsa",
+    34: "D34 – Chaturtrimshamsa",
+    35: "D35 – Panchatrimshamsa",
+    36: "D36 – Shashtitrimshamsa",
+    37: "D37 – Saptatrimshamsa",
+    38: "D38 – Ashtatrimshamsa",
+    39: "D39 – Navatrimshamsa",
+    40: "D40 – Khavedamsa",
+    41: "D41 – Ekachattvarimsha",
+    42: "D42 – Dvichattvarimsha",
+    43: "D43 – Trichattvarimsha",
+    44: "D44 – Chatushchattvarimsha",
+    45: "D45 – Akshavedamsa",
+    46: "D46 – Shatchattvarimsha",
+    47: "D47 – Saptachattvarimsha",
+    48: "D48 – Ashtachattvarimsha",
+    49: "D49 – Navachattvarimsha",
+    50: "D50 – Panchashamsa",
+    51: "D51 – Ekapanchashamsa",
+    52: "D52 – Dvipanchashamsa",
+    53: "D53 – Tripanchashamsa",
+    54: "D54 – Chatushpanchashamsa",
+    55: "D55 – Panchapanchashamsa",
+    56: "D56 – Shatpanchashamsa",
+    57: "D57 – Saptapanchashamsa",
+    58: "D58 – Ashtapanchashamsa",
+    59: "D59 – Navapanchashamsa",
     60: "D60 – Shashtiamsa",
 }
 
@@ -94,11 +134,14 @@ def varga_sign_index(longitude: float, n: int) -> int:
         return (sign_idx + s * 4) % 12
 
     # ── D4 Chaturthamsha ────────────────────────────────────────────────
-    # Odd: Aries(0), Even: Capricorn(9) each subsequent slice +1
+    # BPHS: Movable (chara) → count from same sign
+    #        Fixed  (sthira) → count from 4th sign (+3)
+    #        Dual (dvisvabhava) → count from 7th sign (+6)
     if n == 4:
         s = _slice(deg_in_sign, 4)
-        start = 0 if sign_idx % 2 == 0 else 9
-        return (start + s) % 12
+        modality = sign_idx % 3   # 0=movable(0,3,6,9), 1=fixed(1,4,7,10), 2=dual(2,5,8,11)
+        offset = {0: 0, 1: 3, 2: 6}[modality]
+        return (sign_idx + offset + s) % 12
 
     # ── D7 Saptamsa ─────────────────────────────────────────────────────
     # Odd: count from same sign; Even: count from 7th sign (sign+6)
@@ -133,10 +176,11 @@ def varga_sign_index(longitude: float, n: int) -> int:
         return (sign_idx + s) % 12
 
     # ── D16 Shodashamsha ────────────────────────────────────────────────
-    # Odd: from Aries(0); Even: from Libra(6)
+    # BPHS: Movable → Aries(0); Fixed → Leo(4); Dual → Sagittarius(8)
     if n == 16:
         s = _slice(deg_in_sign, 16)
-        start = 0 if sign_idx % 2 == 0 else 6
+        modality = sign_idx % 3   # 0=movable, 1=fixed, 2=dual
+        start = {0: 0, 1: 4, 2: 8}[modality]
         return (start + s) % 12
 
     # ── D20 Vimshamsha ──────────────────────────────────────────────────
@@ -163,12 +207,24 @@ def varga_sign_index(longitude: float, n: int) -> int:
         start = {0: 0, 1: 3, 2: 6, 3: 9}[elem]
         return (start + s) % 12
 
-    # ── D30 Trimshamsha (unequal divisions — simplified equal version) ──
-    # Odd: Aries(0); Even: Libra(6)
+    # ── D30 Trimshamsha (BPHS unequal five-planet divisions) ─────────────
+    # Odd signs:  Mars 0-5°→Aries, Saturn 5-10°→Aquarius, Jupiter 10-18°→Sag,
+    #             Mercury 18-25°→Gemini, Venus 25-30°→Libra
+    # Even signs: Venus 0-5°→Taurus, Mercury 5-12°→Virgo, Jupiter 12-20°→Pisces,
+    #             Saturn 20-25°→Capricorn, Mars 25-30°→Scorpio
     if n == 30:
-        s = _slice(deg_in_sign, 30)
-        start = 0 if sign_idx % 2 == 0 else 6
-        return (start + s) % 12
+        if sign_idx % 2 == 0:   # odd sign (1-based)
+            if deg_in_sign < 5:   return 0   # Aries
+            if deg_in_sign < 10:  return 10  # Aquarius
+            if deg_in_sign < 18:  return 8   # Sagittarius
+            if deg_in_sign < 25:  return 2   # Gemini
+            return 6                          # Libra
+        else:                    # even sign (1-based)
+            if deg_in_sign < 5:   return 1   # Taurus
+            if deg_in_sign < 12:  return 5   # Virgo
+            if deg_in_sign < 20:  return 11  # Pisces
+            if deg_in_sign < 25:  return 9   # Capricorn
+            return 7                          # Scorpio
 
     # ── D40 Khavedamsha ─────────────────────────────────────────────────
     # Odd: Aries(0); Even: Libra(6)
@@ -196,3 +252,33 @@ def varga_sign_index(longitude: float, n: int) -> int:
     s = _slice(deg_in_sign, n)
     start = 0 if sign_idx % 2 == 0 else 6
     return (start + s) % 12
+
+
+def varga_deg_in_sign(longitude: float, n: int) -> float:
+    """
+    Return the planet's scaled position (0–30°) within its varga sign.
+
+    For equal-division charts: offset within slice × n.
+    D30 uses BPHS unequal five-planet divisions (widths 5/5/8/7/5).
+    D1 returns the original degree-in-sign unchanged.
+    """
+    if n == 1:
+        return longitude % 30.0
+    lon = longitude % 360.0
+    deg_in_sign = lon % 30.0
+
+    # ── D30 Trimshamsha: unequal divisions ──────────────────────────────
+    if n == 30:
+        sign_idx = int(lon / 30.0)
+        if sign_idx % 2 == 0:   # odd sign
+            DIVS = [(0, 5), (5, 10), (10, 18), (18, 25), (25, 30)]
+        else:                    # even sign
+            DIVS = [(0, 5), (5, 12), (12, 20), (20, 25), (25, 30)]
+        for (start, end) in DIVS:
+            if deg_in_sign < end or end == 30:
+                return (deg_in_sign - start) / (end - start) * 30.0
+        return 0.0
+
+    slice_size = 30.0 / n
+    s = min(int(deg_in_sign / slice_size), n - 1)
+    return (deg_in_sign - s * slice_size) * n

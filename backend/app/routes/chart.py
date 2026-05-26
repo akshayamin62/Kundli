@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.schemas import ChartRequest, ChartResponse, VargaRequest, HouseCusp, PlanetPosition, DegreePosition
 from app.services.chart_builder import build_chart
 from app.services.geocoding import GeocodingError
-from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES
+from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varga_deg_in_sign
 from app.services.astronomy import HOUSE_NAMES, longitude_to_sign_info
 
 router = APIRouter()
@@ -24,11 +24,16 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
     def remap_pos(lon: float) -> DegreePosition:
         new_idx  = varga_sign_index(lon, n)
         new_sign = ZODIAC_SIGNS[new_idx]
+        vp       = varga_deg_in_sign(lon, n)
+        deg      = int(vp)
+        mf       = (vp - deg) * 60.0
+        mins     = int(mf)
+        secs     = int((mf - mins) * 60.0)
         return DegreePosition(
             longitude=lon,
             sign=new_sign,
-            degree=0, minutes=0, seconds=0,
-            formatted=f"0°00'00\" {new_sign}",
+            degree=deg, minutes=mins, seconds=secs,
+            formatted=f"{deg}\u00b0{mins:02d}'{secs:02d}\" {new_sign}",
         )
 
     # Remap angles
@@ -63,13 +68,18 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
         new_sign_idx = varga_sign_index(p.longitude, n)
         new_sign     = ZODIAC_SIGNS[new_sign_idx]
         new_house    = (new_sign_idx - new_asc_idx) % 12 + 1
+        vp           = varga_deg_in_sign(p.longitude, n)
+        deg          = int(vp)
+        mf           = (vp - deg) * 60.0
+        mins         = int(mf)
+        secs         = int((mf - mins) * 60.0)
         new_planets.append(PlanetPosition(
             name=p.name,
             symbol=p.symbol,
             longitude=p.longitude,
             sign=new_sign,
-            degree=0, minutes=0, seconds=0,
-            formatted=f"0°00'00\" {new_sign}",
+            degree=deg, minutes=mins, seconds=secs,
+            formatted=f"{deg}\u00b0{mins:02d}'{secs:02d}\" {new_sign}",
             house=new_house,
             retrograde=p.retrograde,
             speed_deg_day=p.speed_deg_day,

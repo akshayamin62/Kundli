@@ -17,23 +17,83 @@ const VARGA_TABS = [
   { n: 12, label: "D12 Dwadashamsa" },
 ];
 
-// All D-charts for the overflow dropdown
-const ALL_VARGAS: { n: number; label: string }[] = [
-  { n: 2,  label: "D2 – Hora" },
-  { n: 4,  label: "D4 – Chaturthamsha" },
-  { n: 5,  label: "D5 – Panchamsha" },
-  { n: 6,  label: "D6 – Shashthamsha" },
-  { n: 8,  label: "D8 – Ashtamsha" },
-  { n: 11, label: "D11 – Ekadashamsha" },
-  { n: 16, label: "D16 – Shodashamsha" },
-  { n: 20, label: "D20 – Vimshamsha" },
-  { n: 24, label: "D24 – Chaturvimshamsha" },
-  { n: 27, label: "D27 – Bhamsha" },
-  { n: 30, label: "D30 – Trimshamsha" },
-  { n: 40, label: "D40 – Khavedamsha" },
-  { n: 45, label: "D45 – Akshavedamsha" },
-  { n: 60, label: "D60 – Shashtiamsa" },
-];
+// All D-charts for the overflow dropdown (D2–D60, excluding those already in VARGA_TABS)
+const _TABS_SET = new Set(VARGA_TABS.map((t) => t.n));
+
+interface VargaInfo { label: string; desc: string; }
+const VARGA_INFO: Record<number, VargaInfo> = {
+  1:  { label: "D1 – Rashi",                       desc: "Overall life, personality" },
+  2:  { label: "D2 – Hora",                        desc: "Wealth, finances" },
+  3:  { label: "D3 – Drekkana",                    desc: "Siblings, courage" },
+  4:  { label: "D4 – Chaturthamsa",                desc: "Property, home, fortune" },
+  5:  { label: "D5 – Panchamsa",                   desc: "Fame, authority, power" },
+  6:  { label: "D6 – Shashthamsa",                 desc: "Diseases, enemies" },
+  7:  { label: "D7 – Saptamsa",                    desc: "Children, progeny" },
+  8:  { label: "D8 – Ashtamsa",                    desc: "Longevity, obstacles" },
+  9:  { label: "D9 – Navamsa",                     desc: "Marriage, dharma, spouse" },
+  10: { label: "D10 – Dashamsa",                   desc: "Career, profession" },
+  11: { label: "D11 – Rudramsa",                   desc: "Gains, achievements" },
+  12: { label: "D12 – Dwadashamsa",                desc: "Parents, ancestry" },
+  13: { label: "D13 – Trayodashamsa",              desc: "Rarely used" },
+  14: { label: "D14 – Chaturdashamsa",             desc: "Rarely used" },
+  15: { label: "D15 – Panchadashamsa",             desc: "Spiritual inclinations" },
+  16: { label: "D16 – Shodashamsa",                desc: "Vehicles, comforts, luxuries" },
+  17: { label: "D17 – Saptadashamsa",              desc: "Strength, authority" },
+  18: { label: "D18 – Ashtadashamsa",              desc: "Conflicts, struggles" },
+  19: { label: "D19 – Ekonavimshamsa",             desc: "Spiritual development" },
+  20: { label: "D20 – Vimshamsa",                  desc: "Spirituality, worship" },
+  21: { label: "D21 – Ekavimshamsa",               desc: "Status, recognition" },
+  22: { label: "D22 – Chaturvimshamsa",            desc: "Learning capacity" },
+  23: { label: "D23 – Trayovimshamsa",             desc: "Intelligence" },
+  24: { label: "D24 – Siddhamsa",                  desc: "Education, academics" },
+  25: { label: "D25 – Panchavimshamsa",            desc: "Fame, creativity" },
+  26: { label: "D26 – Shadvimshamsa",              desc: "Weaknesses, defects" },
+  27: { label: "D27 – Nakshatramsa",               desc: "Physical & mental strength" },
+  28: { label: "D28 – Ashtavimshamsa",             desc: "Hidden strengths" },
+  29: { label: "D29 – Navavimshamsa",              desc: "Karmic tendencies" },
+  30: { label: "D30 – Trimshamsa",                 desc: "Misfortunes, hidden karma" },
+  31: { label: "D31 – Ekatrimshamsa",              desc: "Hidden weaknesses" },
+  32: { label: "D32 – Dvatrimshamsa",              desc: "Material stability" },
+  33: { label: "D33 – Trayatrimshamsa",            desc: "Spiritual protection" },
+  34: { label: "D34 – Chaturtrimshamsa",           desc: "Career growth obstacles" },
+  35: { label: "D35 – Panchatrimshamsa",           desc: "Mental endurance" },
+  36: { label: "D36 – Shashtitrimshamsa",          desc: "Collective karma" },
+  37: { label: "D37 – Saptatrimshamsa",            desc: "Family lineage" },
+  38: { label: "D38 – Ashtatrimshamsa",            desc: "Sudden transformations" },
+  39: { label: "D39 – Navatrimshamsa",             desc: "Fortune through spiritual maturity" },
+  40: { label: "D40 – Khavedamsa",                 desc: "Maternal lineage karma" },
+  41: { label: "D41 – Ekachattvarimsha",           desc: "Hidden talents" },
+  42: { label: "D42 – Dvichattvarimsha",           desc: "Emotional healing" },
+  43: { label: "D43 – Trichattvarimsha",           desc: "Dharma under pressure" },
+  44: { label: "D44 – Chatushchattvarimsha",       desc: "Stability of karma" },
+  45: { label: "D45 – Akshavedamsa",               desc: "Paternal lineage karma" },
+  46: { label: "D46 – Shatchattvarimsha",          desc: "Personal authority" },
+  47: { label: "D47 – Saptachattvarimsha",         desc: "Intellectual refinement" },
+  48: { label: "D48 – Ashtachattvarimsha",         desc: "Subconscious tendencies" },
+  49: { label: "D49 – Navachattvarimsha",          desc: "Destiny refinement" },
+  50: { label: "D50 – Panchashamsa",               desc: "Spiritual merit" },
+  51: { label: "D51 – Ekapanchashamsa",            desc: "Moral conflicts" },
+  52: { label: "D52 – Dvipanchashamsa",            desc: "Higher intuition" },
+  53: { label: "D53 – Tripanchashamsa",            desc: "Hidden psychology" },
+  54: { label: "D54 – Chatushpanchashamsa",        desc: "Karmic effort" },
+  55: { label: "D55 – Panchapanchashamsa",         desc: "Subtle reputation" },
+  56: { label: "D56 – Shatpanchashamsa",           desc: "Long-term karma" },
+  57: { label: "D57 – Saptapanchashamsa",          desc: "Spiritual resilience" },
+  58: { label: "D58 – Ashtapanchashamsa",          desc: "Ego dissolution" },
+  59: { label: "D59 – Navapanchashamsa",           desc: "Pre-final karmic refinement" },
+  60: { label: "D60 – Shashtiamsa",                desc: "Past life karma" },
+};
+
+const ALL_VARGAS: { n: number; label: string; desc: string }[] = Array.from(
+  { length: 59 },
+  (_, i) => i + 2,
+)
+  .filter((n) => !_TABS_SET.has(n))
+  .map((n) => ({
+    n,
+    label: VARGA_INFO[n]?.label ?? `D${n}`,
+    desc:  VARGA_INFO[n]?.desc  ?? "",
+  }));
 
 export default function HomePage() {
   const [chart, setChart] = useState<ChartResponse | null>(null);
@@ -143,18 +203,19 @@ export default function HomePage() {
                   More ▾
                 </button>
                 {moreOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[200px] max-h-72 overflow-y-auto">
-                    {ALL_VARGAS.map(({ n, label }) => (
+                  <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[240px] max-h-80 overflow-y-auto">
+                    {ALL_VARGAS.map(({ n, label, desc }) => (
                       <button
                         key={n}
                         onClick={() => switchVarga(n)}
-                        className={`w-full text-left px-4 py-2 text-xs font-medium transition-colors ${
+                        className={`w-full text-left px-4 py-2 transition-colors ${
                           activeVarga === n
                             ? "bg-purple-50 text-purple-700"
                             : "text-gray-700 hover:bg-gray-50"
                         }`}
                       >
-                        {label}
+                        <div className="text-xs font-semibold">{label}</div>
+                        {desc && <div className="text-[10px] text-gray-400 mt-0.5">{desc}</div>}
                       </button>
                     ))}
                   </div>
