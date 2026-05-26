@@ -147,21 +147,6 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Angles summary */}
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { label: ui.asc, value: chart.angles.ascendant.formatted },
-          { label: ui.mc,  value: chart.angles.midheaven.formatted },
-          { label: ui.dsc, value: chart.angles.descendant.formatted },
-          { label: ui.ic,  value: chart.angles.imum_coeli.formatted },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-gray-50 border border-gray-200 rounded-xl p-3">
-            <div className="text-xs text-gray-500">{label}</div>
-            <div className="text-sm text-gray-800 font-semibold mt-1">{value}</div>
-          </div>
-        ))}
-      </div>
-
       {/* Planet positions table */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
         <table className="w-full text-sm">

@@ -165,6 +165,19 @@ function buildCentroids(W: number, H: number): Record<number, Pt> {
   return centroids;
 }
 
+function getInnerVertex(house: number, W: number, H: number): Pt {
+  const cx = W / 2, cy = H / 2;
+  const qx = W / 4, qy = H / 4;
+  const q3x = (3 * W) / 4, q3y = (3 * H) / 4;
+  const v: Record<number, Pt> = {
+    1: [cx, cy],  2: [qx, qy],   3: [qx, qy],
+    4: [cx, cy],  5: [qx, q3y],  6: [qx, q3y],
+    7: [cx, cy],  8: [q3x, q3y], 9: [q3x, q3y],
+    10: [cx, cy], 11: [q3x, qy], 12: [q3x, qy],
+  };
+  return v[house] ?? [cx, cy];
+}
+
 export default function ChartWheel({ chart, lang = "en" }: Props) {
   const W = 900;
   const H = 640;
@@ -215,13 +228,13 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
   const diamondHouses = new Set([1, 4, 7, 10]);
 
   return (
-    <div className="flex flex-col items-center gap-5 w-full">
-      <div className="text-sm text-gray-600 text-center">
+    <div className="flex flex-col w-full h-full">
+      <div className="text-sm text-gray-600 text-center shrink-0 py-1">
         <span className="font-semibold text-amber-700">{ui.lagna}:</span> {signNamesLang[lagnaSign - 1]} ({lagnaSign})
       </div>
 
-      <div style={{ width: "min(100%, calc((100vh - 260px) * 1.40625))", margin: "0 auto" }}>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif" }}>
+      <div className="flex-1 min-h-0">
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block", fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif" }}>
         <rect width={W} height={H} fill="#ffffff" />
 
         {/* Pass 1: house polygons */}
@@ -271,7 +284,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
           });
         })()}
 
-        {/* Pass 3: sign numbers and planet labels (on top of lines) */}
+        {/* Pass 3: sign numbers toward chart center, planet labels at centroid */}
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((house) => {
           const [x, y] = centroids[house];
           const signNum = signByHouse[house] ?? houseToSign(house, lagnaSign);
@@ -279,25 +292,26 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
           const isLagna = house === 1;
           const housePlanets = planetsByHouse[house];
 
-          // Dynamic vertical centering: the entire content block (sign + planets) is
-          // centered at the house centroid so planets never overflow SVG bounds.
+          // House sign number: 20% from inner vertex toward centroid
+          const [ivX, ivY] = getInnerVertex(house, W, H);
+          const numX = ivX + (x - ivX) * 0.22;
+          const numY = ivY + (y - ivY) * 0.22;
+
+          // Planet block: centered at centroid, no sign number in block
           const lineHeight = 40;
           const nPlanetRows = Math.ceil(housePlanets.length / 2);
-          // Height from blockTop to where the first planet baseline starts
-          const HEADER_H = isLagna ? 70 : inDiamond ? 30 : 26;
+          // headerH: space for Lag label + asc degree (house 1 only)
+          const HEADER_H = isLagna ? 46 : 0;
           const blockH = HEADER_H + nPlanetRows * lineHeight;
           const MARGIN = 8;
-          // Center block at centroid, clamped to SVG bounds
           let blockTop = y - blockH / 2;
           blockTop = Math.max(MARGIN, Math.min(H - blockH - MARGIN, blockTop));
-          // If remaining space for planets is tight, compress line height (min 26px)
           const availForPlanets = (H - MARGIN) - (blockTop + HEADER_H);
           const effLH = nPlanetRows > 0
             ? Math.min(lineHeight, Math.max(26, availForPlanets / nPlanetRows))
             : lineHeight;
-          const signY = blockTop + (isLagna ? 22 : inDiamond ? 22 : 18);
-          const lagLabelY = blockTop + 46;
-          const ascDegLabelY = blockTop + 62;
+          const lagLabelY   = blockTop + 18;
+          const ascDegLabelY = blockTop + 34;
           const planetStartY = blockTop + HEADER_H + Math.floor(effLH * 0.65);
 
           // Ascendant degree for House 1 display
@@ -306,13 +320,15 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
 
           return (
             <g key={`text-${house}`}>
+              {/* Sign number near inner vertex (toward chart center) */}
               <text
-                x={x}
-                y={signY}
+                x={numX}
+                y={numY}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fill="#374151"
-                fontSize={inDiamond ? 28 : 22}
-                fontWeight="600"
+                fontSize={16}
+                fontWeight="700"
               >
                 {signNum}
               </text>
@@ -324,7 +340,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     y={lagLabelY}
                     textAnchor="middle"
                     fill="#6d28d9"
-                    fontSize={20}
+                    fontSize={18}
                     fontWeight="700"
                   >
                     {ui.lag}
@@ -334,7 +350,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     y={ascDegLabelY}
                     textAnchor="middle"
                     fill="#6d28d9"
-                    fontSize={14}
+                    fontSize={12}
                     fontWeight="400"
                   >
                     {ascDeg}°{String(ascMins).padStart(2, "0")}′
@@ -357,7 +373,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     y={py}
                     textAnchor="middle"
                     fill={p.color}
-                    fontSize={20}
+                    fontSize={18}
                     fontWeight="600"
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() => setHoveredPlanet(p.name)}
@@ -367,7 +383,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     {p.suffix && <tspan fill={p.color}>{p.suffix}</tspan>}
                     {p.retrograde && <tspan fill="#dc2626">-</tspan>}
                     {/* degree on its own sub-line so the name row stays narrow */}
-                    <tspan x={px} dy={16} fontSize={14} fontWeight="400" fill="#000000">
+                    <tspan x={px} dy={16} fontSize={12} fontWeight="400" fill="#000000">
                       {p.degree}°{String(p.minutes).padStart(2, "0")}′
                     </tspan>
                   </text>

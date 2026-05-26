@@ -97,15 +97,8 @@ export default function BirthForm({ onResult }: Props) {
     "bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400";
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="bg-white border border-gray-200 rounded-2xl p-5 shadow-md shadow-gray-100 space-y-4"
-    >
-      <h2 className="text-lg font-bold text-gray-800 tracking-wide">
-        ✦ Enter Birth Details ✦
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-[180px_180px_minmax(220px,1fr)_220px] gap-3 items-end">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
         {field(
           "Birth Date",
           <input
@@ -127,47 +120,47 @@ export default function BirthForm({ onResult }: Props) {
             className={inputCls}
           />,
         )}
-
-        {field(
-          "Birth Place",
-          <div ref={containerRef} className="relative">
-            <input
-              type="text"
-              required
-              placeholder="e.g. Vadodara, India"
-              value={placeInput}
-              onChange={(e) => handlePlaceChange(e.target.value)}
-              onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-              autoComplete="off"
-              className={inputCls + " w-full"}
-            />
-            {showDropdown && suggestions.length > 0 && (
-              <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto text-sm">
-                {suggestions.map((s) => (
-                  <li
-                    key={s.place_id}
-                    onMouseDown={() => handleSelectSuggestion(s)}
-                    className="px-3 py-2.5 cursor-pointer hover:bg-indigo-50 text-gray-700 border-b border-gray-100 last:border-0 leading-snug"
-                  >
-                    {s.display_name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>,
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors tracking-wide text-sm"
-        >
-          {loading ? "Calculating..." : "Generate Chart"}
-        </button>
       </div>
 
+      {field(
+        "Birth Place",
+        <div ref={containerRef} className="relative">
+          <input
+            type="text"
+            required
+            placeholder="e.g. Vadodara, India"
+            value={placeInput}
+            onChange={(e) => handlePlaceChange(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+            autoComplete="off"
+            className={inputCls + " w-full"}
+          />
+          {showDropdown && suggestions.length > 0 && (
+            <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto text-sm">
+              {suggestions.map((s) => (
+                <li
+                  key={s.place_id}
+                  onMouseDown={() => handleSelectSuggestion(s)}
+                  className="px-3 py-2.5 cursor-pointer hover:bg-indigo-50 text-gray-700 border-b border-gray-100 last:border-0 leading-snug"
+                >
+                  {s.display_name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>,
+      )}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors tracking-wide text-sm"
+      >
+        {loading ? "Calculating..." : "Generate Chart"}
+      </button>
+
       <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600">
-        North Indian mode: <span className="font-semibold text-gray-900">Whole Sign</span> house logic + <span className="font-semibold text-gray-900">Sidereal (Lahiri)</span> zodiac.
+        North Indian mode: <span className="font-semibold text-gray-900">Whole Sign</span> + <span className="font-semibold text-gray-900">Sidereal (Lahiri)</span>
       </div>
 
       {error && (
