@@ -279,13 +279,26 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
           const isLagna = house === 1;
           const housePlanets = planetsByHouse[house];
 
-          // House 1: sign(y-52) → Lag(y-22) → ASC deg(y-6) → planets(y+12)
-          // Other diamond: sign(y-10) → planets(y+12)
-          // Triangle:      sign(y-8)  → planets(y+10)
-          const signY = y - (isLagna ? 52 : inDiamond ? 10 : 8);
-          const planetStartY = isLagna ? y + 12 : y + (inDiamond ? 12 : 10);
-          // 32px per row: 14px name + 14px degree sub-line + 4px gap
-          const lineHeight = 32;
+          // Dynamic vertical centering: the entire content block (sign + planets) is
+          // centered at the house centroid so planets never overflow SVG bounds.
+          const lineHeight = 40;
+          const nPlanetRows = Math.ceil(housePlanets.length / 2);
+          // Height from blockTop to where the first planet baseline starts
+          const HEADER_H = isLagna ? 70 : inDiamond ? 30 : 26;
+          const blockH = HEADER_H + nPlanetRows * lineHeight;
+          const MARGIN = 8;
+          // Center block at centroid, clamped to SVG bounds
+          let blockTop = y - blockH / 2;
+          blockTop = Math.max(MARGIN, Math.min(H - blockH - MARGIN, blockTop));
+          // If remaining space for planets is tight, compress line height (min 26px)
+          const availForPlanets = (H - MARGIN) - (blockTop + HEADER_H);
+          const effLH = nPlanetRows > 0
+            ? Math.min(lineHeight, Math.max(26, availForPlanets / nPlanetRows))
+            : lineHeight;
+          const signY = blockTop + (isLagna ? 22 : inDiamond ? 22 : 18);
+          const lagLabelY = blockTop + 46;
+          const ascDegLabelY = blockTop + 62;
+          const planetStartY = blockTop + HEADER_H + Math.floor(effLH * 0.65);
 
           // Ascendant degree for House 1 display
           const ascDeg   = chart.angles.ascendant.degree;
@@ -308,20 +321,20 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                 <>
                   <text
                     x={x}
-                    y={y - 22}
+                    y={lagLabelY}
                     textAnchor="middle"
                     fill="#6d28d9"
-                    fontSize={16}
+                    fontSize={20}
                     fontWeight="700"
                   >
                     {ui.lag}
                   </text>
                   <text
                     x={x}
-                    y={y - 6}
+                    y={ascDegLabelY}
                     textAnchor="middle"
                     fill="#6d28d9"
-                    fontSize={10}
+                    fontSize={14}
                     fontWeight="400"
                   >
                     {ascDeg}°{String(ascMins).padStart(2, "0")}′
@@ -336,7 +349,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                 const spread = inDiamond ? 40 : 40;
                 const colOff = total === 1 ? 0 : col === 0 ? -spread : spread;
                 const px = x + colOff;
-                const py = planetStartY + row * lineHeight;
+                const py = planetStartY + row * effLH;
                 return (
                   <text
                     key={`${house}-${p.name}-${idx}`}
@@ -344,7 +357,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     y={py}
                     textAnchor="middle"
                     fill={p.color}
-                    fontSize={14}
+                    fontSize={20}
                     fontWeight="600"
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() => setHoveredPlanet(p.name)}
@@ -354,7 +367,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     {p.suffix && <tspan fill={p.color}>{p.suffix}</tspan>}
                     {p.retrograde && <tspan fill="#dc2626">-</tspan>}
                     {/* degree on its own sub-line so the name row stays narrow */}
-                    <tspan x={px} dy={14} fontSize={10} fontWeight="400" fill="#374151">
+                    <tspan x={px} dy={16} fontSize={14} fontWeight="400" fill="#000000">
                       {p.degree}°{String(p.minutes).padStart(2, "0")}′
                     </tspan>
                   </text>

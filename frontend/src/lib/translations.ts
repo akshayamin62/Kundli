@@ -20,9 +20,9 @@ export const PLANET_SHORT: Record<Lang, Record<string, string>> = {
 
 // ── Planet Display Names (for table) ──────────────────────────────────────────
 export const PLANET_NAMES: Record<Lang, Record<string, string>> = {
-  en: { Sun: "Sun", Moon: "Moon", Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter", Venus: "Venus", Saturn: "Saturn", "North Node": "Rahu", "South Node": "Ketu", Ascendant: "Ascendant" },
-  hi: { Sun: "सूर्य", Moon: "चंद्र", Mars: "मंगल", Mercury: "बुध", Jupiter: "गुरु", Venus: "शुक्र", Saturn: "शनि", "North Node": "राहु", "South Node": "केतु", Ascendant: "लग्न" },
-  gu: { Sun: "સૂર્ય", Moon: "ચંદ્ર", Mars: "મંગળ", Mercury: "બુધ", Jupiter: "ગુરુ", Venus: "શુક્ર", Saturn: "શનિ", "North Node": "રાહુ", "South Node": "કેતુ", Ascendant: "લગ્ન" },
+  en: { Sun: "Sun", Moon: "Moon", Mars: "Mars", Mercury: "Mercury", Jupiter: "Jupiter", Venus: "Venus", Saturn: "Saturn", "North Node": "Rahu", "South Node": "Ketu", Rahu: "Rahu", Ketu: "Ketu", Ascendant: "Ascendant" },
+  hi: { Sun: "सूर्य", Moon: "चंद्र", Mars: "मंगल", Mercury: "बुध", Jupiter: "गुरु", Venus: "शुक्र", Saturn: "शनि", "North Node": "राहु", "South Node": "केतु", Rahu: "राहु", Ketu: "केतु", Ascendant: "लग्न" },
+  gu: { Sun: "સૂર્ય", Moon: "ચંદ્ર", Mars: "મંગળ", Mercury: "બુધ", Jupiter: "ગુરુ", Venus: "શુક્ર", Saturn: "શનિ", "North Node": "રાહુ", "South Node": "કેતુ", Rahu: "રાહુ", Ketu: "કેતુ", Ascendant: "લગ્ન" },
 };
 
 // ── Nakshatra Names (27) ───────────────────────────────────────────────────────
@@ -142,6 +142,12 @@ export const GRAHSHIL_ROWS: Record<Lang, Record<string, string>> = {
     mitra:        "Mitra Graha (Friends)",
     sama:         "Sama Graha (Neutrals)",
     shatru:       "Shatru Graha (Enemies)",
+    tatva:        "Tatva (Element)",
+    disha:        "Dishabal (Direction)",
+    sthanbal:     "Sthanbal (Digbala)",
+    kaal:         "Kaalbal (Time of Day)",
+    vatadi:       "Vatadi Dosha (Humor)",
+    ling:         "Ling (Gender)",
   },
   hi: {
     swakshetra:   "स्वक्षेत्र (स्वराशि)",
@@ -157,6 +163,12 @@ export const GRAHSHIL_ROWS: Record<Lang, Record<string, string>> = {
     mitra:        "मित्र ग्रह",
     sama:         "सम ग्रह",
     shatru:       "शत्रु ग्रह",
+    tatva:        "तत्व",
+    disha:        "दिशाबल",
+    sthanbal:     "स्थानबल (दिग्बल)",
+    kaal:         "कालबल (समय)",
+    vatadi:       "वातादि दोष",
+    ling:         "लिंग",
   },
   gu: {
     swakshetra:   "સ્વક્ષેત્ર (સ્વરાશિ)",
@@ -172,6 +184,12 @@ export const GRAHSHIL_ROWS: Record<Lang, Record<string, string>> = {
     mitra:        "મિત્ર ગ્રહ",
     sama:         "સમ ગ્રહ",
     shatru:       "શત્રુ ગ્રહ",
+    tatva:        "તત્વ",
+    disha:        "દિશાબળ",
+    sthanbal:     "સ્થાનબળ (દિગ્બળ)",
+    kaal:         "કાળબળ (સમય)",
+    vatadi:       "વાતાદિ દોષ",
+    ling:         "લિંગ",
   },
 };
 
@@ -199,4 +217,11 @@ export function translateSign(signEn: string, lang: Lang): string {
 export function translateSignList(signsEn: string, lang: Lang): string {
   if (lang === "en") return signsEn;
   return signsEn.split(", ").map((s) => translateSign(s.trim(), lang)).join(", ");
+}
+
+// ── Planet list translation (for mitra/sama/shatru in Grahshil Chakra) ────────
+export function translatePlanetList(planetsEn: string, lang: Lang): string {
+  if (lang === "en") return planetsEn;
+  const map = PLANET_NAMES[lang];
+  return planetsEn.split(", ").map((p) => map[p.trim()] ?? p.trim()).join(", ");
 }

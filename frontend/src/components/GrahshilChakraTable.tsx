@@ -1,6 +1,6 @@
 "use client";
 
-import { type Lang, GRAHSHIL_ROWS, GRAHSHIL_PLANET_HEADERS, GRAHSHIL_TITLE, translateSign, translateSignList } from "@/lib/translations";
+import { type Lang, GRAHSHIL_ROWS, GRAHSHIL_PLANET_HEADERS, GRAHSHIL_TITLE, translateSign, translateSignList, translatePlanetList } from "@/lib/translations";
 
 interface Props { lang?: Lang; }
 
@@ -24,6 +24,74 @@ interface PlanetStaticData {
   shatru: string;
 }
 
+// Tatva (Element) per planet
+const TATVA_EN: Record<string, string> = {
+  Sun: "Agni (Fire)", Moon: "Jal (Water)", Mars: "Agni (Fire)", Mercury: "Prithvi (Earth)",
+  Jupiter: "Akash (Ether)", Venus: "Jal (Water)", Saturn: "Vayu (Air)",
+  Rahu: "Jal, Vayu", Ketu: "Akash, Agni",
+};
+const TATVA: Record<Lang, Record<string, string>> = {
+  en: TATVA_EN,
+  hi: { Sun: "तेज", Moon: "जल", Mars: "तेज", Mercury: "पृथ्वी", Jupiter: "आकाश", Venus: "जल", Saturn: "वायु", Rahu: "जल, वायु", Ketu: "आकाश, तेज" },
+  gu: { Sun: "અગ્નિ", Moon: "જળ", Mars: "અગ્નિ", Mercury: "પૃથ્વી", Jupiter: "આકાશ", Venus: "જળ", Saturn: "વાયુ", Rahu: "જળ, વાયુ", Ketu: "આકાશ, અગ્નિ" },
+};
+
+// Disha (Direction)
+const DISHA: Record<Lang, Record<string, string>> = {
+  en: { Sun: "East", Moon: "NW", Mars: "South", Mercury: "North", Jupiter: "NE", Venus: "SE", Saturn: "West", Rahu: "SW", Ketu: "SW" },
+  hi: { Sun: "पूर्व", Moon: "वायव्य", Mars: "दक्षिण", Mercury: "उत्तर", Jupiter: "ईशान", Venus: "आग्नेय", Saturn: "पश्चिम", Rahu: "नैरृत्य", Ketu: "नैरृत्य" },
+  gu: { Sun: "પૂર્વ", Moon: "વાયવ્ય", Mars: "દક્ષિણ", Mercury: "ઉત્તર", Jupiter: "ઇશાન", Venus: "આગ્નેય", Saturn: "પશ્ચિમ", Rahu: "નૈરૃત્ય", Ketu: "નૈરૃત્ય" },
+};
+
+// Sthanbal (Digbala — house of directional strength)
+const STHANBAL: Record<Lang, Record<string, string>> = {
+  en: { Sun: "10th", Moon: "4th", Mars: "10th", Mercury: "1st (Lagna)", Jupiter: "1st (Lagna)", Venus: "4th", Saturn: "7th", Rahu: "—", Ketu: "—" },
+  hi: { Sun: "दशम", Moon: "चतुर्थ", Mars: "दशम", Mercury: "प्रथम", Jupiter: "प्रथम", Venus: "चतुर्थ", Saturn: "सप्तम", Rahu: "—", Ketu: "—" },
+  gu: { Sun: "દશમ", Moon: "ચતુર્થ", Mars: "દશમ", Mercury: "પ્રથમ", Jupiter: "પ્રથમ", Venus: "ચતુર્થ", Saturn: "સપ્તમ", Rahu: "—", Ketu: "—" },
+};
+
+// Kaal (Time of day when the planet is strongest)
+const KAAL: Record<Lang, Record<string, string>> = {
+  en: {
+    Sun: "Madhyanha (Noon)", Moon: "Aparahna (Afternoon)", Mars: "Madhyanha (Noon)",
+    Mercury: "Pratas (Morning)", Jupiter: "Pratas (Morning)", Venus: "Aparahna (Afternoon)",
+    Saturn: "Sayankal (Evening)", Rahu: "Sayankal (Evening)", Ketu: "Sayankal (Evening)",
+  },
+  hi: {
+    Sun: "मध्यान्ह", Moon: "अपराह्ण", Mars: "मध्यान्ह",
+    Mercury: "प्रातः", Jupiter: "प्रातः", Venus: "अपराह्ण",
+    Saturn: "सायं", Rahu: "सायं", Ketu: "सायं",
+  },
+  gu: {
+    Sun: "મધ્યાહ્ન", Moon: "અપરાહ્ન", Mars: "મધ્યાહ્ન",
+    Mercury: "પ્રાતઃ", Jupiter: "પ્રાતઃ", Venus: "અપરાહ્ન",
+    Saturn: "સાયં", Rahu: "સાયં", Ketu: "સાયં",
+  },
+};
+
+// Vatadi (Dosha / Humor) — multiple doshas possible
+const VATADI: Record<Lang, Record<string, string>> = {
+  en: {
+    Sun: "Pitta", Moon: "Vata, Kapha", Mars: "Pitta, Kapha", Mercury: "Tridosha",
+    Jupiter: "Kapha, Vata", Venus: "Vata, Kapha", Saturn: "Vata", Rahu: "—", Ketu: "—",
+  },
+  hi: {
+    Sun: "पित्त", Moon: "वात, कफ", Mars: "पित्त, कफ", Mercury: "त्रिदोष",
+    Jupiter: "कफ, वात", Venus: "वात, कफ", Saturn: "वात", Rahu: "—", Ketu: "—",
+  },
+  gu: {
+    Sun: "પિત્ત", Moon: "વાત, કફ", Mars: "પિત્ત, કફ", Mercury: "ત્રિદોષ",
+    Jupiter: "કફ, વાત", Venus: "વાત, કફ", Saturn: "વાત", Rahu: "—", Ketu: "—",
+  },
+};
+
+// Ling (Gender)
+const LING: Record<Lang, Record<string, string>> = {
+  en: { Sun: "Male", Moon: "Female", Mars: "Male", Mercury: "Neutral", Jupiter: "Male", Venus: "Female", Saturn: "Neutral", Rahu: "Male", Ketu: "Male" },
+  hi: { Sun: "पुरुष", Moon: "स्त्री", Mars: "पुरुष", Mercury: "नपुंसक", Jupiter: "पुरुष", Venus: "स्त्री", Saturn: "नपुंसक", Rahu: "पुरुष", Ketu: "पुरुष" },
+  gu: { Sun: "પુરુષ", Moon: "સ્ત્રી", Mars: "પુરુષ", Mercury: "નપુંસક", Jupiter: "પુરુષ", Venus: "સ્ત્રી", Saturn: "નપુંસક", Rahu: "પુરુષ", Ketu: "પુરુષ" },
+};
+
 const DATA: Record<string, PlanetStaticData> = {
   Sun: {
     swakshetra: "Leo",                   uchcha: "Aries",       ucchaDeg: 10,
@@ -32,7 +100,7 @@ const DATA: Record<string, PlanetStaticData> = {
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
     mitra: "Moon, Mars, Jupiter",
     sama:  "Mercury",
-    shatru: "Venus, Saturn",
+    shatru: "Venus, Saturn, Rahu",
   },
   Moon: {
     swakshetra: "Cancer",                uchcha: "Taurus",      ucchaDeg: 3,
@@ -41,7 +109,7 @@ const DATA: Record<string, PlanetStaticData> = {
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
     mitra: "Sun, Mercury",
     sama:  "Mars, Jupiter, Venus, Saturn",
-    shatru: "Rahu, Ketu",
+    shatru: "Rahu",
   },
   Mars: {
     swakshetra: "Aries, Scorpio",        uchcha: "Capricorn",   ucchaDeg: 28,
@@ -50,14 +118,14 @@ const DATA: Record<string, PlanetStaticData> = {
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "—",      sampurna: "4, 7, 8",
     mitra: "Sun, Moon, Jupiter",
     sama:  "Venus, Saturn",
-    shatru: "Mercury",
+    shatru: "Mercury, Rahu",
   },
   Mercury: {
     swakshetra: "Gemini, Virgo",         uchcha: "Virgo",       ucchaDeg: 15,
     neecha: "Pisces",                    neechaDeg: 15,
     moolatrikona: "Virgo",
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
-    mitra: "Sun, Venus",
+    mitra: "Sun, Venus, Rahu",
     sama:  "Mars, Jupiter, Saturn",
     shatru: "Moon",
   },
@@ -67,7 +135,7 @@ const DATA: Record<string, PlanetStaticData> = {
     moolatrikona: "Sagittarius",
     ekpaad: "3, 10",    dwipaad: "—",     tripaad: "4, 8",   sampurna: "5, 7, 9",
     mitra: "Sun, Moon, Mars",
-    sama:  "Saturn",
+    sama:  "Saturn, Rahu",
     shatru: "Mercury, Venus",
   },
   Venus: {
@@ -75,7 +143,7 @@ const DATA: Record<string, PlanetStaticData> = {
     neecha: "Virgo",                     neechaDeg: 27,
     moolatrikona: "Libra",
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
-    mitra: "Mercury, Saturn",
+    mitra: "Mercury, Saturn, Rahu",
     sama:  "Mars, Jupiter",
     shatru: "Sun, Moon",
   },
@@ -84,7 +152,7 @@ const DATA: Record<string, PlanetStaticData> = {
     neecha: "Aries",                     neechaDeg: 20,
     moolatrikona: "Aquarius",
     ekpaad: "—",        dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "3, 7, 10",
-    mitra: "Mercury, Venus",
+    mitra: "Mercury, Venus, Rahu",
     sama:  "Jupiter",
     shatru: "Sun, Moon, Mars",
   },
@@ -104,32 +172,41 @@ const DATA: Record<string, PlanetStaticData> = {
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
     mitra: "Mars, Saturn, Venus",
     sama:  "Jupiter",
-    shatru: "Sun, Moon, Mercury",
+    shatru: "Sun, Moon, Mars",
   },
 };
 
 // Row key → field accessor
 type RowKey = "swakshetra" | "uchcha" | "ucchaDeg" | "neecha" | "neechaDeg" | "moolatrikona"
-            | "ekpaad" | "dwipaad" | "tripaad" | "sampurna" | "mitra" | "sama" | "shatru";
+            | "ekpaad" | "dwipaad" | "tripaad" | "sampurna"
+            | "tatva" | "disha" | "sthanbal" | "kaal" | "vatadi" | "ling"
+            | "mitra" | "sama" | "shatru";
 
 const ROW_KEYS: RowKey[] = [
   "swakshetra", "uchcha", "ucchaDeg", "neecha", "neechaDeg", "moolatrikona",
   "ekpaad", "dwipaad", "tripaad", "sampurna",
+  "tatva", "disha", "sthanbal", "kaal", "vatadi", "ling",
   "mitra", "sama", "shatru",
 ];
 
 function rowBg(key: RowKey): string {
-  if (["swakshetra"].includes(key))                    return "#f0fdf4"; // green tint
-  if (["uchcha", "ucchaDeg"].includes(key))            return "#eff6ff"; // blue tint
-  if (["neecha", "neechaDeg"].includes(key))           return "#fff1f2"; // red tint
-  if (["moolatrikona"].includes(key))                  return "#faf5ff"; // purple tint
-  if (["ekpaad"].includes(key))                        return "#f9fafb"; // black/gray
-  if (["dwipaad"].includes(key))                       return "#eff6ff"; // blue
-  if (["tripaad"].includes(key))                       return "#f0fdf4"; // green
-  if (["sampurna"].includes(key))                      return "#fff1f2"; // red
-  if (["mitra"].includes(key))                         return "#f0fdf4"; // green
-  if (["sama"].includes(key))                          return "#fefce8"; // yellow
-  if (["shatru"].includes(key))                        return "#fff1f2"; // red
+  if (["swakshetra"].includes(key))                    return "#f0fdf4";
+  if (["uchcha", "ucchaDeg"].includes(key))            return "#eff6ff";
+  if (["neecha", "neechaDeg"].includes(key))           return "#fff1f2";
+  if (["moolatrikona"].includes(key))                  return "#faf5ff";
+  if (["ekpaad"].includes(key))                        return "#f9fafb";
+  if (["dwipaad"].includes(key))                       return "#eff6ff";
+  if (["tripaad"].includes(key))                       return "#f0fdf4";
+  if (["sampurna"].includes(key))                      return "#fff1f2";
+  if (["mitra"].includes(key))                         return "#f0fdf4";
+  if (["sama"].includes(key))                          return "#fefce8";
+  if (["shatru"].includes(key))                        return "#fff1f2";
+  if (["tatva"].includes(key))                         return "#fdf4ff";
+  if (["disha"].includes(key))                         return "#f0f9ff";
+  if (["sthanbal"].includes(key))                      return "#f0fdf4";
+  if (["kaal"].includes(key))                          return "#fafaf9";
+  if (["vatadi"].includes(key))                        return "#fff7ed";
+  if (["ling"].includes(key))                          return "#f5f3ff";
   return "#ffffff";
 }
 
@@ -139,6 +216,12 @@ function rowTextColor(key: RowKey): string {
   if (["neecha", "neechaDeg", "sampurna", "shatru"].includes(key))      return "#dc2626";
   if (["ekpaad"].includes(key))                                          return "#111827";
   if (["sama"].includes(key))                                            return "#a16207";
+  if (["tatva"].includes(key))                                           return "#7e22ce";
+  if (["disha"].includes(key))                                           return "#0369a1";
+  if (["sthanbal"].includes(key))                                        return "#15803d";
+  if (["kaal"].includes(key))                                            return "#374151";
+  if (["vatadi"].includes(key))                                          return "#c2410c";
+  if (["ling"].includes(key))                                            return "#6d28d9";
   return "#374151";
 }
 
@@ -155,9 +238,15 @@ function getCell(planet: string, key: RowKey, lang: Lang): string {
     case "dwipaad":      return d.dwipaad;
     case "tripaad":      return d.tripaad;
     case "sampurna":     return d.sampurna;
-    case "mitra":        return translateSignList(d.mitra, lang);
-    case "sama":         return translateSignList(d.sama, lang);
-    case "shatru":       return translateSignList(d.shatru, lang);
+    case "mitra":        return translatePlanetList(d.mitra, lang);
+    case "sama":         return translatePlanetList(d.sama, lang);
+    case "shatru":       return translatePlanetList(d.shatru, lang);
+    case "tatva":        return TATVA[lang][planet] ?? "";
+    case "disha":        return DISHA[lang][planet] ?? "";
+    case "sthanbal":     return STHANBAL[lang][planet] ?? "";
+    case "kaal":         return KAAL[lang][planet] ?? "";
+    case "vatadi":       return VATADI[lang][planet] ?? "";
+    case "ling":         return LING[lang][planet] ?? "";
   }
 }
 
