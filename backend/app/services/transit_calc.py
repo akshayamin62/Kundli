@@ -19,7 +19,7 @@ import math
 from datetime import date, timedelta
 from typing import List, Dict, Any
 
-from app.services.ephemeris import get_planet_positions, get_ayanamsa
+from app.services.ephemeris import get_planet_positions, get_ayanamsa, get_planet_longitudes_bulk
 from app.services.astronomy import julian_day
 
 # ---------------------------------------------------------------------------
@@ -199,6 +199,18 @@ def get_sign_transits(
     filter_jd_start = _jd(date(start_year,     1,  1))
     filter_jd_end   = _jd(date(end_year + 1,   1,  1))  # exclusive upper bound
 
+    # ── Build scan arrays (vectorised) ──────────────────────────────────────
+    jd_scan_arr: list = []
+    jd = jd_scan_start
+    while jd <= jd_scan_end:
+        jd_scan_arr.append(jd)
+        jd += step
+
+    aya_arr = [get_ayanamsa(jd) if sidereal else 0.0 for jd in jd_scan_arr]
+
+    # Single bulk call: ~100× faster than one Skyfield call per step
+    lon_arr = get_planet_longitudes_bulk(jd_scan_arr, planet, aya_arr)
+
     # ── Scanning phase ──────────────────────────────────────────────────────
     # Internal accumulator: list of (entry_jd, exit_jd, sign_idx, retrograde)
     raw: list = []
@@ -206,32 +218,36 @@ def get_sign_transits(
     entry_jd: float = jd_scan_start
     entry_retro: bool = False
 
-    jd = jd_scan_start
-    while jd <= jd_scan_end:
-        aya = get_ayanamsa(jd) if sidereal else 0.0
-        lon, retro = _planet_lon_retro(jd, planet, aya)
+    for i, (scan_jd, lon) in enumerate(zip(jd_scan_arr, lon_arr)):
         s_idx = _sign_of(lon)
 
         if prev_sign_idx == -1:
             prev_sign_idx = s_idx
-            entry_jd = jd
-            entry_retro = retro
+            entry_jd = scan_jd
+            entry_retro = False
         elif s_idx != prev_sign_idx:
-            # Refine to exact day first (for multi-day steps)
-            day_jd = _refine_crossing(planet, jd - step, jd, prev_sign_idx, sidereal) if step > 1 else jd
-            # Then refine to exact hour via binary search
-            exact_jd, cross_retro = _refine_hour(planet, day_jd, prev_sign_idx, sidereal)
+            if step > 1:
+                # Slow planet: narrow to day-level, then hour-level
+                day_jd   = _refine_crossing(planet, scan_jd - step, scan_jd, prev_sign_idx, sidereal)
+                exact_jd, cross_retro = _refine_hour(planet, day_jd, prev_sign_idx, sidereal)
+            elif planet == "Moon":
+                # Moon never retrogrades; skip expensive hour refinement.
+                # The scan already provides 1-day (±12 h) precision.
+                exact_jd   = scan_jd
+                cross_retro = False
+            else:
+                # step=1, non-Moon: one binary-search pass for sub-hour precision
+                exact_jd, cross_retro = _refine_hour(planet, scan_jd, prev_sign_idx, sidereal)
 
             raw.append((entry_jd, exact_jd, prev_sign_idx, entry_retro))
             prev_sign_idx = s_idx
-            entry_jd = exact_jd
-            entry_retro = cross_retro
-
-        jd += step
+            entry_jd      = exact_jd
+            entry_retro   = cross_retro
 
     # Close the last open transit
     if prev_sign_idx != -1:
-        raw.append((entry_jd, jd_scan_end, prev_sign_idx, entry_retro))
+        last_jd = jd_scan_arr[-1] if jd_scan_arr else jd_scan_end
+        raw.append((entry_jd, last_jd, prev_sign_idx, entry_retro))
 
     # ── Filter + format ──────────────────────────────────────────────────────
     transits: List[Dict] = []

@@ -308,7 +308,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
           const numY = ivY + (y - ivY) * 0.22;
 
           // Planet block: centered at centroid, no sign number in block
-          const lineHeight = 40;
+          const lineHeight = 45;
           const nPlanetRows = Math.ceil(housePlanets.length / 2);
           // headerH: space for Lag label + asc degree (house 1 only)
           const HEADER_H = isLagna ? 46 : 0;
@@ -383,7 +383,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     y={py}
                     textAnchor="middle"
                     fill={p.color}
-                    fontSize={18}
+                    fontSize={22}
                     fontWeight="600"
                     style={{ cursor: "pointer" }}
                     onMouseEnter={() => setHoveredPlanet(p.name)}
@@ -393,7 +393,7 @@ export default function ChartWheel({ chart, lang = "en" }: Props) {
                     {p.suffix && <tspan fill={p.color}>{p.suffix}</tspan>}
                     {p.retrograde && <tspan fill="#dc2626">-</tspan>}
                     {/* degree on its own sub-line so the name row stays narrow */}
-                    <tspan x={px} dy={16} fontSize={12} fontWeight="400" fill="#000000">
+                    <tspan x={px} dy={18} fontSize={16} fontWeight="400" fill="#000000">
                       {p.degree}°{String(p.minutes).padStart(2, "0")}′
                     </tspan>
                   </text>

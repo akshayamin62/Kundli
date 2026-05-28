@@ -12,28 +12,83 @@ import { calculateChart, calculateVarga } from "@/services/api";
 import { type Lang } from "@/lib/translations";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
-const VARGA_INFO: Record<number, string> = {
-  1: "D1 – Rashi",          2: "D2 – Hora",             3: "D3 – Drekkana",
-  4: "D4 – Chaturthamsa",   5: "D5 – Panchamsa",         6: "D6 – Shashthamsa",
-  7: "D7 – Saptamsa",       8: "D8 – Ashtamsa",          9: "D9 – Navamsa",
-  10: "D10 – Dashamsa",     11: "D11 – Rudramsa",        12: "D12 – Dwadashamsa",
-  13: "D13",                 14: "D14",                   15: "D15 – Panchadashamsa",
-  16: "D16 – Shodashamsa",  17: "D17",                   18: "D18",
-  19: "D19",                 20: "D20 – Vimshamsa",       21: "D21",
-  22: "D22 – Chaturvimshamsa", 23: "D23",                24: "D24 – Siddhamsa",
-  25: "D25",                 26: "D26",                   27: "D27 – Nakshatramsa",
-  28: "D28",                 29: "D29",                   30: "D30 – Trimshamsa",
-  31: "D31",                 32: "D32",                   33: "D33",
-  34: "D34",                 35: "D35",                   36: "D36",
-  37: "D37",                 38: "D38",                   39: "D39",
-  40: "D40 – Khavedamsa",   41: "D41",                   42: "D42",
-  43: "D43",                 44: "D44",                   45: "D45 – Akshavedamsa",
-  46: "D46",                 47: "D47",                   48: "D48",
-  49: "D49",                 50: "D50 – Panchashamsa",    51: "D51",
-  52: "D52",                 53: "D53",                   54: "D54",
-  55: "D55",                 56: "D56",                   57: "D57",
-  58: "D58",                 59: "D59",                   60: "D60 – Shashtiamsa",
+interface VargaMeta { name: string; area: string; }
+const VARGA_INFO: Record<number, VargaMeta> = {
+  1:  { name: "Rashi / Lagna",        area: "Personality, overall life" },
+  2:  { name: "Hora",                  area: "Wealth, finances" },
+  3:  { name: "Drekkana",              area: "Siblings, courage" },
+  4:  { name: "Chaturthamsa",          area: "Property, mother" },
+  5:  { name: "Panchamsa",             area: "Fame, authority" },
+  6:  { name: "Shashthamsa",           area: "Diseases, enemies" },
+  7:  { name: "Saptamsa",              area: "Children" },
+  8:  { name: "Ashtamsa",              area: "Longevity, obstacles" },
+  9:  { name: "Navamsa",               area: "Marriage, dharma" },
+  10: { name: "Dashamsa",              area: "Career, profession" },
+  11: { name: "Rudramsa",              area: "Gains, income" },
+  12: { name: "Dwadashamsa",           area: "Parents, ancestors" },
+  13: { name: "Trayodashamsa",         area: "Rarely used" },
+  14: { name: "Chaturdashamsa",        area: "Rarely used" },
+  15: { name: "Panchadashamsa",        area: "Spiritual inclinations" },
+  16: { name: "Shodashamsa",           area: "Vehicles, comforts" },
+  17: { name: "Saptadashamsa",         area: "Character, authority" },
+  18: { name: "Ashtadashamsa",         area: "Conflicts, debts" },
+  19: { name: "Ekonavimshamsa",        area: "Spiritual advancement" },
+  20: { name: "Vimshamsa",             area: "Spirituality, worship" },
+  21: { name: "Ekavimshamsa",          area: "Status, power" },
+  22: { name: "Chaturvimshamsa",       area: "Learning, skills" },
+  23: { name: "Trayovimshamsa",        area: "Intelligence" },
+  24: { name: "Siddhamsa",             area: "Education, learning" },
+  25: { name: "Panchavimshamsa",       area: "Fame, creativity" },
+  26: { name: "Shadvimshamsa",         area: "Weaknesses, bad habits" },
+  27: { name: "Nakshatramsa",          area: "Physical & mental strength" },
+  28: { name: "Ashtavimshamsa",        area: "Hidden strengths" },
+  29: { name: "Navavimshamsa",         area: "Karmic tendencies" },
+  30: { name: "Trimshamsa",            area: "Misfortunes, evils" },
+  31: { name: "Ekatrimshamsa",         area: "Rarely used" },
+  32: { name: "Dvatrimshamsa",         area: "Rarely used" },
+  33: { name: "Trayotrimshamsa",       area: "Rarely used" },
+  34: { name: "Chatustrimsamsa",       area: "Rarely used" },
+  35: { name: "Panchatrimshamsa",      area: "Rarely used" },
+  36: { name: "Shatrimshamsa",         area: "Rarely used" },
+  37: { name: "Saptatrimshamsa",       area: "Rarely used" },
+  38: { name: "Ashtatrimshamsa",       area: "Rarely used" },
+  39: { name: "Navatrinshamsa",        area: "Rarely used" },
+  40: { name: "Khavedamsa",            area: "Maternal relations" },
+  41: { name: "Ekchatvarimsa",         area: "Rarely used" },
+  42: { name: "Dwichatvarimsa",        area: "Rarely used" },
+  43: { name: "Trichatvarimsa",        area: "Rarely used" },
+  44: { name: "Chaturchatvarimsa",     area: "Rarely used" },
+  45: { name: "Akshavedamsa",          area: "Paternal relations" },
+  46: { name: "Chatvarinsha",          area: "Rarely used" },
+  47: { name: "Saptachatvarimsa",      area: "Rarely used" },
+  48: { name: "Ashtachatvarimsa",      area: "Rarely used" },
+  49: { name: "Navachatvarimsa",       area: "Rarely used" },
+  50: { name: "Panchashamsa",          area: "Rarely used" },
+  51: { name: "Ekapanchashamsa",       area: "Rarely used" },
+  52: { name: "Dwipanchashamsa",       area: "Rarely used" },
+  53: { name: "Tripanchashamsa",       area: "Rarely used" },
+  54: { name: "Chatupanchashamsa",     area: "Rarely used" },
+  55: { name: "Pancapanchashamsa",     area: "Rarely used" },
+  56: { name: "Shatpanchashamsa",      area: "Rarely used" },
+  57: { name: "Saptapanchashamsa",     area: "Rarely used" },
+  58: { name: "Ashtapanchashamsa",     area: "Rarely used" },
+  59: { name: "Navapanchashamsa",      area: "Rarely used" },
+  60: { name: "Shashtiamsa",           area: "Past life karma" },
 };
+
+/** Short title shown in the chart panel header: "D9 – Navamsa" */
+function vargaTitle(n: number): string {
+  const v = VARGA_INFO[n];
+  return v ? `D${n} – ${v.name}` : `D${n}`;
+}
+
+/** Full label for dropdown items, includes area when meaningful */
+function vargaDropdownText(n: number): string {
+  const v = VARGA_INFO[n];
+  if (!v) return `D${n}`;
+  if (v.area === "Rarely used") return `D${n} – ${v.name}`;
+  return `D${n} – ${v.name} · ${v.area}`;
+}
 
 const QUICK_VARGAS = [9, 10, 3, 7, 12, 16, 20, 24, 30, 40, 45, 60];
 
@@ -185,7 +240,7 @@ export default function ResultPage() {
   }
 
   const meta = chart.meta;
-  const selectedLabel = VARGA_INFO[selectedN] ?? `D${selectedN}`;
+  const selectedLabel = vargaTitle(selectedN);
 
   // ── Varga selector header button ───────────────────────────────────────────
   const VargaSelector = (
@@ -197,7 +252,7 @@ export default function ResultPage() {
         Select ▾
       </button>
       {vargaOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1 w-60 max-h-72 overflow-y-auto">
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1 w-72 max-h-72 overflow-y-auto">
           {/* Quick picks */}
           <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Popular</div>
           {QUICK_VARGAS.map(n => (
@@ -206,7 +261,7 @@ export default function ResultPage() {
               onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-700 hover:bg-gray-50"}`}
             >
-              {VARGA_INFO[n]}
+              {vargaDropdownText(n)}
             </button>
           ))}
           <div className="border-t border-gray-100 my-1"/>
@@ -219,7 +274,7 @@ export default function ResultPage() {
                 onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
                 className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-700 hover:bg-gray-50"}`}
               >
-                {VARGA_INFO[n] ?? `D${n}`}
+                {vargaDropdownText(n)}
               </button>
             ))}
         </div>

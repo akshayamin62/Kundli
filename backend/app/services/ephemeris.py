@@ -296,3 +296,67 @@ def get_ayanamsa(jd_ut: float) -> float:
         # Lahiri ayanamsa: ~23.857° at J2000, precesses at ~50.3"/yr = 1.397°/century
         T = (jd_ut - 2451545.0) / 36525.0
         return 23.857 + 1.397 * T
+
+
+def get_planet_longitudes_bulk(
+    jd_list: list,
+    planet_name: str,
+    ayanamsa_list: list,
+) -> list:
+    """
+    Compute a single planet's sidereal ecliptic longitude at many JDs at once.
+
+    Uses Skyfield's vectorised time-array API so the entire scan for a
+    transit calculation is handled in one kernel call instead of N calls.
+    Rahu / Ketu use the fast mean-node formula and never touch Skyfield.
+    Falls back to individual get_planet_positions() calls on any error.
+    """
+    if not jd_list:
+        return []
+
+    # Rahu / Ketu: pure maths, no Skyfield needed
+    if planet_name == "Rahu":
+        return [_norm(_mean_node_longitude(jd) - aya)
+                for jd, aya in zip(jd_list, ayanamsa_list)]
+    if planet_name == "Ketu":
+        return [_norm(_mean_node_longitude(jd) + 180.0 - aya)
+                for jd, aya in zip(jd_list, ayanamsa_list)]
+
+    _SKYFIELD_KEYS = {
+        "Sun":     "sun",
+        "Moon":    "moon",
+        "Mercury": "mercury",
+        "Venus":   "venus",
+        "Mars":    "mars",
+        "Jupiter": "jupiter barycenter",
+        "Saturn":  "saturn barycenter",
+    }
+
+    try:
+        ts, eph = _load_skyfield_ephemeris()
+        key = _SKYFIELD_KEYS.get(planet_name)
+        if key is None:
+            raise ValueError(f"Unknown planet for bulk lookup: {planet_name}")
+
+        earth = eph["earth"]
+        body  = eph[key]
+
+        # Single vectorised call – Skyfield computes all positions at once
+        t_arr = ts.ut1_jd(jd_list)
+        apps  = earth.at(t_arr).observe(body).apparent()
+        _, lons, _ = apps.ecliptic_latlon(epoch="date")
+
+        return [_norm(float(lon) - aya)
+                for lon, aya in zip(lons.degrees, ayanamsa_list)]
+
+    except Exception:
+        # Graceful fallback: individual calls
+        results = []
+        for jd, aya in zip(jd_list, ayanamsa_list):
+            try:
+                positions = get_planet_positions(jd, aya)
+                found = next((p for p in positions if p["name"] == planet_name), None)
+                results.append(found["longitude"] if found else 0.0)
+            except Exception:
+                results.append(0.0)
+        return results
