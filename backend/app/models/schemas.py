@@ -96,3 +96,47 @@ class ChartResponse(BaseModel):
 
 class VargaRequest(ChartRequest):
     n: int = 9  # which D-chart (1–60)
+
+
+# ── Vimshottari Dasha ────────────────────────────────────────────────────────
+
+class DashaRequest(ChartRequest):
+    years_ahead: int = 30
+
+
+class DashaPeriod(BaseModel):
+    md: str          # Mahadasha planet
+    ad: str          # Antardasha planet
+    pd: str          # Pratyantardasha planet
+    start_date: str  # ISO date string
+    end_date: str    # ISO date string
+
+
+class DashaResponse(BaseModel):
+    nakshatra_name: str
+    nakshatra_lord: str
+    periods: list[DashaPeriod]
+
+
+# ── Planet Rashi Transit ─────────────────────────────────────────────────────
+
+class TransitRequest(BaseModel):
+    planet: str
+    start_year: int
+    end_year: int
+    zodiac: Literal["tropical", "sidereal"] = "sidereal"
+
+
+class TransitEntry(BaseModel):
+    sign: str
+    entry_date: str
+    entry_time: str  # "HH:MM" UTC
+    exit_date: str
+    exit_time: str   # "HH:MM" UTC
+    retrograde: bool
+
+
+class TransitResponse(BaseModel):
+    planet: str
+    zodiac: str
+    transits: list[TransitEntry]

@@ -293,5 +293,6 @@ def get_ayanamsa(jd_ut: float) -> float:
 
         return swe.get_ayanamsa_ut(jd_ut)
     except Exception:
+        # Lahiri ayanamsa: ~23.857° at J2000, precesses at ~50.3"/yr = 1.397°/century
         T = (jd_ut - 2451545.0) / 36525.0
-        return _norm(23.85 + 0.0136 * T)
+        return 23.857 + 1.397 * T

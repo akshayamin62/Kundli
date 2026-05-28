@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel from "@/components/ChartWheel";
 import HouseTable from "@/components/HouseTable";
+import DashantariDashaTable from "@/components/DashantariDashaTable";
+import PlanetsRashiTransit from "@/components/PlanetsRashiTransit";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga } from "@/services/api";
@@ -94,6 +96,18 @@ export default function ResultPage() {
   const [chart, setChart]             = useState<ChartResponse | null>(null);
   const [req, setReq]                 = useState<ChartRequest | null>(null);
   const [lang, setLang]               = useState<Lang>("en");
+
+  type MainTab = "kundali" | "grahsil";
+  const [mainTab, setMainTab]         = useState<MainTab>("kundali");
+
+  type Tab = "planets" | "dasha" | "transit";
+  const [activeTab, setActiveTab]     = useState<Tab>("planets");
+
+  const TAB_LABELS: Record<Lang, Record<Tab, string>> = {
+    en: { planets: "a) Planets", dasha: "b) Vimshottari Dasha", transit: "c) Rashi Transit" },
+    hi: { planets: "अ) ग्रह स्थिति", dasha: "ब) विंशोत्तरी दशा", transit: "स) राशि गोचर" },
+    gu: { planets: "અ) ગ્રહ સ્થિતિ", dasha: "બ) વિંશોત્તરી દશા", transit: "ક) રાશિ ગોચર" },
+  };
 
   // D-chart (middle panel)
   const [selectedN, setSelectedN]     = useState(9);
@@ -260,19 +274,92 @@ export default function ResultPage() {
         </div>
       </header>
 
-      {/* ── Charts row ── */}
-      <div className="flex gap-2 p-2 shrink-0" style={{ height: "60vh" }}>
+      {/* ── Top page-level tab bar ── */}
+      <div className="bg-white border-b border-gray-200 px-4 shrink-0">
+        <div className="flex gap-0">
+          {([
+            { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
+            { id: "grahsil" as MainTab, labels: { en: "Grahsil Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
+          ]).map(({ id, labels }) => (
+            <button
+              key={id}
+              onClick={() => setMainTab(id)}
+              className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                mainTab === id
+                  ? "border-indigo-600 text-indigo-700 bg-indigo-50"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {labels[lang]}
+            </button>
+          ))}
+        </div>
+      </div>
 
-        {/* Left: D1 Lagna — wider */}
-        <div className="flex flex-col" style={{ width: "62%" }}>
-          <ChartPanel title="Lagna Kundli (D1)" accent="indigo">
-            <ChartWheel chart={chart} lang={lang} />
-          </ChartPanel>
+      {/* ── Main content ── */}
+      <div className="flex gap-2 p-2 flex-1 min-h-0 overflow-hidden">
+
+        {/* ── Grahsil Chakra tab ── */}
+        {mainTab === "grahsil" && (
+          <div className="flex-1 min-h-0 overflow-auto">
+            <GrahshilChakraTable lang={lang} />
+          </div>
+        )}
+
+        {/* ── Kundali tab ── */}
+        {mainTab === "kundali" && (<>
+
+        {/* ── Left column: D1 chart + 3-tab bottom ── */}
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden" style={{ width: "60%" }}>
+
+          {/* D1 Lagna Kundli — top ~55% */}
+          <div className="min-h-0" style={{ flex: "0 0 55%" }}>
+            <ChartPanel title="Lagna Kundli (D1)" accent="indigo">
+              <ChartWheel chart={chart} lang={lang} />
+            </ChartPanel>
+          </div>
+
+          {/* 3-Tab system — bottom ~45% */}
+          <div className="flex flex-col flex-1 min-h-0 rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+            {/* Tab bar */}
+            <div className="flex border-b border-gray-200 shrink-0 bg-gray-50">
+              {(["planets", "dasha", "transit"] as Tab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 px-2 py-2 text-[11px] font-semibold transition-colors border-b-2 ${
+                    activeTab === tab
+                      ? "border-indigo-600 text-indigo-700 bg-white"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {TAB_LABELS[lang][tab]}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activeTab === "planets" && (
+                <div className="h-full overflow-auto">
+                  <HouseTable chart={chart} lang={lang} />
+                </div>
+              )}
+              {activeTab === "dasha" && req && (
+                <DashantariDashaTable req={req} lang={lang} />
+              )}
+              {activeTab === "transit" && req && (
+                <PlanetsRashiTransit zodiac={req.zodiac} lang={lang} />
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Right: two stacked */}
-        <div className="flex flex-col gap-2 flex-1 min-w-0">
-          {/* Top: selected D-chart */}
+        {/* ── Right column: D-chart + Gochar (full height) ── */}
+        <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+
+          {/* D-chart with varga selector — top 50% */}
           <div className="flex-1 min-h-0">
             <ChartPanel
               title={selectedLabel}
@@ -284,7 +371,7 @@ export default function ResultPage() {
             </ChartPanel>
           </div>
 
-          {/* Bottom: Gochar */}
+          {/* Gochar Kundli — bottom 50% */}
           <div className="flex-1 min-h-0">
             <ChartPanel
               title="Gochar Kundli"
@@ -296,22 +383,9 @@ export default function ResultPage() {
             </ChartPanel>
           </div>
         </div>
+
+        </>)}
       </div>
-
-      {/* ── Tables row ── */}
-      <div className="flex gap-2 px-2 pb-2 flex-1 min-h-0 overflow-hidden">
-
-        {/* Left: Planet details table */}
-        <div className="w-1/2 overflow-auto rounded-xl border border-gray-200 bg-white">
-          <HouseTable chart={chart} lang={lang} />
-        </div>
-
-        {/* Right: Grahshil Chakra */}
-        <div className="w-1/2 overflow-auto rounded-xl border border-gray-200 bg-white p-3">
-          <GrahshilChakraTable lang={lang} />
-        </div>
-      </div>
-
     </div>
   );
 }

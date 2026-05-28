@@ -1,9 +1,16 @@
 from fastapi import APIRouter, HTTPException
-from app.models.schemas import ChartRequest, ChartResponse, VargaRequest, HouseCusp, PlanetPosition, DegreePosition
+from datetime import date as date_type
+from app.models.schemas import (
+    ChartRequest, ChartResponse, VargaRequest, HouseCusp, PlanetPosition, DegreePosition,
+    DashaRequest, DashaResponse, DashaPeriod,
+    TransitRequest, TransitResponse, TransitEntry,
+)
 from app.services.chart_builder import build_chart
 from app.services.geocoding import GeocodingError
 from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varga_deg_in_sign
 from app.services.astronomy import HOUSE_NAMES, longitude_to_sign_info
+from app.services.dasha import calculate_vimshottari
+from app.services.transit_calc import get_sign_transits
 
 router = APIRouter()
 
@@ -147,3 +154,75 @@ def list_house_systems():
             {"id": "campanus",      "name": "Campanus",        "description": "Prime vertical division. Used in humanistic astrology."},
         ]
     }
+
+
+# ── Vimshottari Dasha ─────────────────────────────────────────────────────────
+
+@router.post("/chart/dasha", response_model=DashaResponse, tags=["Dasha"])
+def calculate_dasha(req: DashaRequest):
+    """
+    Calculate Vimshottari Dasha periods for a birth chart.
+
+    Builds the natal chart, reads Moon's sidereal longitude, and computes
+    all Mahadasha → Antardasha → Pratyantardasha periods from birth up to
+    ``years_ahead`` years into the future.
+    """
+    if req.years_ahead < 1 or req.years_ahead > 120:
+        raise HTTPException(status_code=400, detail="years_ahead must be between 1 and 120")
+    try:
+        chart = build_chart(req)
+        moon = next((p for p in chart.planets if p.name == "Moon"), None)
+        if moon is None:
+            raise HTTPException(status_code=500, detail="Moon position not found in chart")
+
+        parts = req.birth_date.split("-")
+        birth_dt = date_type(int(parts[0]), int(parts[1]), int(parts[2]))
+
+        result = calculate_vimshottari(moon.longitude, birth_dt, req.years_ahead)
+        return DashaResponse(
+            nakshatra_name=result["nakshatra_name"],
+            nakshatra_lord=result["nakshatra_lord"],
+            periods=[DashaPeriod(**p) for p in result["periods"]],
+        )
+    except GeocodingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Dasha calculation error: {str(e)}")
+
+
+# ── Planet Sign Transit ───────────────────────────────────────────────────────
+
+VALID_TRANSIT_PLANETS = {
+    "Sun", "Moon", "Mercury", "Venus", "Mars",
+    "Jupiter", "Saturn", "Rahu", "Ketu",
+}
+
+@router.post("/chart/transit", response_model=TransitResponse, tags=["Transit"])
+def calculate_transit(req: TransitRequest):
+    """
+    Calculate sign transits for a single planet over a year range.
+
+    Returns a chronological list of (sign, entry_date, exit_date) rows.
+    Year range is capped per planet to keep response time reasonable.
+    """
+    if req.planet not in VALID_TRANSIT_PLANETS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid planet '{req.planet}'. Valid: {sorted(VALID_TRANSIT_PLANETS)}",
+        )
+    if req.start_year > req.end_year:
+        raise HTTPException(status_code=400, detail="start_year must be ≤ end_year")
+    if req.end_year - req.start_year > 30:
+        raise HTTPException(status_code=400, detail="Year range cannot exceed 30 years")
+
+    try:
+        rows = get_sign_transits(req.planet, req.start_year, req.end_year, req.zodiac)
+        return TransitResponse(
+            planet=req.planet,
+            zodiac=req.zodiac,
+            transits=[TransitEntry(**r) for r in rows],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Transit calculation error: {str(e)}")
