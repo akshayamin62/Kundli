@@ -131,22 +131,29 @@ function signToHouse(sign: number, lagnaSign: number): number {
 
 function buildPolygons(W: number, H: number): Record<number, Pt[]> {
   const cx = W / 2, cy = H / 2;
-  const qx = W / 4, qy = H / 4;
-  const q3x = (3 * W) / 4, q3y = (3 * H) / 4;
+  // Outer vertices of the 4 diamond houses (1/16 of way from each border midpoint inward)
+  const dx = W / 16, dy = H / 16;
+  const d3x = (15 * W) / 16, d3y = (15 * H) / 16;
+  // Inner square corners: midpoints between each diamond's outer vertex and chart center
+  const ix = (dx + cx) / 2, iy = (dy + cy) / 2;
+  const i3x = (d3x + cx) / 2, i3y = (d3y + cy) / 2;
 
   return {
-    1:  [[cx, 0],  [q3x, qy],  [cx, cy],  [qx, qy]],
-    2:  [[0, 0],   [cx, 0],    [qx, qy]],
-    3:  [[0, 0],   [qx, qy],   [0, cy]],
-    4:  [[0, cy],  [qx, qy],   [cx, cy],  [qx, q3y]],
-    5:  [[0, H],   [0, cy],    [qx, q3y]],
-    6:  [[cx, H],  [0, H],     [qx, q3y]],
-    7:  [[cx, H],  [qx, q3y],  [cx, cy],  [q3x, q3y]],
-    8:  [[cx, H],  [W, H],     [q3x, q3y]],
-    9:  [[W, cy],  [W, H],     [q3x, q3y]],
-    10: [[W, cy],  [q3x, q3y], [cx, cy],  [q3x, qy]],
-    11: [[W, 0],   [W, cy],    [q3x, qy]],
-    12: [[cx, 0],  [W, 0],     [q3x, qy]],
+    // 4 small diamond houses
+    1:  [[cx,  dy],  [i3x, iy],  [cx,  cy],  [ix,  iy]],   // top diamond
+    4:  [[dx,  cy],  [ix,  iy],  [cx,  cy],  [ix,  i3y]],  // left diamond
+    7:  [[cx,  d3y], [ix,  i3y], [cx,  cy],  [i3x, i3y]],  // bottom diamond
+    10: [[d3x, cy],  [i3x, i3y],[cx,  cy],  [i3x, iy]],   // right diamond
+    // 8 outer quadrilateral houses
+    // connector lines appear as shared edges: (cx,0)-(cx,dy), (0,cy)-(dx,cy), (cx,H)-(cx,d3y), (d3x,cy)-(W,cy)
+    2:  [[0,  0],   [cx,  0],   [cx,  dy],  [ix,  iy]],   // top-left
+    3:  [[0,  0],   [ix,  iy],  [dx,  cy],  [0,   cy]],   // left-upper
+    5:  [[0,  H],   [0,   cy],  [dx,  cy],  [ix,  i3y]],  // left-lower
+    6:  [[0,  H],   [cx,  H],   [cx,  d3y], [ix,  i3y]],  // bottom-left
+    8:  [[cx, H],   [W,   H],   [i3x, i3y], [cx,  d3y]],  // bottom-right
+    9:  [[W,  H],   [W,   cy],  [d3x, cy],  [i3x, i3y]],  // right-lower
+    11: [[W,  0],   [W,   cy],  [d3x, cy],  [i3x, iy]],   // right-upper
+    12: [[cx, 0],   [W,   0],   [i3x, iy],  [cx,  dy]],   // top-right
   };
 }
 
@@ -167,13 +174,16 @@ function buildCentroids(W: number, H: number): Record<number, Pt> {
 
 function getInnerVertex(house: number, W: number, H: number): Pt {
   const cx = W / 2, cy = H / 2;
-  const qx = W / 4, qy = H / 4;
-  const q3x = (3 * W) / 4, q3y = (3 * H) / 4;
+  const dx = W / 16, dy = H / 16;
+  const d3x = (15 * W) / 16, d3y = (15 * H) / 16;
+  // Inner square corners: midpoints between each diamond's outer vertex and chart center
+  const ix = (dx + cx) / 2, iy = (dy + cy) / 2;
+  const i3x = (d3x + cx) / 2, i3y = (d3y + cy) / 2;
   const v: Record<number, Pt> = {
-    1: [cx, cy],  2: [qx, qy],   3: [qx, qy],
-    4: [cx, cy],  5: [qx, q3y],  6: [qx, q3y],
-    7: [cx, cy],  8: [q3x, q3y], 9: [q3x, q3y],
-    10: [cx, cy], 11: [q3x, qy], 12: [q3x, qy],
+    1:  [cx,  cy],   2:  [ix,  iy],   3:  [ix,  iy],
+    4:  [cx,  cy],   5:  [ix,  i3y],  6:  [ix,  i3y],
+    7:  [cx,  cy],   8:  [i3x, i3y],  9:  [i3x, i3y],
+    10: [cx,  cy],   11: [i3x, iy],   12: [i3x, iy],
   };
   return v[house] ?? [cx, cy];
 }

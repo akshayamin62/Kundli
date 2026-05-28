@@ -266,21 +266,6 @@ export default function GrahshilChakraTable({ lang = "en" }: Props) {
         {title}
       </h2>
 
-      {/* Drishti color legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        {[
-          { label: lang === "en" ? "Ekpaad ¼" : lang === "hi" ? "एकपाद ¼" : "એકપાદ ¼", color: "#111827" },
-          { label: lang === "en" ? "Dwipaad ½" : lang === "hi" ? "द्विपाद ½" : "દ્વિપાદ ½", color: "#2563eb" },
-          { label: lang === "en" ? "Tripaad ¾" : lang === "hi" ? "त्रिपाद ¾" : "ત્રિપાદ ¾", color: "#16a34a" },
-          { label: lang === "en" ? "Sampurna (full)" : lang === "hi" ? "संपूर्ण (पूर्ण)" : "સંપૂર્ણ (પૂર્ણ)", color: "#dc2626" },
-        ].map((l) => (
-          <span key={l.label} className="flex items-center gap-1 font-semibold" style={{ color: l.color }}>
-            <span style={{ display: "inline-block", width: 24, borderTop: `2.5px dashed ${l.color}` }} />
-            {l.label}
-          </span>
-        ))}
-      </div>
-
       {/* Main table — rows = attributes, cols = planets */}
       <div className="overflow-x-auto rounded-xl border border-gray-300 shadow-sm">
         <table className="text-xs border-collapse w-full">
