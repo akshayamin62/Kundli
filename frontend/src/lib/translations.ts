@@ -27,7 +27,7 @@ export const PLANET_NAMES: Record<Lang, Record<string, string>> = {
 
 // ── Nakshatra Names (27) ───────────────────────────────────────────────────────
 export const NAKSHATRA_NAMES: Record<Lang, string[]> = {
-  en: ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"],
+  en: ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"],
   hi: ["अश्विनी", "भरणी", "कृत्तिका", "रोहिणी", "मृगशिरा", "आर्द्रा", "पुनर्वसु", "पुष्य", "अश्लेषा", "मघा", "पूर्व फाल्गुनी", "उत्तर फाल्गुनी", "हस्त", "चित्रा", "स्वाती", "विशाखा", "अनुराधा", "ज्येष्ठा", "मूल", "पूर्व आषाढ़", "उत्तर आषाढ़", "श्रवण", "धनिष्ठा", "शतभिषा", "पूर्व भाद्रपद", "उत्तर भाद्रपद", "रेवती"],
   gu: ["અશ્વિની", "ભરણી", "કૃત્તિકા", "રોહિણી", "મૃગશિરા", "આર્દ્રા", "પુનર્વસુ", "પુષ્ય", "અશ્લેષા", "મઘા", "પૂર્વ ફાલ્ગુની", "ઉત્તર ફાલ્ગુની", "હસ્ત", "ચિત્રા", "સ્વાતિ", "વિશાખા", "અનુરાધા", "જ્યેષ્ઠા", "મૂળ", "પૂર્વ આષાઢ", "ઉત્તર આષાઢ", "શ્રવણ", "ધનિષ્ઠા", "શતભિષા", "પૂર્વ ભાદ્રપદ", "ઉત્તર ભાદ્રપદ", "રેવતી"],
 };

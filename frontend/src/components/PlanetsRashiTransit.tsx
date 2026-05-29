@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { TransitEntry, TransitRequest } from "@/types/chart";
 import { calculateTransit } from "@/services/api";
-import { type Lang, SIGN_NAMES, PLANET_NAMES } from "@/lib/translations";
+import { type Lang, SIGN_NAMES, PLANET_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
 
 interface Props {
   zodiac: string;
@@ -37,6 +37,11 @@ function translateSign(sign: string, lang: Lang): string {
 
 function translatePlanet(planet: string, lang: Lang): string {
   return PLANET_NAMES[lang]?.[planet] ?? planet;
+}
+
+function translateNakshatra(name: string, lang: Lang): string {
+  const idx = NAKSHATRA_NAMES["en"].indexOf(name);
+  return idx >= 0 ? NAKSHATRA_NAMES[lang][idx] : name;
 }
 
 function fmtDate(iso: string): string {
@@ -231,7 +236,7 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
                       {translateSign(t.sign, lang)}
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-indigo-700 font-medium">
-                      {t.nakshatra}
+                      {translateNakshatra(t.nakshatra, lang)}
                     </td>
                     <td className="px-2 py-1 text-gray-600 whitespace-nowrap font-mono">
                       {fmtDateTime(t.entry_date, t.entry_time)}

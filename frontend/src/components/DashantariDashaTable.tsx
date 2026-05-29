@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashaPeriod, DashaRequest } from "@/types/chart";
 import { calculateDasha } from "@/services/api";
 import { type Lang, PLANET_NAMES } from "@/lib/translations";
@@ -36,6 +36,8 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIdx, setActiveIdx] = useState<number>(-1);
+  const activeRowRef = useRef<HTMLTableRowElement | null>(null);
+  const hasScrolled = useRef(false);
 
   // Filter state: default to ALL
   const [filterMd, setFilterMd] = useState<string>("ALL");
@@ -66,6 +68,21 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
       });
 
     return () => { cancelled = true; };
+  }, [req]);
+
+  // Scroll to active row once after data loads
+  useEffect(() => {
+    if (!loading && activeIdx >= 0 && !hasScrolled.current) {
+      hasScrolled.current = true;
+      setTimeout(() => {
+        activeRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
+  }, [loading, activeIdx]);
+
+  // Reset scroll flag on new request
+  useEffect(() => {
+    hasScrolled.current = false;
   }, [req]);
 
   // Unique MDs in the data (used to dim buttons with no data)
@@ -174,6 +191,7 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
               return (
                 <tr
                   key={i}
+                  ref={isActive ? activeRowRef : undefined}
                   className={`border-b border-gray-100 transition-colors ${
                     isActive
                       ? "bg-yellow-50 ring-1 ring-inset ring-yellow-300"
