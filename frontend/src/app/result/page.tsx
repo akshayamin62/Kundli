@@ -145,7 +145,7 @@ export default function ResultPage() {
   const [req, setReq]                 = useState<ChartRequest | null>(null);
   const [lang, setLang]               = useState<Lang>("en");
 
-  type MainTab = "kundali" | "grahsil";
+  type MainTab = "kundali" | "grahsil" | "allvargas";
   const [mainTab, setMainTab]         = useState<MainTab>("kundali");
 
   type Tab = "planets" | "dasha" | "transit";
@@ -163,6 +163,11 @@ export default function ResultPage() {
   const [vargaLoading, setVargaLoading] = useState(false);
   const [vargaOpen, setVargaOpen]     = useState(false);
   const vargaRef                      = useRef<HTMLDivElement>(null);
+
+  // All D-Charts tab
+  const [allVargaCharts, setAllVargaCharts]   = useState<Record<number, ChartResponse>>({});
+  const [allVargaLoadingNs, setAllVargaLoadingNs] = useState<Set<number>>(new Set());
+  const [allVargaStarted, setAllVargaStarted] = useState(false);
 
   // Gochar (right-bottom panel)
   const [gocharChart, setGocharChart]     = useState<ChartResponse | null>(null);
@@ -208,6 +213,27 @@ export default function ResultPage() {
     fetchVarga(9, req);
     fetchGochar(req);
   }, [req, fetchVarga, fetchGochar]);
+
+  // ── Load all D2-D60 when the All D-Charts tab is first activated ───────────
+  useEffect(() => {
+    if (mainTab !== "allvargas" || !req || allVargaStarted) return;
+    setAllVargaStarted(true);
+    const toFetch = Array.from({ length: 59 }, (_, i) => i + 2);
+    setAllVargaLoadingNs(new Set(toFetch));
+    const BATCH = 12;
+    (async () => {
+      for (let i = 0; i < toFetch.length; i += BATCH) {
+        const batch = toFetch.slice(i, i + BATCH);
+        await Promise.all(batch.map(async (n) => {
+          try {
+            const result = await calculateVarga({ ...req, n });
+            setAllVargaCharts(prev => ({ ...prev, [n]: result }));
+          } catch { /* silently ignore */ }
+          setAllVargaLoadingNs(prev => { const next = new Set(prev); next.delete(n); return next; });
+        }));
+      }
+    })();
+  }, [mainTab, req, allVargaStarted]);
 
   // ── Close varga dropdown on outside click ─────────────────────────────────
   useEffect(() => {
@@ -327,9 +353,10 @@ export default function ResultPage() {
       {/* ── Top page-level tab bar ── */}
       <div className="bg-white border-b border-gray-200 px-4 shrink-0">
         <div className="flex gap-0">
-          {([
+          {([  
             { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
             { id: "grahsil" as MainTab, labels: { en: "Grahsil Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
+            { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
           ]).map(({ id, labels }) => (
             <button
               key={id}
@@ -353,6 +380,54 @@ export default function ResultPage() {
         {mainTab === "grahsil" && (
           <div className="flex-1 min-h-0 overflow-auto">
             <GrahshilChakraTable lang={lang} />
+          </div>
+        )}
+
+        {/* ── All D-Charts tab ── */}
+        {mainTab === "allvargas" && (
+          <div className="flex-1 min-h-0 overflow-auto">
+            <div
+              className="grid gap-2 p-2"
+              style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
+            >
+              {Array.from({ length: 60 }, (_, i) => i + 1).map((n) => {
+                const varga = n === 1 ? chart : allVargaCharts[n];
+                const isLoading = n > 1 && allVargaLoadingNs.has(n);
+                const info = VARGA_INFO[n];
+                return (
+                  <div key={n} className="flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+                    {/* Card header */}
+                    <div className="bg-indigo-50 border-b border-indigo-100 px-2 py-1 shrink-0">
+                      <div className="text-[10px] font-bold text-indigo-800 leading-tight truncate">
+                        D{n} – {info?.name ?? ""}
+                      </div>
+                      <div className="text-[9px] text-gray-500 italic leading-tight truncate">
+                        {info?.area ?? ""}
+                      </div>
+                    </div>
+                    {/* Chart area — 900:640 aspect ratio */}
+                    <div className="relative w-full" style={{ paddingTop: "71.1%" }}>
+                      <div className="absolute inset-0">
+                        {isLoading ? (
+                          <div className="flex items-center justify-center h-full bg-gray-50">
+                            <svg className="animate-spin h-4 w-4 text-indigo-400" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                            </svg>
+                          </div>
+                        ) : varga ? (
+                          <ChartWheel chart={varga} lang={lang} />
+                        ) : (
+                          <div className="flex items-center justify-center h-full bg-gray-50 text-[9px] text-gray-400">
+                            {allVargaStarted ? "Error" : ""}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
