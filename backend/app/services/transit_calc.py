@@ -1,9 +1,10 @@
 """
-Planet sign-transit calculation service.
+Planet sign+nakshatra transit calculation service.
 
 For a given planet and year range this service scans through the requested
-period and detects every time the planet crosses a sign boundary (every 30°).
-The result is a chronological list of (sign, entry_date, exit_date) rows.
+period and detects every time the planet crosses either a sign boundary
+(every 30°) or a nakshatra boundary (every 13°20'). Each resulting row
+represents a contiguous period in a single (sign, nakshatra) combination.
 
 Scanning strategy per planet:
   Moon            1-day step  (moves ~13°/day)
@@ -29,6 +30,15 @@ from app.services.astronomy import julian_day
 ZODIAC_SIGNS = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+]
+
+# 27 nakshatras at 13°20' each, starting at 0° Aries (sidereal)
+NAKSHATRA_NAMES = [
+    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
+    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
+    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha",
+    "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
 ]
 
 # Scan step in days for each planet
@@ -112,6 +122,16 @@ def _sign_of(lon: float) -> int:
     return int(lon / 30.0) % 12
 
 
+def _nakshatra_of(lon: float) -> int:
+    """Return 0-indexed nakshatra (0 = Ashwini … 26 = Revati)."""
+    return int(lon * 27.0 / 360.0) % 27
+
+
+def _segment_of(lon: float) -> tuple:
+    """Return (sign_idx, nak_idx) for the current ecliptic longitude."""
+    return (_sign_of(lon), _nakshatra_of(lon))
+
+
 def _refine_crossing(
     planet: str,
     jd_before: float,
@@ -157,6 +177,51 @@ def _refine_hour(
     return hi, retrograde
 
 
+def _refine_segment_crossing(
+    planet: str,
+    jd_before: float,
+    jd_after: float,
+    prev_seg: tuple,
+    sidereal: bool,
+) -> float:
+    """
+    Walk day-by-day in (jd_before, jd_after] to pinpoint the first day
+    the planet leaves *prev_seg* (sign OR nakshatra change).
+    """
+    jd = jd_before + 1.0
+    while jd <= jd_after:
+        aya = get_ayanamsa(jd) if sidereal else 0.0
+        if _segment_of(_planet_longitude(jd, planet, aya)) != prev_seg:
+            return jd
+        jd += 1.0
+    return jd_after
+
+
+def _refine_segment_hour(
+    planet: str,
+    jd_day: float,
+    prev_seg: tuple,
+    sidereal: bool,
+) -> tuple:
+    """
+    Binary search within [jd_day-1, jd_day] for the exact crossing of
+    either a sign or nakshatra boundary.
+    Returns (crossing_jd, retrograde_at_crossing).
+    """
+    lo = jd_day - 1.0
+    hi = jd_day
+    for _ in range(10):
+        mid = (lo + hi) / 2.0
+        aya = get_ayanamsa(mid) if sidereal else 0.0
+        if _segment_of(_planet_longitude(mid, planet, aya)) != prev_seg:
+            hi = mid
+        else:
+            lo = mid
+    aya = get_ayanamsa(hi) if sidereal else 0.0
+    _, retrograde = _planet_lon_retro(hi, planet, aya)
+    return hi, retrograde
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -177,10 +242,11 @@ def get_sign_transits(
       (which may fall in the following year).
 
     Each row: {
-      "sign": str,
-      "entry_date": ISO str,  "entry_time": "HH:MM" (UTC),
-      "exit_date":  ISO str,  "exit_time":  "HH:MM" (UTC),
-      "retrograde": bool,
+      "sign":        str,
+      "nakshatra":   str,
+      "entry_date":  ISO str,  "entry_time": "HH:MM" (UTC),
+      "exit_date":   ISO str,  "exit_time":  "HH:MM" (UTC),
+      "retrograde":  bool,
     }
     """
     max_years = _MAX_YEARS.get(planet, 10)
@@ -212,46 +278,46 @@ def get_sign_transits(
     lon_arr = get_planet_longitudes_bulk(jd_scan_arr, planet, aya_arr)
 
     # ── Scanning phase ──────────────────────────────────────────────────────
-    # Internal accumulator: list of (entry_jd, exit_jd, sign_idx, retrograde)
+    # Each entry tracks the period spent in one (sign, nakshatra) segment.
+    # raw: list of (entry_jd, exit_jd, sign_idx, nak_idx, retrograde)
     raw: list = []
-    prev_sign_idx: int = -1
+    prev_seg: tuple | None = None
     entry_jd: float = jd_scan_start
     entry_retro: bool = False
 
     for i, (scan_jd, lon) in enumerate(zip(jd_scan_arr, lon_arr)):
-        s_idx = _sign_of(lon)
+        seg = _segment_of(lon)
 
-        if prev_sign_idx == -1:
-            prev_sign_idx = s_idx
+        if prev_seg is None:
+            prev_seg = seg
             entry_jd = scan_jd
             entry_retro = False
-        elif s_idx != prev_sign_idx:
+        elif seg != prev_seg:
             if step > 1:
-                # Slow planet: narrow to day-level, then hour-level
-                day_jd   = _refine_crossing(planet, scan_jd - step, scan_jd, prev_sign_idx, sidereal)
-                exact_jd, cross_retro = _refine_hour(planet, day_jd, prev_sign_idx, sidereal)
+                # Slow planet: narrow to the exact day, then to the exact hour
+                day_jd   = _refine_segment_crossing(planet, scan_jd - step, scan_jd, prev_seg, sidereal)
+                exact_jd, cross_retro = _refine_segment_hour(planet, day_jd, prev_seg, sidereal)
             elif planet == "Moon":
-                # Moon never retrogrades; skip expensive hour refinement.
-                # The scan already provides 1-day (±12 h) precision.
+                # Moon never retrogrades; scan already gives ±12 h precision
                 exact_jd   = scan_jd
                 cross_retro = False
             else:
-                # step=1, non-Moon: one binary-search pass for sub-hour precision
-                exact_jd, cross_retro = _refine_hour(planet, scan_jd, prev_sign_idx, sidereal)
+                # step=1, non-Moon: binary search for sub-hour precision
+                exact_jd, cross_retro = _refine_segment_hour(planet, scan_jd, prev_seg, sidereal)
 
-            raw.append((entry_jd, exact_jd, prev_sign_idx, entry_retro))
-            prev_sign_idx = s_idx
-            entry_jd      = exact_jd
-            entry_retro   = cross_retro
+            raw.append((entry_jd, exact_jd, prev_seg[0], prev_seg[1], entry_retro))
+            prev_seg    = seg
+            entry_jd    = exact_jd
+            entry_retro = cross_retro
 
-    # Close the last open transit
-    if prev_sign_idx != -1:
+    # Close the last open segment
+    if prev_seg is not None:
         last_jd = jd_scan_arr[-1] if jd_scan_arr else jd_scan_end
-        raw.append((entry_jd, last_jd, prev_sign_idx, entry_retro))
+        raw.append((entry_jd, last_jd, prev_seg[0], prev_seg[1], entry_retro))
 
     # ── Filter + format ──────────────────────────────────────────────────────
     transits: List[Dict] = []
-    for (e_jd, x_jd, s_idx, retro) in raw:
+    for (e_jd, x_jd, s_idx, n_idx, retro) in raw:
         # Include only transits overlapping the user's requested window
         if x_jd <= filter_jd_start or e_jd >= filter_jd_end:
             continue
@@ -259,6 +325,7 @@ def get_sign_transits(
         x_date, x_time = _from_jd_time(x_jd)
         transits.append({
             "sign":        ZODIAC_SIGNS[s_idx],
+            "nakshatra":   NAKSHATRA_NAMES[n_idx],
             "entry_date":  e_date.isoformat(),
             "entry_time":  e_time,
             "exit_date":   x_date.isoformat(),

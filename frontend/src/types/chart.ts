@@ -105,6 +105,7 @@ export interface TransitRequest {
 
 export interface TransitEntry {
   sign: string;
+  nakshatra: string;
   entry_date: string;
   entry_time: string;
   exit_date: string;

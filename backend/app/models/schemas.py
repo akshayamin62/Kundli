@@ -129,6 +129,7 @@ class TransitRequest(BaseModel):
 
 class TransitEntry(BaseModel):
     sign: str
+    nakshatra: str
     entry_date: str
     entry_time: str  # "HH:MM" UTC
     exit_date: str

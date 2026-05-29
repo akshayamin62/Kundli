@@ -259,9 +259,10 @@ export default function ResultPage() {
             <button
               key={n}
               onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
-              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-700 hover:bg-gray-50"}`}
+              className={`w-full text-left px-3 py-2 transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
             >
-              {vargaDropdownText(n)}
+              <span className={`block text-xs ${selectedN === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
+              <span className="block text-[10px] italic text-gray-400 leading-tight">{VARGA_INFO[n]?.area ?? ""}</span>
             </button>
           ))}
           <div className="border-t border-gray-100 my-1"/>
@@ -272,9 +273,10 @@ export default function ResultPage() {
               <button
                 key={n}
                 onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
-                className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700 font-bold" : "text-gray-700 hover:bg-gray-50"}`}
+                className={`w-full text-left px-3 py-2 transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
               >
-                {vargaDropdownText(n)}
+                <span className={`block text-xs ${selectedN === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
+                <span className="block text-[10px] italic text-gray-400 leading-tight">{VARGA_INFO[n]?.area ?? ""}</span>
               </button>
             ))}
         </div>
@@ -365,7 +367,7 @@ export default function ResultPage() {
         {mainTab === "kundali" && (<>
 
         {/* ── Left column: D1 chart + 3-tab bottom ── */}
-        <div className="flex flex-col gap-2 min-h-0 overflow-hidden" style={{ width: "60%" }}>
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden" style={{ width: "55%" }}>
 
           {/* D1 Lagna Kundli — top ~55% */}
           <div className="min-h-0" style={{ flex: "0 0 55%" }}>

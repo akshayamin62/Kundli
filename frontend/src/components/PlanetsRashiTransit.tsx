@@ -97,9 +97,9 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
   }, [planet, startYear, endYear, zodiac]);
 
   const headers: Record<Lang, string[]> = {
-    en: ["Planet", "Sign", "Sign Lord", "Entry Date/Time", "Exit Date/Time", "Duration"],
-    hi: ["ग्रह",   "राशि",  "राशिपति",   "प्रवेश तिथि/समय", "निर्गम तिथि/समय", "अवधि"],
-    gu: ["ગ્રહ",   "રાશિ",  "રાશિપતિ",   "પ્રવેશ તારીખ/સમય", "નિર્ગમ તારીખ/સમય", "અવધિ"],
+    en: ["Planet", "Sign", "Nakshatra", "Entry Date/Time", "Exit Date/Time", "Duration"],
+    hi: ["ग्रह",   "राशि",  "नक्षत्र",    "प्रवेश तिथि/समय", "निर्गम तिथि/समय", "अवधि"],
+    gu: ["ગ્રહ",   "રાશિ",  "નક્ષત્ર",    "પ્રવેશ તારીખ/સમય", "નિર્ગમ તારીખ/સમય", "અવધિ"],
   };
 
   return (
@@ -205,7 +205,6 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
               {transits.map((t, i) => {
                 const isActive = t.entry_date <= today && today <= t.exit_date;
                 const isPast = t.exit_date < today;
-                const lord = SIGN_LORDS[t.sign] ?? "";
                 const days = daysDiff(t.entry_date, t.exit_date);
 
                 return (
@@ -231,8 +230,8 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
                     <td className="px-2 py-1 font-medium whitespace-nowrap text-gray-800">
                       {translateSign(t.sign, lang)}
                     </td>
-                    <td className="px-2 py-1 whitespace-nowrap" style={{ color: PLANET_COLORS[lord] ?? "#374151" }}>
-                      {translatePlanet(lord, lang)}
+                    <td className="px-2 py-1 whitespace-nowrap text-indigo-700 font-medium">
+                      {t.nakshatra}
                     </td>
                     <td className="px-2 py-1 text-gray-600 whitespace-nowrap font-mono">
                       {fmtDateTime(t.entry_date, t.entry_time)}
