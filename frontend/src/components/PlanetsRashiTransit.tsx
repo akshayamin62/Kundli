@@ -44,6 +44,36 @@ function translateNakshatra(name: string, lang: Lang): string {
   return idx >= 0 ? NAKSHATRA_NAMES[lang][idx] : name;
 }
 
+// Planet–Nakshatra affinity lookup (English names, matching backend NAKSHATRA_NAMES)
+const NAKSHATRA_AFFINITY: Record<string, { friendly: string[]; enemy: string[] }> = {
+  Sun:     { friendly: ["Krittika", "Uttara Phalguni", "Uttara Ashadha"],
+             enemy:    ["Bharani",  "Anuradha",         "Pushya"] },
+  Moon:    { friendly: ["Rohini",    "Hasta",      "Shravana"],
+             enemy:    ["Ashlesha",  "Jyeshtha",   "Mula"] },
+  Mars:    { friendly: ["Mrigashira", "Chitra",  "Dhanishtha"],
+             enemy:    ["Rohini",     "Swati",    "Vishakha"] },
+  Mercury: { friendly: ["Ashlesha",  "Jyeshtha",      "Revati"],
+             enemy:    ["Rohini",    "Uttara Phalguni", "Hasta"] },
+  Jupiter: { friendly: ["Punarvasu", "Vishakha",  "Purva Bhadrapada"],
+             enemy:    ["Ashlesha",  "Swati",      "Bharani"] },
+  Venus:   { friendly: ["Bharani",        "Purva Phalguni", "Purva Ashadha"],
+             enemy:    ["Krittika",        "Uttara Ashadha", "Anuradha"] },
+  Saturn:  { friendly: ["Pushya",    "Anuradha",        "Uttara Bhadrapada"],
+             enemy:    ["Krittika",  "Uttara Ashadha",  "Purva Bhadrapada"] },
+  Rahu:    { friendly: ["Ardra",     "Swati",       "Shatabhisha"],
+             enemy:    ["Krittika",  "Uttara Phalguni", "Uttara Ashadha"] },
+  Ketu:    { friendly: ["Ashwini",   "Magha",  "Mula"],
+             enemy:    ["Rohini",    "Hasta",   "Shravana"] },
+};
+
+function getNakshatraAffinity(planet: string, nakshatra: string): "friendly" | "enemy" | "neutral" {
+  const aff = NAKSHATRA_AFFINITY[planet];
+  if (!aff) return "neutral";
+  if (aff.friendly.includes(nakshatra)) return "friendly";
+  if (aff.enemy.includes(nakshatra)) return "enemy";
+  return "neutral";
+}
+
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
@@ -102,9 +132,9 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
   }, [planet, startYear, endYear, zodiac]);
 
   const headers: Record<Lang, string[]> = {
-    en: ["Planet", "Sign", "Nakshatra", "Entry Date/Time", "Exit Date/Time", "Duration"],
-    hi: ["ग्रह",   "राशि",  "नक्षत्र",    "प्रवेश तिथि/समय", "निर्गम तिथि/समय", "अवधि"],
-    gu: ["ગ્રહ",   "રાશિ",  "નક્ષત્ર",    "પ્રવેશ તારીખ/સમય", "નિર્ગમ તારીખ/સમય", "અવધિ"],
+    en: ["Planet", "Sign", "Nakshatra", "Entry (IST)", "Exit (IST)", "Duration"],
+    hi: ["ग्रह",   "राशि",  "नक्षत्र",    "प्रवेश (IST)", "निर्गम (IST)", "अवधि"],
+    gu: ["ગ્રહ",   "રાશિ",  "નક્ષત્ર",    "પ્રવેશ (IST)", "નિર્ગમ (IST)", "અવધિ"],
   };
 
   return (
@@ -236,7 +266,15 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
                       {translateSign(t.sign, lang)}
                     </td>
                     <td className="px-2 py-1 whitespace-nowrap text-indigo-700 font-medium">
-                      {translateNakshatra(t.nakshatra, lang)}
+                      <span className="inline-flex items-center gap-1">
+                        {translateNakshatra(t.nakshatra, lang)}
+                        {getNakshatraAffinity(planet, t.nakshatra) === "friendly" && (
+                          <span className="text-green-600 font-bold leading-none" title="Friendly nakshatra">↑</span>
+                        )}
+                        {getNakshatraAffinity(planet, t.nakshatra) === "enemy" && (
+                          <span className="text-red-500 font-bold leading-none" title="Enemy nakshatra">↓</span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-2 py-1 text-gray-600 whitespace-nowrap font-mono">
                       {fmtDateTime(t.entry_date, t.entry_time)}

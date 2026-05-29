@@ -85,15 +85,45 @@ def _from_jd(jd: float) -> date:
     return date(year, month, day)
 
 
+# IST = UTC + 5h 30m = +330 minutes
+_IST_OFFSET_MIN: int = 330
+
+
 def _from_jd_time(jd: float) -> tuple:
-    """Convert JD to (date, 'HH:MM') in UTC."""
-    d = _from_jd(jd)
+    """
+    Convert a Julian Day Number to (date, 'HH:MM') expressed in IST (UTC+5:30).
+
+    JD days start at noon UTC, so adding 0.5 aligns the integer boundary with
+    midnight UTC.  The fractional part of (jd + 0.5) is then the elapsed
+    fraction of the UTC calendar day, from which we extract hours and minutes.
+    We then apply the IST offset (+330 min), carrying over to the next date
+    when the result exceeds 23:59.
+    """
     jd_adj = jd + 0.5
-    frac = jd_adj - math.floor(jd_adj)
-    total_min = round(frac * 24 * 60) % (24 * 60)
-    h = total_min // 60
-    m = total_min % 60
-    return d, f"{h:02d}:{m:02d}"
+    frac   = jd_adj - math.floor(jd_adj)
+
+    # UTC minutes since midnight (rounded to nearest minute)
+    total_min_utc = int(round(frac * 24.0 * 60.0))
+
+    # Handle rounding that pushes us to the next day (e.g. 1440 → 00:00 +1d)
+    day_carry = total_min_utc // 1440
+    total_min_utc %= 1440
+
+    d_utc = _from_jd(jd)
+    if day_carry:
+        d_utc = d_utc + timedelta(days=day_carry)
+
+    # Apply IST offset
+    total_min_ist = total_min_utc + _IST_OFFSET_MIN
+    if total_min_ist >= 1440:
+        d_ist = d_utc + timedelta(days=1)
+        total_min_ist -= 1440
+    else:
+        d_ist = d_utc
+
+    h = total_min_ist // 60
+    m = total_min_ist % 60
+    return d_ist, f"{h:02d}:{m:02d}"
 
 
 def _planet_lon_retro(jd_val: float, planet: str, ayanamsa: float) -> tuple:
@@ -185,15 +215,21 @@ def _refine_segment_crossing(
     sidereal: bool,
 ) -> float:
     """
-    Walk day-by-day in (jd_before, jd_after] to pinpoint the first day
-    the planet leaves *prev_seg* (sign OR nakshatra change).
+    Find the first day the planet leaves *prev_seg* using a single bulk call
+    instead of N individual get_planet_positions calls.
     """
+    day_jds: list = []
     jd = jd_before + 1.0
     while jd <= jd_after:
-        aya = get_ayanamsa(jd) if sidereal else 0.0
-        if _segment_of(_planet_longitude(jd, planet, aya)) != prev_seg:
-            return jd
+        day_jds.append(jd)
         jd += 1.0
+    if not day_jds:
+        return jd_after
+    aya_arr = [get_ayanamsa(jd) if sidereal else 0.0 for jd in day_jds]
+    lon_arr = get_planet_longitudes_bulk(day_jds, planet, aya_arr)
+    for jd, lon in zip(day_jds, lon_arr):
+        if _segment_of(lon) != prev_seg:
+            return jd
     return jd_after
 
 
@@ -204,22 +240,48 @@ def _refine_segment_hour(
     sidereal: bool,
 ) -> tuple:
     """
-    Binary search within [jd_day-1, jd_day] for the exact crossing of
-    either a sign or nakshatra boundary.
+    Find the exact minute of a segment crossing using two bulk calls:
+      Stage 1 — 26 hourly points over [jd_day-1, jd_day]: identifies which
+                1-hour window contains the crossing.
+      Stage 2 — 62 minute points within that 1-hour window: resolves the
+                crossing to ±30-second precision.
     Returns (crossing_jd, retrograde_at_crossing).
     """
-    lo = jd_day - 1.0
-    hi = jd_day
-    for _ in range(10):
-        mid = (lo + hi) / 2.0
-        aya = get_ayanamsa(mid) if sidereal else 0.0
-        if _segment_of(_planet_longitude(mid, planet, aya)) != prev_seg:
-            hi = mid
-        else:
-            lo = mid
-    aya = get_ayanamsa(hi) if sidereal else 0.0
-    _, retrograde = _planet_lon_retro(hi, planet, aya)
-    return hi, retrograde
+    # ── Stage 1: hourly scan ────────────────────────────────────────────────
+    hour_jds = [jd_day - 1.0 + h / 24.0 for h in range(26)]
+    aya_h    = [get_ayanamsa(jd) if sidereal else 0.0 for jd in hour_jds]
+    lon_h    = get_planet_longitudes_bulk(hour_jds, planet, aya_h)
+
+    hour_idx = len(hour_jds) - 1
+    for i, lon in enumerate(lon_h):
+        if _segment_of(lon) != prev_seg:
+            hour_idx = i
+            break
+
+    # ── Stage 2: minute scan within [hour_before, hour_crossing] ───────────
+    min_start = hour_jds[max(0, hour_idx - 1)]
+    minute_jds = [min_start + m / (24.0 * 60.0) for m in range(62)]
+    aya_m      = [get_ayanamsa(jd) if sidereal else 0.0 for jd in minute_jds]
+    lon_m      = get_planet_longitudes_bulk(minute_jds, planet, aya_m)
+
+    crossing_idx = len(minute_jds) - 1
+    for i, lon in enumerate(lon_m):
+        if _segment_of(lon) != prev_seg:
+            crossing_idx = i
+            break
+
+    crossing_jd = minute_jds[crossing_idx]
+
+    # Retrograde: sign of longitude change around the crossing point
+    if crossing_idx > 0:
+        diff = (lon_m[crossing_idx] - lon_m[crossing_idx - 1] + 180.0) % 360.0 - 180.0
+    elif len(lon_m) > 1:
+        diff = (lon_m[1] - lon_m[0] + 180.0) % 360.0 - 180.0
+    else:
+        diff = -0.05 if planet in ("Rahu", "Ketu") else 0.05
+
+    retrograde = diff < 0
+    return crossing_jd, retrograde
 
 
 # ---------------------------------------------------------------------------
@@ -244,8 +306,8 @@ def get_sign_transits(
     Each row: {
       "sign":        str,
       "nakshatra":   str,
-      "entry_date":  ISO str,  "entry_time": "HH:MM" (UTC),
-      "exit_date":   ISO str,  "exit_time":  "HH:MM" (UTC),
+      "entry_date":  ISO str,  "entry_time": "HH:MM" (IST),
+      "exit_date":   ISO str,  "exit_time":  "HH:MM" (IST),
       "retrograde":  bool,
     }
     """
