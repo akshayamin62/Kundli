@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.chart import router as chart_router
+from app.routes.match import router as match_router
 
 app = FastAPI(
     title="Astrology API",
@@ -17,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(chart_router, prefix="/api")
+app.include_router(match_router, prefix="/api/match")
 
 
 @app.get("/")

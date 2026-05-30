@@ -141,3 +141,49 @@ class TransitResponse(BaseModel):
     planet: str
     zodiac: str
     transits: list[TransitEntry]
+
+
+# ── Kundli Milan (Ashtakoot Matching) ─────────────────────────────────────
+
+class MatchPersonRequest(ChartRequest):
+    name: str = ""
+
+
+class MatchRequest(BaseModel):
+    boy: MatchPersonRequest
+    girl: MatchPersonRequest
+
+
+class MatchKoot(BaseModel):
+    name: str
+    max_score: float
+    score: float
+    description: str
+    boy_value: str
+    girl_value: str
+
+
+class MatchResponse(BaseModel):
+    total_score: float
+    max_score: float
+    percentage: float
+    grade: str
+    recommendation: str
+    koots: list[MatchKoot]
+
+    boy_name: str
+    girl_name: str
+    boy_nakshatra: str
+    boy_nakshatra_lord: str
+    boy_moon_sign: str
+    girl_nakshatra: str
+    girl_nakshatra_lord: str
+    girl_moon_sign: str
+
+    boy_mangal_dosha: bool
+    girl_mangal_dosha: bool
+    mangal_dosha_cancelled: bool
+    mangal_dosha_note: str
+
+    boy_chart: ChartResponse
+    girl_chart: ChartResponse

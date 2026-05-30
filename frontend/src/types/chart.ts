@@ -118,3 +118,49 @@ export interface TransitResponse {
   zodiac: string;
   transits: TransitEntry[];
 }
+
+// ── Kundli Milan (Ashtakoot Matching) ─────────────────────────────────────
+
+export interface MatchPersonRequest extends ChartRequest {
+  name: string;
+}
+
+export interface MatchRequest {
+  boy: MatchPersonRequest;
+  girl: MatchPersonRequest;
+}
+
+export interface MatchKoot {
+  name: string;
+  max_score: number;
+  score: number;
+  description: string;
+  boy_value: string;
+  girl_value: string;
+}
+
+export interface MatchResponse {
+  total_score: number;
+  max_score: number;
+  percentage: number;
+  grade: string;
+  recommendation: string;
+  koots: MatchKoot[];
+
+  boy_name: string;
+  girl_name: string;
+  boy_nakshatra: string;
+  boy_nakshatra_lord: string;
+  boy_moon_sign: string;
+  girl_nakshatra: string;
+  girl_nakshatra_lord: string;
+  girl_moon_sign: string;
+
+  boy_mangal_dosha: boolean;
+  girl_mangal_dosha: boolean;
+  mangal_dosha_cancelled: boolean;
+  mangal_dosha_note: string;
+
+  boy_chart: ChartResponse;
+  girl_chart: ChartResponse;
+}

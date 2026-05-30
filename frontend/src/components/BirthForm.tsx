@@ -6,6 +6,7 @@ import { ChartRequest, ChartResponse } from "@/types/chart";
 
 interface Props {
   onResult: (chart: ChartResponse, req: ChartRequest) => void;
+  storageKey?: string;
 }
 
 interface PlaceSuggestion {
@@ -13,8 +14,10 @@ interface PlaceSuggestion {
   display_name: string;
 }
 
-export default function BirthForm({ onResult }: Props) {
-  const [form, setForm] = useState<ChartRequest>({
+export default function BirthForm({ onResult, storageKey }: Props) {
+  const SK = storageKey ?? "jk_birth_form";
+
+  const [form, setFormRaw] = useState<ChartRequest>({
     birth_date: "",
     birth_time: "",
     birth_place: "",
@@ -28,6 +31,38 @@ export default function BirthForm({ onResult }: Props) {
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Restore saved form from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SK);
+      if (raw) {
+        const p = JSON.parse(raw) as Partial<ChartRequest & { _placeInput: string }>;
+        setFormRaw((f) => ({
+          ...f,
+          birth_date: p.birth_date ?? "",
+          birth_time: p.birth_time ?? "",
+          birth_place: p.birth_place ?? "",
+        }));
+        setPlaceInput(p._placeInput ?? p.birth_place ?? "");
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [SK]);
+
+  // Save helper — wraps setFormRaw and persists to localStorage
+  const setForm = useCallback(
+    (updater: ChartRequest | ((prev: ChartRequest) => ChartRequest)) => {
+      setFormRaw((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        try {
+          localStorage.setItem(SK, JSON.stringify(next));
+        } catch { /* ignore */ }
+        return next;
+      });
+    },
+    [SK],
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
