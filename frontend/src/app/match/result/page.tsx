@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MatchResponse, MatchKoot } from "@/types/chart";
 import ChartWheel from "@/components/ChartWheel";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES, PLANET_NAMES, SIGN_LORDS } from "@/lib/translations";
+import { downloadMatchReport } from "@/lib/reportGenerator";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -184,46 +185,77 @@ function gradeBar(pct: number) {
   return "bg-red-500";
 }
 
-// ─── Score dots ────────────────────────────────────────────────────────────────
-function ScoreDots({ score, max }: { score: number; max: number }) {
-  const f = Math.round(score);
+// ─── Score Circle (SVG gauge) ─────────────────────────────────────────────────
+function ScoreCircle({ score, max, pct }: { score: number; max: number; pct: number }) {
+  const r = 54;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - score / max);
+  const color = pct >= 83 ? "#10b981" : pct >= 67 ? "#22c55e" : pct >= 50 ? "#f59e0b" : pct >= 33 ? "#f97316" : "#ef4444";
+  const stars = Math.round((score / max) * 5);
   return (
-    <span className="inline-flex gap-0.5 flex-wrap">
-      {Array.from({ length: max }).map((_, i) => (
-        <span key={i} className={`w-1.5 h-1.5 rounded-full ${i < f ? "bg-indigo-500" : "bg-gray-200"}`} />
-      ))}
-    </span>
+    <div className="flex flex-col items-center gap-1.5">
+      <svg width="136" height="136" viewBox="0 0 136 136">
+        {/* glow ring */}
+        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="11" />
+        {/* progress ring */}
+        <circle
+          cx="68" cy="68" r={r} fill="none"
+          stroke={color} strokeWidth="11"
+          strokeDasharray={circ} strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90 68 68)"
+          style={{ filter: `drop-shadow(0 0 6px ${color}88)` }}
+        />
+        <text x="68" y="63" textAnchor="middle" fill="white" fontSize="30" fontWeight="900" fontFamily="system-ui">{score}</text>
+        <text x="68" y="80" textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="11" fontFamily="system-ui">/ {max}</text>
+      </svg>
+      {/* Stars */}
+      <div className="flex gap-0.5">
+        {[1,2,3,4,5].map(i => (
+          <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i <= stars ? "#fbbf24" : "rgba(255,255,255,0.18)"}>
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        ))}
+      </div>
+    </div>
   );
 }
 
-// ─── Koot row ──────────────────────────────────────────────────────────────────
-function KootRow({ k, lang }: { k: MatchKoot; lang: Lang }) {
+// ─── Koot card (visual progress bar) ─────────────────────────────────────────
+function KootCard({ k, lang }: { k: MatchKoot; lang: Lang }) {
   const pct = k.score / k.max_score;
-  const scCls = pct >= 1 ? "text-emerald-700 bg-emerald-50 border-emerald-300"
-    : pct >= 0.5 ? "text-amber-700 bg-amber-50 border-amber-300"
-    : "text-red-700 bg-red-50 border-red-300";
+  const barGrad = pct >= 1 ? "from-emerald-400 to-emerald-500"
+    : pct >= 0.5 ? "from-amber-400 to-amber-500"
+    : "from-red-400 to-red-500";
+  const scoreCls = pct >= 1 ? "text-emerald-600 bg-emerald-50 border-emerald-200"
+    : pct >= 0.5 ? "text-amber-600 bg-amber-50 border-amber-200"
+    : "text-red-500 bg-red-50 border-red-200";
   return (
-    <tr className="border-b border-gray-100 hover:bg-indigo-50/20 transition-colors">
-      <td className="py-3 px-3">
-        <p className="text-gray-800 text-sm font-semibold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
-        <p className="text-gray-400 text-xs leading-tight mt-0.5">{KOOT_DESC[lang][k.name] ?? ""}</p>
-      </td>
-      <td className="py-3 px-3 whitespace-nowrap">
-        <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full border ${scCls}`}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-2">
+        <div className="min-w-0 flex-1 pr-2">
+          <p className="text-gray-900 text-xs font-bold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
+          <p className="text-gray-400 text-[10px] mt-0.5 leading-tight">{KOOT_DESC[lang][k.name] ?? ""}</p>
+        </div>
+        <span className={`text-sm font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${scoreCls}`}>
           {k.score}/{k.max_score}
         </span>
-      </td>
-      <td className="py-3 px-3 text-center">
-        <span className="inline-block bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-lg">
+      </div>
+      {/* Progress bar */}
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
+        <div className={`h-full rounded-full bg-gradient-to-r ${barGrad}`} style={{ width: `${pct * 100}%` }} />
+      </div>
+      {/* Boy vs Girl */}
+      <div className="flex items-center justify-between">
+        <span className="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full border border-indigo-100 font-semibold">
           {tValue(k.boy_value, lang)}
         </span>
-      </td>
-      <td className="py-3 px-3 text-center">
-        <span className="inline-block bg-rose-50 border border-rose-100 text-rose-700 text-xs font-semibold px-2.5 py-1 rounded-lg">
+        <span className="text-gray-300 text-[9px]">vs</span>
+        <span className="bg-rose-50 text-rose-700 text-[10px] px-2 py-0.5 rounded-full border border-rose-100 font-semibold">
           {tValue(k.girl_value, lang)}
         </span>
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 }
 
@@ -263,7 +295,7 @@ export default function MatchResultPage() {
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Sticky Navbar ── */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+      <nav className="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-sm">
         <div className="w-full px-4 h-12 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <button
@@ -283,171 +315,189 @@ export default function MatchResultPage() {
               {t.back}
             </button>
           </div>
-          <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
-            {(["en","hi","gu"] as Lang[]).map(l => (
-              <button
-                key={l}
-                onClick={() => switchLang(l)}
-                className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all ${lang === l ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                {l === "en" ? "EN" : l === "hi" ? "\u0939\u093F" : "\u0A97\u0AC1"}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            {/* Download Report */}
+            <button
+              onClick={() => downloadMatchReport(data)}
+              className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/>
+              </svg>
+              Download Report
+            </button>
+            {/* Language */}
+            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+              {(["en","hi","gu"] as Lang[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => switchLang(l)}
+                  className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all ${lang === l ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                >
+                  {l === "en" ? "EN" : l === "hi" ? "हि" : "ગુ"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* ── Two-column layout ── */}
-      <div className="w-full px-4 sm:px-6 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-4 items-start">
+      {/* ── HERO BANNER ── */}
+      <div
+        className="relative overflow-hidden text-white"
+        style={{ background: "linear-gradient(140deg, #1e0d42 0%, #3c1262 28%, #7b1b75 55%, #c0286a 80%, #d84060 100%)" }}
+      >
+        {/* Decorative blobs */}
+        <div className="absolute -top-16 -left-16 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -right-8 w-72 h-72 bg-pink-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-fuchsia-300/10 rounded-full blur-2xl pointer-events-none" />
 
-          {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-3">
+        <div className="relative z-10 px-6 py-8 max-w-3xl mx-auto">
+          {/* Subtitle */}
+          <p className="text-center text-white/60 text-[10px] font-bold uppercase tracking-[4px] mb-5">
+            Ashtakoot Kundli Milan
+          </p>
 
-            {/* ── Hero score card ── */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              {/* header */}
-              <div className="px-4 py-2.5 border-b border-gray-100 bg-rose-50/50 text-center">
-                <h1 className="text-rose-700 font-bold text-sm tracking-tight">&#128146; {t.title}</h1>
+          {/* Three columns: Boy | Score | Girl */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-8">
+
+            {/* Boy */}
+            <div className="text-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-400/30 border-2 border-indigo-300/60 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-indigo-900/40">
+                <span className="text-3xl font-black text-white">{boyInit}</span>
               </div>
-
-              {/* Boy | Score | Girl */}
-              <div className="grid grid-cols-3 divide-x divide-gray-100">
-                {/* Boy */}
-                <div className="px-3 py-4 text-center">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-base mx-auto mb-1.5">
-                    {boyInit}
-                  </div>
-                  <p className="text-gray-900 font-bold text-sm leading-tight truncate">{data.boy_name || "Boy"}</p>
-                  <p className="text-indigo-500 text-[11px] mt-0.5">{tSign(data.boy_moon_sign, lang)}</p>
-                </div>
-
-                {/* Score */}
-                <div className="px-3 py-3 flex flex-col items-center justify-center gap-1">
-                  <div className="flex items-end gap-0.5">
-                    <span className={`text-4xl font-black leading-none ${gradeTxt(data.grade)}`}>{data.total_score}</span>
-                    <span className="text-sm text-gray-400 mb-0.5">/36</span>
-                  </div>
-                  <span className={`text-[10px] font-bold border rounded-full px-2 py-0.5 ${gradePill(data.grade)}`}>{data.grade}</span>
-                  <div className="w-full max-w-[100px] bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div className={`h-full rounded-full ${gradeBar(pct)}`} style={{ width:`${pct}%` }} />
-                  </div>
-                  <p className="text-gray-400 text-[10px]">{pct}%</p>
-                  <p className="text-gray-500 text-[10px] text-center leading-tight mt-1 italic max-w-[120px]">{data.recommendation}</p>
-                </div>
-
-                {/* Girl */}
-                <div className="px-3 py-4 text-center">
-                  <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-bold text-base mx-auto mb-1.5">
-                    {girlInit}
-                  </div>
-                  <p className="text-gray-900 font-bold text-sm leading-tight truncate">{data.girl_name || "Girl"}</p>
-                  <p className="text-rose-500 text-[11px] mt-0.5">{tSign(data.girl_moon_sign, lang)}</p>
-                </div>
-              </div>
-
-              {/* Details comparison table */}
-              <div className="border-t border-gray-100">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="py-1.5 px-3 text-left text-gray-400 text-[10px] font-semibold uppercase tracking-wider w-[38%]">{t.detail}</th>
-                      <th className="py-1.5 px-2 text-center text-indigo-600 text-[10px] font-bold w-[31%]">{data.boy_name || "Boy"}</th>
-                      <th className="py-1.5 px-2 text-center text-rose-600 text-[10px] font-bold w-[31%]">{data.girl_name || "Girl"}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {[
-                      { label: t.dob,      bv: formatDate(data.boy_chart.meta.birth_date),  gv: formatDate(data.girl_chart.meta.birth_date) },
-                      { label: t.tob,      bv: formatTime(data.boy_chart.meta.birth_time),  gv: formatTime(data.girl_chart.meta.birth_time) },
-                      { label: t.place,    bv: data.boy_chart.meta.birth_place,              gv: data.girl_chart.meta.birth_place },
-                      { label: t.rasi,     bv: tSign(data.boy_moon_sign, lang),              gv: tSign(data.girl_moon_sign, lang) },
-                      { label: t.rasiLord, bv: SIGN_LORDS[lang][data.boy_moon_sign] ?? "\u2014", gv: SIGN_LORDS[lang][data.girl_moon_sign] ?? "\u2014" },
-                      { label: t.janmaNak, bv: tNak(data.boy_nakshatra, lang),               gv: tNak(data.girl_nakshatra, lang) },
-                      { label: t.nakLord,  bv: tPlanet(data.boy_nakshatra_lord, lang),       gv: tPlanet(data.girl_nakshatra_lord, lang) },
-                      { label: t.dosha,    bv: data.boy_mangal_dosha  ? t.mangalYes : t.mangalNo, gv: data.girl_mangal_dosha ? t.mangalYes : t.mangalNo },
-                    ].map(({ label, bv, gv }) => (
-                      <tr key={label} className="hover:bg-gray-50/60">
-                        <td className="py-1.5 px-3 text-gray-500 text-[11px]">{label}</td>
-                        <td className="py-1.5 px-2 text-center text-indigo-700 text-[11px] font-medium">{bv || "\u2014"}</td>
-                        <td className="py-1.5 px-2 text-center text-rose-700 text-[11px] font-medium">{gv || "\u2014"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <p className="font-extrabold text-white text-base leading-tight truncate">{data.boy_name || "Var"}</p>
+              <p className="text-indigo-200 text-xs mt-1">{tSign(data.boy_moon_sign, lang)}</p>
+              <p className="text-indigo-200/70 text-[10px] mt-0.5">{tNak(data.boy_nakshatra, lang)}</p>
+              <p className="text-white/50 text-[9px] mt-1.5 tracking-widest uppercase">♂ Groom</p>
             </div>
 
-            {/* ── Ashtakoot Table ── */}
+            {/* Score Circle */}
+            <div className="flex flex-col items-center gap-1.5">
+              <ScoreCircle score={data.total_score} max={36} pct={pct} />
+              <span className={`text-xs font-bold px-3 py-0.5 rounded-full border ${gradePill(data.grade)}`}>
+                {data.grade}
+              </span>
+              <p className="text-white/60 text-[11px] text-center italic max-w-[130px] leading-tight mt-0.5">
+                {data.recommendation}
+              </p>
+            </div>
+
+            {/* Girl */}
+            <div className="text-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-rose-400/30 border-2 border-rose-300/60 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-rose-900/40">
+                <span className="text-3xl font-black text-white">{girlInit}</span>
+              </div>
+              <p className="font-extrabold text-white text-base leading-tight truncate">{data.girl_name || "Vadhu"}</p>
+              <p className="text-pink-200 text-xs mt-1">{tSign(data.girl_moon_sign, lang)}</p>
+              <p className="text-pink-200/70 text-[10px] mt-0.5">{tNak(data.girl_nakshatra, lang)}</p>
+              <p className="text-white/50 text-[9px] mt-1.5 tracking-widest uppercase">♀ Bride</p>
+            </div>
+          </div>
+
+          {/* Compatibility bar */}
+          <div className="max-w-xs mx-auto mt-6">
+            <div className="h-2 bg-white/15 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${gradeBar(pct)}`} style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-center text-white/55 text-[11px] mt-2 font-medium">{pct}% Compatibility</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Main content ── */}
+      <div className="w-full px-4 sm:px-6 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5 items-start">
+
+          {/* ════ LEFT COLUMN ════ */}
+          <div className="space-y-4">
+
+            {/* ── Birth Details comparison ── */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-gray-100 bg-indigo-50/40 flex items-center justify-between">
-                <h2 className="text-indigo-900 font-bold text-xs uppercase tracking-wide">{t.sub}</h2>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block" />
-                    <span className="text-indigo-600 font-medium">{data.boy_name || "Boy"}</span>
+              <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-rose-50 flex items-center justify-between">
+                <h2 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Birth Details</h2>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="text-indigo-600 font-semibold">{data.boy_name || "Groom"}</span>
                   </span>
                   <span className="text-gray-300">|</span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block" />
-                    <span className="text-rose-600 font-medium">{data.girl_name || "Girl"}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    <span className="text-rose-600 font-semibold">{data.girl_name || "Bride"}</span>
                   </span>
                 </div>
               </div>
+              <table className="w-full">
+                <tbody className="divide-y divide-gray-50">
+                  {[
+                    { label: t.dob,      bv: formatDate(data.boy_chart.meta.birth_date),  gv: formatDate(data.girl_chart.meta.birth_date) },
+                    { label: t.tob,      bv: formatTime(data.boy_chart.meta.birth_time),  gv: formatTime(data.girl_chart.meta.birth_time) },
+                    { label: t.place,    bv: data.boy_chart.meta.birth_place,              gv: data.girl_chart.meta.birth_place },
+                    { label: t.rasi,     bv: tSign(data.boy_moon_sign, lang),              gv: tSign(data.girl_moon_sign, lang) },
+                    { label: t.rasiLord, bv: SIGN_LORDS[lang][data.boy_moon_sign] ?? "—", gv: SIGN_LORDS[lang][data.girl_moon_sign] ?? "—" },
+                    { label: t.janmaNak, bv: tNak(data.boy_nakshatra, lang),               gv: tNak(data.girl_nakshatra, lang) },
+                    { label: t.nakLord,  bv: tPlanet(data.boy_nakshatra_lord, lang),       gv: tPlanet(data.girl_nakshatra_lord, lang) },
+                    { label: t.dosha,
+                      bv: data.boy_mangal_dosha  ? <span className="text-red-600 font-semibold">⚠ {t.mangalYes}</span>  : <span className="text-emerald-600 font-semibold">✓ {t.mangalNo}</span>,
+                      gv: data.girl_mangal_dosha ? <span className="text-red-600 font-semibold">⚠ {t.mangalYes}</span> : <span className="text-emerald-600 font-semibold">✓ {t.mangalNo}</span>,
+                    },
+                  ].map(({ label, bv, gv }, i) => (
+                    <tr key={i} className="hover:bg-gray-50/60">
+                      <td className="py-2 px-4 text-gray-500 text-[11px] w-[35%]">{label}</td>
+                      <td className="py-2 px-3 text-indigo-700 text-[11px] font-medium w-[32.5%]">{bv || "—"}</td>
+                      <td className="py-2 px-3 text-rose-700 text-[11px] font-medium w-[32.5%]">{gv || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="py-2 px-3 text-left text-gray-500 text-xs font-semibold uppercase tracking-wider">{t.koot}</th>
-                      <th className="py-2 px-3 text-left text-gray-500 text-xs font-semibold uppercase tracking-wider">{t.score}</th>
-                      <th className="py-2 px-3 text-center text-indigo-600 text-xs font-bold">
-                        {data.boy_name || "Boy"}
-                      </th>
-                      <th className="py-2 px-3 text-center text-rose-600 text-xs font-bold">
-                        {data.girl_name || "Girl"}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.koots.map(k => <KootRow key={k.name} k={k} lang={lang} />)}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-gray-200 bg-indigo-50/30">
-                      <td className="py-3 px-3 font-bold text-gray-900 text-sm">{t.total}</td>
-                      <td className="py-3 px-3">
-                        <span className={`font-black text-lg ${gradeTxt(data.grade)}`}>{data.total_score}/36</span>
-                      </td>
-                      <td colSpan={2} className="py-3 px-3 text-right">
-                        <span className={`text-sm font-bold border rounded-full px-3 py-1 ${gradePill(data.grade)}`}>{data.grade}{" · "}{pct}%</span>
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+            {/* ── Ashtakoot Visual Koots ── */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/60 flex items-center justify-between">
+                <h2 className="font-bold text-indigo-900 text-xs uppercase tracking-wider">{t.sub}</h2>
+                <div className={`text-sm font-black px-3 py-0.5 rounded-full border ${gradePill(data.grade)}`}>
+                  {data.total_score}/36 · {pct}%
+                </div>
+              </div>
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-2 gap-2">
+                {data.koots.map(k => <KootCard key={k.name} k={k} lang={lang} />)}
+              </div>
+              {/* Totals bar */}
+              <div className="mx-3 mb-3 bg-gradient-to-r from-indigo-50 to-rose-50 rounded-xl px-4 py-3 border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">{t.total}</p>
+                  <p className={`text-2xl font-black ${gradeTxt(data.grade)}`}>{data.total_score}<span className="text-gray-400 text-sm font-normal">/36</span></p>
+                </div>
+                <div className="text-right">
+                  <span className={`text-sm font-bold border rounded-full px-3 py-1 ${gradePill(data.grade)}`}>{data.grade}</span>
+                  <p className="text-gray-400 text-[10px] mt-1 italic">{data.recommendation}</p>
+                </div>
               </div>
             </div>
 
             {/* ── Mangal Dosha ── */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
-              <p className="text-gray-700 font-bold text-xs mb-2">{t.mangalTitle}</p>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
+              <p className="text-gray-700 font-bold text-xs mb-3 uppercase tracking-wider">{t.mangalTitle}</p>
+              <div className="grid grid-cols-2 gap-2.5">
                 {[
-                  { name: data.boy_name || "Boy",  has: data.boy_mangal_dosha },
-                  { name: data.girl_name || "Girl", has: data.girl_mangal_dosha },
+                  { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
+                  { name: data.girl_name || "Bride", has: data.girl_mangal_dosha },
                 ].map(({ name, has }) => (
-                  <div key={name} className={`flex items-center gap-2 rounded-lg px-3 py-2 border text-xs ${has ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${has ? "bg-red-500" : "bg-emerald-500"}`} />
+                  <div key={name} className={`flex items-center gap-2.5 rounded-xl px-4 py-3 border ${has ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+                    <span className={`text-xl ${has ? "text-red-400" : "text-emerald-400"}`}>{has ? "⚠" : "✓"}</span>
                     <div>
-                      <p className="font-semibold text-gray-800 leading-tight">{name}</p>
-                      <p className={`leading-tight ${has ? "text-red-600" : "text-emerald-600"}`}>{has ? t.mangalYes : t.mangalNo}</p>
+                      <p className="font-bold text-gray-800 text-xs leading-tight">{name}</p>
+                      <p className={`text-xs leading-tight mt-0.5 font-medium ${has ? "text-red-600" : "text-emerald-600"}`}>{has ? t.mangalYes : t.mangalNo}</p>
                     </div>
                   </div>
                 ))}
               </div>
               {data.mangal_dosha_cancelled && (
-                <div className="mt-2 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 text-xs">
+                <div className="mt-2.5 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                  <p className="text-emerald-700 font-medium">{t.mangalOff}</p>
+                  <p className="text-emerald-700 font-semibold">{t.mangalOff}</p>
                 </div>
               )}
               {data.mangal_dosha_note && (
@@ -484,13 +534,13 @@ export default function MatchResultPage() {
                 },
               ];
               return (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
-                  <p className="text-gray-700 font-bold text-xs mb-0.5">{t.sadsatkutTitle}</p>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
+                  <p className="text-gray-700 font-bold text-xs mb-0.5 uppercase tracking-wider">{t.sadsatkutTitle}</p>
                   <p className="text-gray-400 text-[10px] mb-3">{t.sadsatkutSub}</p>
                   <div className="space-y-3">
                     {pairGroups.map(({ label, items }) => (
                       <div key={label}>
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
                         <div className="grid grid-cols-2 gap-1.5">
                           {items.map(({ key, titleKey, descKey, auspicious }) => {
                             const present = sk ? (sk[key] as boolean) : false;
@@ -526,30 +576,29 @@ export default function MatchResultPage() {
 
           </div>{/* end LEFT COLUMN */}
 
-          {/* ════ RIGHT COLUMN — sticky, birth charts ════ */}
-          <div className="lg:sticky lg:top-14 space-y-3">
+          {/* ════ RIGHT COLUMN — sticky charts ════ */}
+          <div className="lg:sticky lg:top-14 space-y-4">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-              <h2 className="text-gray-700 font-bold text-xs mb-3 flex items-center gap-1.5">
-                &#127756; {t.charts}
+              <h2 className="text-gray-700 font-bold text-xs mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                🪐 {t.charts}
               </h2>
               <div className="space-y-4">
                 {[
-                  { name: data.boy_name  || "Boy",  chart: data.boy_chart,  accent: "border-indigo-200", dotCls: "bg-indigo-500", nameCls: "text-indigo-700" },
-                  { name: data.girl_name || "Girl", chart: data.girl_chart, accent: "border-rose-200",   dotCls: "bg-rose-400",   nameCls: "text-rose-700"  },
-                ].map(({ name, chart, accent, dotCls, nameCls }) => (
+                  { name: data.boy_name  || "Groom", chart: data.boy_chart,  accentBorder: "border-indigo-200", dotCls: "bg-indigo-500", nameCls: "text-indigo-700", bg: "bg-indigo-50" },
+                  { name: data.girl_name || "Bride", chart: data.girl_chart, accentBorder: "border-rose-200",   dotCls: "bg-rose-400",   nameCls: "text-rose-700",  bg: "bg-rose-50"  },
+                ].map(({ name, chart, accentBorder, dotCls, nameCls, bg }) => (
                   <div key={name}>
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className={`w-2 h-2 rounded-full ${dotCls} inline-block`} />
+                    <div className={`flex items-center gap-2 mb-1.5 ${bg} rounded-lg px-2.5 py-1.5`}>
+                      <span className={`w-2 h-2 rounded-full ${dotCls} flex-shrink-0`} />
                       <p className={`text-xs font-bold ${nameCls}`}>{name}</p>
                     </div>
-                    <div className={`border rounded-xl overflow-hidden ${accent}`} style={{ aspectRatio:"900/640" }}>
+                    <div className={`border-2 rounded-xl overflow-hidden ${accentBorder} shadow-sm`} style={{ aspectRatio: "900/640" }}>
                       <ChartWheel chart={chart} lang={lang} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-
             <p className="text-center text-gray-400 text-[10px] pb-2">{t.footer}</p>
           </div>{/* end RIGHT COLUMN */}
 

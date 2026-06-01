@@ -10,6 +10,7 @@ import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang } from "@/lib/translations";
+import { downloadKundliReport } from "@/lib/reportGenerator";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -328,8 +329,18 @@ export default function ResultPage() {
             {meta.birth_date} · {meta.birth_time} · {meta.timezone}
           </span>
         </div>
-        {/* Language toggle */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Language toggle + Download */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => chart && downloadKundliReport(chart)}
+            className="inline-flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/>
+            </svg>
+            Download Report
+          </button>
+          <div className="flex items-center gap-1">
           {(["en", "hi", "gu"] as Lang[]).map(l => (
             <button
               key={l}
@@ -341,6 +352,7 @@ export default function ResultPage() {
               {l === "en" ? "EN" : l === "hi" ? "हि" : "ગુ"}
             </button>
           ))}
+          </div>
         </div>
       </header>
 
