@@ -163,4 +163,14 @@ export interface MatchResponse {
 
   boy_chart: ChartResponse;
   girl_chart: ChartResponse;
+
+  sadsatkut?: {
+    distance: number;
+    priti_shadashtak: boolean;
+    mrityu_shadashtak: boolean;
+    shubh_dvadashatak: boolean;
+    ashubh_dvadashatak: boolean;
+    shubh_navpancham: boolean;
+    nashtan_navpancham: boolean;
+  };
 }

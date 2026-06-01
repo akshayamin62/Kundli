@@ -187,3 +187,14 @@ class MatchResponse(BaseModel):
 
     boy_chart: ChartResponse
     girl_chart: ChartResponse
+
+    class SadsatkutResult(BaseModel):
+        distance: int
+        priti_shadashtak: bool
+        mrityu_shadashtak: bool
+        shubh_dvadashatak: bool
+        ashubh_dvadashatak: bool
+        shubh_navpancham: bool
+        nashtan_navpancham: bool
+
+    sadsatkut: Optional[SadsatkutResult] = None

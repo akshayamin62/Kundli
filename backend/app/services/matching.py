@@ -366,6 +366,119 @@ def _nadi_score(boy_nak: int, girl_nak: int) -> float:
     return 0.0 if _NADI[boy_nak] == _NADI[girl_nak] else 8.0
 
 # ---------------------------------------------------------------------------
+# Sadsatkut Kostkaani — 6 sign-pair compatibility groups
+#
+# Hardcoded frozenset lookup tables for O(1) membership test.
+# Signs 0-indexed: 0=Aries 1=Taurus 2=Gemini 3=Cancer 4=Leo 5=Virgo
+#                  6=Libra 7=Scorpio 8=Sagittarius 9=Capricorn 10=Aquarius 11=Pisces
+#
+# 6/8 position pairs (distance 5 or 7):
+#   Priti  (auspicious): lords are friends/same planet
+#   Mrityu (inauspicious): lords are enemies
+#
+# 2/12 position pairs (distance 1 or 11):
+#   Shubh Dvadashatak  (auspicious)
+#   Ashubh Dvadashatak (inauspicious)
+#
+# 5/9 position pairs (distance 4 or 8):
+#   Shubh Navpancham  (auspicious)
+#   Nashtan Navpancham (inauspicious)
+# ---------------------------------------------------------------------------
+
+# 6/8 auspicious — lords are friends or same
+# (1,6) Tau-Lib: Venus-Venus  (3,8) Can-Sag: Moon-Jupiter  (4,11) Leo-Pis: Sun-Jupiter
+# (0,5) Ari-Vir: Mars-Mercury  (2,9) Gem-Cap: Mercury-Saturn  (7,10) Sco-Aqu: Mars-Saturn
+_PRITI_SHADASHTAK: frozenset = frozenset({
+    (4, 11),(11,  4),   # Leo–Pisces        Sun–Jupiter   (friend)
+    (1,  6),( 6,  1),   # Taurus–Libra      Venus–Venus   (same lord)
+    (5, 10),(10,  5),   # Virgo–Aquarius    Mercury–Saturn (friend)
+    (2,  9),( 9,  2),   # Gemini–Capricorn  Mercury–Saturn (friend)
+    (0,  7),( 7,  0),   # Aries–Scorpio     Mars–Mars     (same lord)
+    (3,  8),( 8,  3),   # Cancer–Sagittarius Moon–Jupiter  (friend)
+})
+
+# 6/8 inauspicious — lords are enemies
+# (0,7) Ari-Sco: Mars-Mars (same but 6/8)  (3,10) Can-Aqu: Moon-Saturn
+# (4,9) Leo-Cap: Sun-Saturn  (2,7) Gem-Sco: Mercury-Mars  (1,8) Tau-Sag: Venus-Jupiter
+# (5,10) Vir-Aqu: Mercury-Saturn  (6,11) Lib-Pis: Venus-Jupiter
+_MRITYU_SHADASHTAK: frozenset = frozenset({
+    (0,  5),( 5,  0),   # Aries–Virgo        Mars–Mercury   (enemy)
+    (6, 11),(11,  6),   # Libra–Pisces       Venus–Jupiter  (enemy)
+    (2,  7),( 7,  2),   # Gemini–Scorpio     Mercury–Mars   (enemy)
+    (4,  9),( 9,  4),   # Leo–Capricorn      Sun–Saturn     (enemy)
+    (3, 10),(10,  3),   # Cancer–Aquarius    Moon–Saturn    (enemy)
+    (1,  8),( 8,  1),   # Taurus–Sagittarius Venus–Jupiter  (enemy)
+})
+
+# 2/12 auspicious — lords are friends
+# (0,11) Ari-Pis: Mars-Jupiter  (2,3) Gem-Can: Mercury-Moon  (3,4) Can-Leo: Moon-Sun
+# (5,6) Vir-Lib: Mercury-Venus  (7,8) Sco-Sag: Mars-Jupiter
+# (8,9) Sag-Cap: Jupiter-Saturn  (10,11) Aqu-Pis: Saturn-Jupiter  (4,5) Leo-Vir: Sun-Mercury
+_SHUBH_DVADASHATAK: frozenset = frozenset({
+    ( 0, 11),(11,  0),   # Aries–Pisces          Mars–Jupiter   (friend)
+    ( 3,  4),( 4,  3),   # Cancer–Leo            Moon–Sun       (friend)
+    ( 4,  5),( 5,  4),   # Leo–Virgo             Sun–Mercury    (friend)
+    ( 9, 10),(10,  9),   # Capricorn–Aquarius    Saturn–Saturn  (same lord)
+    ( 5,  6),( 6,  5),   # Virgo–Libra           Mercury–Venus  (friend)
+    ( 7,  8),( 8,  7),   # Scorpio–Sagittarius   Mars–Jupiter   (friend)
+    ( 1,  2),( 2,  1),   # Taurus–Gemini         Venus–Mercury  (friend)
+})
+
+# 2/12 inauspicious — lords are neutral/enemies
+# (0,1) Ari-Tau: Mars-Venus  (1,2) Tau-Gem: Venus-Mercury  (6,7) Lib-Sco: Venus-Mars
+# (9,10) Cap-Aqu: Saturn-Saturn (same but 2/12)
+_ASHUBH_DVADASHATAK: frozenset = frozenset({
+    (10, 11),(11, 10),   # Aquarius–Pisces       Saturn–Jupiter (neutral/enemy)
+    ( 0,  1),( 1,  0),   # Aries–Taurus          Mars–Venus     (neutral)
+    ( 2,  3),( 3,  2),   # Gemini–Cancer         Mercury–Moon   (neutral)
+    ( 6,  7),( 7,  6),   # Libra–Scorpio         Venus–Mars     (enemy)
+    ( 8,  9),( 9,  8),   # Sagittarius–Capricorn Jupiter–Saturn (neutral)
+})
+
+# 5/9 auspicious — lords are friends
+# (0,4) Ari-Leo: Mars-Sun  (1,5) Tau-Vir: Venus-Mercury  (2,6) Gem-Lib: Mercury-Venus
+# (3,7) Can-Sco: Moon-Mars  (4,8) Leo-Sag: Sun-Jupiter  (5,9) Vir-Cap: Mercury-Saturn
+# (6,10) Lib-Aqu: Venus-Saturn  (7,11) Sco-Pis: Mars-Jupiter
+_SHUBH_NAVPANCHAM: frozenset = frozenset({
+    (0,  4),( 4,  0),   # Aries–Leo           Mars–Sun       (friend)
+    (1,  5),( 5,  1),   # Taurus–Virgo        Venus–Mercury  (friend)
+    (2,  6),( 6,  2),   # Gemini–Libra        Mercury–Venus  (friend)
+    (4,  8),( 8,  4),   # Leo–Sagittarius     Sun–Jupiter    (friend)
+    (6, 10),(10,  6),   # Libra–Aquarius      Venus–Saturn   (friend)
+    (7, 11),(11,  7),   # Scorpio–Pisces      Mars–Jupiter   (friend)
+    (8,  0),( 0,  8),   # Sagittarius–Aries   Jupiter–Mars   (friend)
+    (1,  9),( 9,  1),   # Taurus–Capricorn    Venus–Saturn   (friend)
+})
+
+# 5/9 inauspicious — lords are neutral/enemies
+# (0,8) Ari-Sag: Mars-Jupiter  (1,9) Tau-Cap: Venus-Saturn  (2,10) Gem-Aqu: Mercury-Saturn
+# (3,11) Can-Pis: Moon-Jupiter  (these are all actually friend pairs by lordship but
+#  classical panchang lists them as Nashtan because the 9th sign from these is unfavourable)
+_NASHTAN_NAVPANCHAM: frozenset = frozenset({
+    (3,  7),( 7,  3),   # Cancer–Scorpio      Moon–Mars      (neutral/inauspicious)
+    (5,  9),( 9,  5),   # Virgo–Capricorn     Mercury–Saturn (neutral)
+    (5, 10),(10,  5),   # Virgo–Aquarius      Mercury–Saturn (neutral)
+    (3, 11),(11,  3),   # Cancer–Pisces       Moon–Jupiter   (neutral)
+})
+
+
+def _sadsatkut(boy_sign: str, girl_sign: str) -> dict:
+    bi = ZODIAC_SIGNS.index(boy_sign)
+    gi = ZODIAC_SIGNS.index(girl_sign)
+    pair = (bi, gi)
+    fwd = (gi - bi) % 12
+
+    return {
+        "distance":           fwd if fwd != 0 else 12,
+        "priti_shadashtak":   pair in _PRITI_SHADASHTAK,
+        "mrityu_shadashtak":  pair in _MRITYU_SHADASHTAK,
+        "shubh_dvadashatak":  pair in _SHUBH_DVADASHATAK,
+        "ashubh_dvadashatak": pair in _ASHUBH_DVADASHATAK,
+        "shubh_navpancham":   pair in _SHUBH_NAVPANCHAM,
+        "nashtan_navpancham": pair in _NASHTAN_NAVPANCHAM,
+    }
+
+# ---------------------------------------------------------------------------
 # Mangal Dosha (Kuja Dosha) check
 # ---------------------------------------------------------------------------
 
@@ -538,4 +651,5 @@ def calculate_match(
         "girl_mangal_dosha": girl_md,
         "mangal_dosha_cancelled": cancelled,
         "mangal_dosha_note": md_note,
+        "sadsatkut": _sadsatkut(boy_sign, girl_sign),
     }

@@ -21,6 +21,19 @@ const M: Record<Lang, Record<string, string>> = {
     dob: "Date of Birth", tob: "Time of Birth", place: "Place",
     rasi: "Janma Rasi", rasiLord: "Rasi Lord", janmaNak: "Janma Nakshatra",
     dosha: "Mangal Dosha",
+    sadsatkutTitle: "Sadsatkut Kostkaani",
+    sadsatkutSub: "Six-fold sign compatibility groups (based on zodiac house distance)",
+    distanceLabel: "Rashi distance",
+    priti: "Priti Shadashtak", mrityu: "Mrityu Shadashtak",
+    shubhDva: "Shubh Dvadashatak", ashubhDva: "Ashubh Dvadashatak",
+    shubhNav: "Shubh Navpancham", nashtanNav: "Nashtan Navpancham",
+    pritiDesc: "Auspicious Shadashtak (6/8 house) \u2014 mutual love & attraction",
+    mrityuDesc: "Inauspicious Shadashtak (6/8 house) \u2014 tension & obstacles",
+    shubhDvaDesc: "Auspicious Dvadashatak (2/12 house) \u2014 prosperity & support",
+    ashubhDvaDesc: "Inauspicious Dvadashatak (2/12 house) \u2014 financial stress",
+    shubhNavDesc: "Auspicious Navpancham (5/9 house) \u2014 fortune & children",
+    nashtanNavDesc: "Inauspicious Navpancham (5/9 house) \u2014 misfortune",
+    present: "Present", absent: "Absent",
   },
   hi: {
     title: "\u0915\u0941\u0902\u0921\u0932\u0940 \u092E\u093F\u0932\u093E\u0928",
@@ -39,6 +52,19 @@ const M: Record<Lang, Record<string, string>> = {
     dob: "\u091C\u0928\u094D\u092E \u0924\u093F\u0925\u093F", tob: "\u091C\u0928\u094D\u092E \u0938\u092E\u092F", place: "\u0938\u094D\u0925\u093E\u0928",
     rasi: "\u091C\u0928\u094D\u092E \u0930\u093E\u0936\u093F", rasiLord: "\u0930\u093E\u0936\u093F \u0938\u094D\u0935\u093E\u092E\u0940", janmaNak: "\u091C\u0928\u094D\u092E \u0928\u0915\u094D\u0937\u0924\u094D\u0930",
     dosha: "\u092E\u093E\u0902\u0917\u0932\u093F\u0915 \u0926\u094B\u0937",
+    sadsatkutTitle: "\u0938\u0926\u0938\u0924\u094D\u0915\u0942\u091F\u0915\u094B\u0937\u094D\u0920\u0915\u093E\u0928\u093F",
+    sadsatkutSub: "\u0937\u091F\u094D \u0930\u093E\u0936\u093F \u092F\u0941\u0917\u0932 \u0935\u0930\u094D\u0917 (\u0930\u093E\u0936\u093F \u0918\u0930 \u0905\u0902\u0924\u0930 \u0906\u0927\u093E\u0930\u093F\u0924)",
+    distanceLabel: "\u0930\u093E\u0936\u093F \u0905\u0902\u0924\u0930",
+    priti: "\u092A\u094D\u0930\u0940\u0924\u093F \u0937\u0921\u0937\u094D\u091F\u0915", mrityu: "\u092E\u0943\u0924\u094D\u092F\u0941 \u0937\u0921\u0937\u094D\u091F\u0915",
+    shubhDva: "\u0936\u0941\u092D \u0926\u094D\u0935\u093E\u0926\u0936\u0915", ashubhDva: "\u0905\u0936\u0941\u092D \u0926\u094D\u0935\u093E\u0926\u0936\u0915",
+    shubhNav: "\u0936\u0941\u092D \u0928\u0935\u092A\u0902\u091A\u092E", nashtanNav: "\u0928\u0937\u094D\u091F \u0928\u0935\u092A\u0902\u091A\u092E",
+    pritiDesc: "\u0936\u0941\u092D \u0937\u0921\u0937\u094D\u091F\u0915 (6/8 \u0918\u0930) \u2014 \u092A\u094D\u0930\u0947\u092E \u0935 \u0906\u0915\u0930\u094D\u0937\u0923",
+    mrityuDesc: "\u0905\u0936\u0941\u092D \u0937\u0921\u0937\u094D\u091F\u0915 (6/8 \u0918\u0930) \u2014 \u0924\u0928\u093E\u0935 \u0935 \u0905\u0935\u0930\u094B\u0927",
+    shubhDvaDesc: "\u0936\u0941\u092D \u0926\u094D\u0935\u093E\u0926\u0936\u0915 (2/12 \u0918\u0930) \u2014 \u0938\u092E\u0943\u0926\u094D\u0927\u093F",
+    ashubhDvaDesc: "\u0905\u0936\u0941\u092D \u0926\u094D\u0935\u093E\u0926\u0936\u0915 (2/12 \u0918\u0930) \u2014 \u0906\u0930\u094D\u0925\u093F\u0915 \u0924\u0928\u093E\u0935",
+    shubhNavDesc: "\u0936\u0941\u092D \u0928\u0935\u092A\u0902\u091A\u092E (5/9 \u0918\u0930) \u2014 \u092D\u093E\u0917\u094D\u092F \u0935 \u0938\u0902\u0924\u093E\u0928",
+    nashtanNavDesc: "\u0905\u0936\u0941\u092D \u0928\u0935\u092A\u0902\u091A\u092E (5/9 \u0918\u0930) \u2014 \u0926\u0941\u0930\u094D\u092D\u093E\u0917\u094D\u092F",
+    present: "\u0909\u092A\u0938\u094D\u0925\u093F\u0924", absent: "\u0905\u0928\u0941\u092A\u0938\u094D\u0925\u093F\u0924",
   },
   gu: {
     title: "\u0A95\u0AC1\u0A82\u0AA1\u0AB3\u0AC0 \u0AAE\u0ABF\u0AB3\u0ABE\u0AA8",
@@ -57,6 +83,19 @@ const M: Record<Lang, Record<string, string>> = {
     dob: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AA4\u0ABE\u0AB0\u0ABF\u0A96", tob: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AB8\u0AAE\u0AAF", place: "\u0AB8\u0ACD\u0AA5\u0AB3",
     rasi: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AB0\u0ABE\u0AB6\u0ABF", rasiLord: "\u0AB0\u0ABE\u0AB6\u0ABF \u0AB8\u0ACD\u0AB5\u0ABE\u0AAE\u0AC0", janmaNak: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AA8\u0A95\u0ACD\u0AB7\u0AA4\u0ACD\u0AB0",
     dosha: "\u0AAE\u0ABE\u0A82\u0A97\u0AB3\u0ABF\u0A95 \u0AA6\u0ACB\u0AB7",
+    sadsatkutTitle: "\u0AB8\u0AA6\u0AB8\u0AA4\u0ACD\u0A95\u0AC2\u0A9F\u0A95\u0ACB\u0AB7\u0ACD\u0AA0\u0A95\u0ABE\u0AA8\u0ABF",
+    sadsatkutSub: "\u0AB7\u0A9F\u0ACD \u0AB0\u0ABE\u0AB6\u0ABF \u0AAF\u0AC1\u0A97\u0AB3 \u0AB5\u0AB0\u0ACD\u0A97 (\u0AB0\u0ABE\u0AB6\u0ABF \u0A98\u0AB0 \u0A85\u0A82\u0AA4\u0AB0 \u0A86\u0AA7\u0ABE\u0AB0\u0ABF\u0AA4)",
+    distanceLabel: "\u0AB0\u0ABE\u0AB6\u0ABF \u0A85\u0A82\u0AA4\u0AB0",
+    priti: "\u0AAA\u0ACD\u0AB0\u0AC0\u0AA4\u0ABF \u0AB7\u0AA1\u0AB7\u0ACD\u0A9F\u0A95", mrityu: "\u0AAE\u0AC3\u0AA4\u0ACD\u0AAF\u0AC1 \u0AB7\u0AA1\u0AB7\u0ACD\u0A9F\u0A95",
+    shubhDva: "\u0AB6\u0AC1\u0AAD \u0AA6\u0ACD\u0AB5\u0ABE\u0AA6\u0AB6\u0A95", ashubhDva: "\u0A85\u0AB6\u0AC1\u0AAD \u0AA6\u0ACD\u0AB5\u0ABE\u0AA6\u0AB6\u0A95",
+    shubhNav: "\u0AB6\u0AC1\u0AAD \u0AA8\u0AB5\u0AAA\u0A82\u0A9A\u0AAE", nashtanNav: "\u0AA8\u0AB7\u0ACD\u0A9F \u0AA8\u0AB5\u0AAA\u0A82\u0A9A\u0AAE",
+    pritiDesc: "\u0AB6\u0AC1\u0AAD \u0AB7\u0AA1\u0AB7\u0ACD\u0A9F\u0A95 (6/8 \u0A98\u0AB0)",
+    mrityuDesc: "\u0A85\u0AB6\u0AC1\u0AAD \u0AB7\u0AA1\u0AB7\u0ACD\u0A9F\u0A95 (6/8 \u0A98\u0AB0)",
+    shubhDvaDesc: "\u0AB6\u0AC1\u0AAD \u0AA6\u0ACD\u0AB5\u0ABE\u0AA6\u0AB6\u0A95 (2/12 \u0A98\u0AB0)",
+    ashubhDvaDesc: "\u0A85\u0AB6\u0AC1\u0AAD \u0AA6\u0ACD\u0AB5\u0ABE\u0AA6\u0AB6\u0A95 (2/12 \u0A98\u0AB0)",
+    shubhNavDesc: "\u0AB6\u0AC1\u0AAD \u0AA8\u0AB5\u0AAA\u0A82\u0A9A\u0AAE (5/9 \u0A98\u0AB0)",
+    nashtanNavDesc: "\u0A85\u0AB6\u0AC1\u0AAD \u0AA8\u0AB5\u0AAA\u0A82\u0A9A\u0AAE (5/9 \u0A98\u0AB0)",
+    present: "\u0AB9\u0ABE\u0A9C\u0AB0", absent: "\u0A97\u0AC7\u0AB0\u0AB9\u0ABE\u0A9C\u0AB0",
   },
 };
 
@@ -415,6 +454,61 @@ export default function MatchResultPage() {
                 <p className="text-gray-400 text-[10px] mt-1.5">{data.mangal_dosha_note}</p>
               )}
             </div>
+
+            {/* ── Sadsatkut Kostkaani ── */}
+            {(() => {
+              const sk = data.sadsatkut;
+              type SkKey = "priti_shadashtak"|"mrityu_shadashtak"|"shubh_dvadashatak"|"ashubh_dvadashatak"|"shubh_navpancham"|"nashtan_navpancham";
+              const groups: { key: SkKey; titleKey: keyof typeof t; descKey: keyof typeof t; auspicious: boolean }[] = [
+                { key: "priti_shadashtak",   titleKey: "priti",      descKey: "pritiDesc",      auspicious: true  },
+                { key: "mrityu_shadashtak",  titleKey: "mrityu",     descKey: "mrityuDesc",     auspicious: false },
+                { key: "shubh_dvadashatak",  titleKey: "shubhDva",   descKey: "shubhDvaDesc",   auspicious: true  },
+                { key: "ashubh_dvadashatak", titleKey: "ashubhDva",  descKey: "ashubhDvaDesc",  auspicious: false },
+                { key: "shubh_navpancham",   titleKey: "shubhNav",   descKey: "shubhNavDesc",   auspicious: true  },
+                { key: "nashtan_navpancham", titleKey: "nashtanNav", descKey: "nashtanNavDesc", auspicious: false },
+              ];
+              return (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-gray-700 font-bold text-xs">{t.sadsatkutTitle}</p>
+                    {sk && (
+                      <span className="text-[10px] text-indigo-600 font-semibold bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5">
+                        {t.distanceLabel}: {sk.distance}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-400 text-[10px] mb-3">{t.sadsatkutSub}</p>
+                  <div className="space-y-2">
+                    {groups.map(({ key, titleKey, descKey, auspicious }) => {
+                      const present = sk ? (sk[key] as boolean) : false;
+                      const colorCls = present
+                        ? auspicious ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+                        : "bg-gray-50 border-gray-200";
+                      const dotCls = present
+                        ? auspicious ? "bg-emerald-500" : "bg-red-500"
+                        : "bg-gray-300";
+                      const textCls = present
+                        ? auspicious ? "text-emerald-700" : "text-red-700"
+                        : "text-gray-400";
+                      return (
+                        <div key={key} className={`flex items-start gap-2 rounded-lg px-3 py-2 border text-xs ${colorCls}`}>
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${dotCls}`} />
+                          <div>
+                            <p className={`font-semibold leading-tight ${present ? "text-gray-800" : "text-gray-400"}`}>
+                              {t[titleKey] as string}
+                              <span className={`ml-1.5 font-normal text-[10px] ${textCls}`}>
+                                ({present ? t.present : t.absent})
+                              </span>
+                            </p>
+                            <p className={`leading-tight text-[10px] mt-0.5 ${textCls}`}>{t[descKey] as string}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>{/* end LEFT COLUMN */}
 

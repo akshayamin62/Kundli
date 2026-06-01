@@ -26,6 +26,9 @@ def calculate_kundli_match(req: MatchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Matching calculation failed: {e}")
 
+    sk_raw = result.get("sadsatkut")
+    sadsatkut = MatchResponse.SadsatkutResult(**sk_raw) if sk_raw else None
+
     return MatchResponse(
         total_score=result["total_score"],
         max_score=result["max_score"],
@@ -47,4 +50,5 @@ def calculate_kundli_match(req: MatchRequest):
         mangal_dosha_note=result["mangal_dosha_note"],
         boy_chart=boy_chart,
         girl_chart=girl_chart,
+        sadsatkut=sadsatkut,
     )
