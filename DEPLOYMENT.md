@@ -107,12 +107,12 @@ cd /var/www/astrology/frontend
 
 npm install
 
-# Build for production with correct API URL
-NEXT_PUBLIC_API_URL=https://kundli.astrogyan.org npm run build
+# Build for production (.env.production is read automatically)
+npm run build
 ```
 
-> The build uses the env variable at **build time** (Next.js bakes it in).  
-> Always rebuild after changing `NEXT_PUBLIC_API_URL`.
+> `NEXT_PUBLIC_API_URL` is set in `frontend/.env.production` and baked in at build time.  
+> To change the API URL, edit that file and rebuild.
 
 ---
 
@@ -288,7 +288,7 @@ deactivate
 
 # Rebuild frontend
 cd frontend
-NEXT_PUBLIC_API_URL=https://kundli.astrogyan.org npm run build
+npm run build
 cd ..
 
 # Restart both services
@@ -327,6 +327,7 @@ pm2 delete all                    # remove from PM2 (won't delete files)
 │   └── requirements.txt
 └── frontend/
     ├── .next/                ← built output (auto-generated)
+    ├── .env.production       ← NEXT_PUBLIC_API_URL (committed to git)
     ├── src/
     ├── package.json
     └── next.config.js
