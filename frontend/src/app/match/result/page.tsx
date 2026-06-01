@@ -274,7 +274,7 @@ export default function MatchResultPage() {
             </button>
             <span className="text-gray-300">|</span>
             <button
-              onClick={() => router.push("/match")}
+              onClick={() => router.push("/")}
               className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-800 text-xs transition-colors"
             >
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
