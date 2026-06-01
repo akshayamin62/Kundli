@@ -8,7 +8,7 @@ import DashantariDashaTable from "@/components/DashantariDashaTable";
 import PlanetsRashiTransit from "@/components/PlanetsRashiTransit";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
-import { calculateChart, calculateVarga } from "@/services/api";
+import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang } from "@/lib/translations";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
@@ -218,20 +218,14 @@ export default function ResultPage() {
   useEffect(() => {
     if (mainTab !== "allvargas" || !req || allVargaStarted) return;
     setAllVargaStarted(true);
-    const toFetch = Array.from({ length: 59 }, (_, i) => i + 2);
-    setAllVargaLoadingNs(new Set(toFetch));
-    const BATCH = 12;
+    const ns = Array.from({ length: 59 }, (_, i) => i + 2);
+    setAllVargaLoadingNs(new Set(ns));
     (async () => {
-      for (let i = 0; i < toFetch.length; i += BATCH) {
-        const batch = toFetch.slice(i, i + BATCH);
-        await Promise.all(batch.map(async (n) => {
-          try {
-            const result = await calculateVarga({ ...req, n });
-            setAllVargaCharts(prev => ({ ...prev, [n]: result }));
-          } catch { /* silently ignore */ }
-          setAllVargaLoadingNs(prev => { const next = new Set(prev); next.delete(n); return next; });
-        }));
-      }
+      try {
+        const results = await calculateVargaBulk(req, ns);
+        setAllVargaCharts(results);
+      } catch { /* silently ignore */ }
+      setAllVargaLoadingNs(new Set());
     })();
   }, [mainTab, req, allVargaStarted]);
 

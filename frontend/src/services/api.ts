@@ -32,6 +32,24 @@ export async function calculateVarga(req: VargaRequest): Promise<ChartResponse> 
   return res.json();
 }
 
+export async function calculateVargaBulk(req: ChartRequest, ns: number[]): Promise<Record<number, ChartResponse>> {
+  const res = await fetch(`${API_URL}/api/chart/varga-bulk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...req, ns }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+
+  const raw = await res.json() as Record<string, ChartResponse>;
+  return Object.fromEntries(
+    Object.entries(raw).map(([k, v]) => [Number(k), v])
+  ) as Record<number, ChartResponse>;
+}
+
 export async function calculateDasha(req: DashaRequest): Promise<DashaResponse> {
   const res = await fetch(`${API_URL}/api/chart/dasha`, {
     method: "POST",

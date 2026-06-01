@@ -98,6 +98,10 @@ class VargaRequest(ChartRequest):
     n: int = 9  # which D-chart (1–60)
 
 
+class VargaBulkRequest(ChartRequest):
+    ns: list[int]  # varga numbers to compute, e.g. [2, 3, ..., 60]
+
+
 # ── Vimshottari Dasha ────────────────────────────────────────────────────────
 
 class DashaRequest(ChartRequest):

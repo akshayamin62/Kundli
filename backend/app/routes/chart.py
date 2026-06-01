@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from datetime import date as date_type
 from app.models.schemas import (
-    ChartRequest, ChartResponse, VargaRequest, HouseCusp, PlanetPosition, DegreePosition,
+    ChartRequest, ChartResponse, VargaRequest, VargaBulkRequest,
+    ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition,
     DashaRequest, DashaResponse, DashaPeriod,
     TransitRequest, TransitResponse, TransitEntry,
 )
@@ -15,19 +16,14 @@ from app.services.transit_calc import get_sign_transits
 router = APIRouter()
 
 
-def _build_varga_chart(req: VargaRequest) -> ChartResponse:
-    """Compute D-N divisional chart by remapping natal longitudes."""
-    n = req.n
-    base = build_chart(req)
-
+def _remap_to_varga(base: ChartResponse, n: int) -> ChartResponse:
+    """Remap an already-computed base chart to D-N. No geocoding/IO — pure computation."""
     if n == 1:
         return base
 
-    # New ascendant sign in varga
     asc_lon = base.angles.ascendant.longitude
     new_asc_idx = varga_sign_index(asc_lon, n)
 
-    # Helper: remap any longitude to a DegreePosition in the varga sign
     def remap_pos(lon: float) -> DegreePosition:
         new_idx  = varga_sign_index(lon, n)
         new_sign = ZODIAC_SIGNS[new_idx]
@@ -43,8 +39,6 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
             formatted=f"{deg}\u00b0{mins:02d}'{secs:02d}\" {new_sign}",
         )
 
-    # Remap angles
-    from app.models.schemas import ChartAngles
     new_angles = ChartAngles(
         ascendant=remap_pos(base.angles.ascendant.longitude),
         midheaven=remap_pos(base.angles.midheaven.longitude),
@@ -52,7 +46,6 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
         imum_coeli=remap_pos(base.angles.imum_coeli.longitude),
     )
 
-    # Build Whole Sign houses from new ASC
     new_houses: list[HouseCusp] = []
     for i in range(12):
         sign_idx = (new_asc_idx + i) % 12
@@ -69,7 +62,6 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
             formatted=info["formatted"],
         ))
 
-    # Remap planets
     new_planets: list[PlanetPosition] = []
     for p in base.planets:
         new_sign_idx = varga_sign_index(p.longitude, n)
@@ -92,7 +84,6 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
             speed_deg_day=p.speed_deg_day,
         ))
 
-    from app.models.schemas import ChartMeta
     new_meta = ChartMeta(
         **{k: v for k, v in base.meta.model_dump().items() if k not in ("varga_n", "varga_name")},
         varga_n=n,
@@ -100,6 +91,12 @@ def _build_varga_chart(req: VargaRequest) -> ChartResponse:
     )
 
     return ChartResponse(meta=new_meta, angles=new_angles, houses=new_houses, planets=new_planets)
+
+
+def _build_varga_chart(req: VargaRequest) -> ChartResponse:
+    """Compute D-N divisional chart by remapping natal longitudes."""
+    base = build_chart(req)
+    return _remap_to_varga(base, req.n)
 
 
 @router.post("/chart/calculate", response_model=ChartResponse, tags=["Chart"])
@@ -138,6 +135,28 @@ def calculate_varga(req: VargaRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Varga calculation error: {str(e)}")
+
+
+@router.post("/chart/varga-bulk", tags=["Varga"])
+def calculate_varga_bulk(req: VargaBulkRequest):
+    """
+    Calculate multiple D-N divisional charts in a single request.
+
+    Geocodes and builds the base natal chart once, then remaps to all
+    requested vargas. Returns a dict keyed by n (as string) with ChartResponse values.
+    """
+    if not req.ns:
+        raise HTTPException(status_code=400, detail="ns must not be empty")
+    invalid = [n for n in req.ns if n < 1 or n > 60]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"n values out of range: {invalid}")
+    try:
+        base = build_chart(req)
+        return {str(n): _remap_to_varga(base, n) for n in req.ns}
+    except GeocodingError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk varga error: {str(e)}")
 
 
 @router.get("/chart/house-systems", tags=["Chart"])
