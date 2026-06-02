@@ -254,9 +254,9 @@ function LegendButton() {
             </div>
           ))}
           <div className="flex items-center gap-2.5">
-            <svg width="28" height="10" viewBox="0 0 28 10">
-              <line x1="3" y1="5" x2="25" y2="5" stroke="red" strokeWidth="1.5" strokeDasharray="3 2"/>
-            </svg>
+          <svg width="28" height="10" viewBox="0 0 28 10">
+                <line x1="3" y1="5" x2="11" y2="5" stroke={"red"} strokeWidth="1" strokeDasharray="2 0"/>
+              </svg>
             <span className="text-sm text-slate-600">Retrograde motion</span>
           </div>
         </div>

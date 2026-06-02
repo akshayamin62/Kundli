@@ -189,42 +189,6 @@ const ROW_KEYS: RowKey[] = [
   "mitra", "sama", "shatru",
 ];
 
-function rowBg(key: RowKey): string {
-  if (["swakshetra"].includes(key))                    return "#f0fdf4";
-  if (["uchcha", "ucchaDeg"].includes(key))            return "#eff6ff";
-  if (["neecha", "neechaDeg"].includes(key))           return "#fff1f2";
-  if (["moolatrikona"].includes(key))                  return "#faf5ff";
-  if (["ekpaad"].includes(key))                        return "#f9fafb";
-  if (["dwipaad"].includes(key))                       return "#eff6ff";
-  if (["tripaad"].includes(key))                       return "#f0fdf4";
-  if (["sampurna"].includes(key))                      return "#fff1f2";
-  if (["mitra"].includes(key))                         return "#f0fdf4";
-  if (["sama"].includes(key))                          return "#fefce8";
-  if (["shatru"].includes(key))                        return "#fff1f2";
-  if (["tatva"].includes(key))                         return "#fdf4ff";
-  if (["disha"].includes(key))                         return "#f0f9ff";
-  if (["sthanbal"].includes(key))                      return "#f0fdf4";
-  if (["kaal"].includes(key))                          return "#fafaf9";
-  if (["vatadi"].includes(key))                        return "#fff7ed";
-  if (["ling"].includes(key))                          return "#f5f3ff";
-  return "#ffffff";
-}
-
-function rowTextColor(key: RowKey): string {
-  if (["swakshetra", "moolatrikona", "tripaad", "mitra"].includes(key)) return "#15803d";
-  if (["uchcha", "ucchaDeg", "dwipaad"].includes(key))                  return "#1d4ed8";
-  if (["neecha", "neechaDeg", "sampurna", "shatru"].includes(key))      return "#dc2626";
-  if (["ekpaad"].includes(key))                                          return "#111827";
-  if (["sama"].includes(key))                                            return "#a16207";
-  if (["tatva"].includes(key))                                           return "#7e22ce";
-  if (["disha"].includes(key))                                           return "#0369a1";
-  if (["sthanbal"].includes(key))                                        return "#15803d";
-  if (["kaal"].includes(key))                                            return "#374151";
-  if (["vatadi"].includes(key))                                          return "#c2410c";
-  if (["ling"].includes(key))                                            return "#6d28d9";
-  return "#374151";
-}
-
 function getCell(planet: string, key: RowKey, lang: Lang): string {
   const d = DATA[planet];
   switch (key) {
@@ -262,21 +226,21 @@ export default function GrahshilChakraTable({ lang = "en" }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-indigo-900 border-b border-indigo-200 pb-2">
+      <h2 className="text-2xl font-bold text-black border-b border-gray-200 pb-2">
         {title}
       </h2>
 
       {/* Main table — rows = attributes, cols = planets */}
       <div className="overflow-x-auto rounded-xl border border-gray-300 shadow-sm">
-        <table className="text-xs border-collapse w-full">
+        <table className="text-sm border-collapse w-full">
           <thead>
-            <tr className="bg-indigo-800 text-white">
+            <tr className="bg-gray-100 text-black">
               {/* Row label header */}
-              <th className="px-3 py-2 text-left border border-indigo-700 font-semibold min-w-[160px] sticky left-0 bg-indigo-800 z-10">
+              <th className="px-3 py-2 text-left border border-gray-300 font-semibold min-w-[170px] sticky left-0 bg-gray-100 z-10">
                 {lang === "en" ? "Attribute" : lang === "hi" ? "विशेषता" : "વિશેષતા"}
               </th>
               {PLANETS_EN.map((p, i) => (
-                <th key={p} className="px-2 py-2 text-center border border-indigo-700 font-semibold min-w-[90px]">
+                <th key={p} className="px-2 py-2 text-center border border-gray-300 font-semibold min-w-[95px]">
                   <div>{PLANET_SYMBOLS[p]}</div>
                   <div>{headers[i]}</div>
                 </th>
@@ -284,14 +248,13 @@ export default function GrahshilChakraTable({ lang = "en" }: Props) {
             </tr>
           </thead>
           <tbody>
-            {ROW_KEYS.map((key) => {
-              const bg = rowBg(key);
-              const tc = rowTextColor(key);
+            {ROW_KEYS.map((key, idx) => {
+              const bg = idx % 2 === 0 ? "#ffffff" : "#f3f4f6";
               return (
                 <tr key={key} style={{ backgroundColor: bg }}>
                   <td
                     className="px-3 py-2 border border-gray-200 font-semibold sticky left-0 z-10"
-                    style={{ backgroundColor: bg, color: tc }}
+                    style={{ backgroundColor: bg, color: "#111111" }}
                   >
                     {rows[key]}
                   </td>
@@ -299,7 +262,7 @@ export default function GrahshilChakraTable({ lang = "en" }: Props) {
                     <td
                       key={p}
                       className="px-2 py-2 text-center border border-gray-200 font-medium"
-                      style={{ color: tc }}
+                      style={{ color: "#111111" }}
                     >
                       {getCell(p, key, lang)}
                     </td>

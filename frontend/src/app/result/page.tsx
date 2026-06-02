@@ -234,6 +234,8 @@ export default function ResultPage() {
   const [allVargaCharts, setAllVargaCharts]   = useState<Record<number, ChartResponse>>({});
   const [allVargaLoadingNs, setAllVargaLoadingNs] = useState<Set<number>>(new Set());
   const [allVargaStarted, setAllVargaStarted] = useState(false);
+  const [modalVargaN, setModalVargaN] = useState<number | null>(null);
+  const [modalVargaChart, setModalVargaChart] = useState<ChartResponse | null>(null);
 
   // Gochar (right-bottom panel)
   const [gocharChart, setGocharChart]     = useState<ChartResponse | null>(null);
@@ -299,6 +301,18 @@ export default function ResultPage() {
       setAllVargaLoadingNs(new Set());
     })();
   }, [mainTab, req, allVargaStarted]);
+
+  // ESC closes D-chart modal
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setModalVargaN(null);
+        setModalVargaChart(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // ── Close varga dropdown on outside click ─────────────────────────────────
   useEffect(() => {
@@ -477,7 +491,16 @@ export default function ResultPage() {
                 const isLoading = n > 1 && allVargaLoadingNs.has(n);
                 const info = VARGA_INFO[n];
                 return (
-                  <div key={n} className="flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+                  <div
+                    key={n}
+                    className="flex flex-col rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:border-indigo-300 transition-all"
+                    onClick={() => {
+                      if (!isLoading && varga) {
+                        setModalVargaN(n);
+                        setModalVargaChart(varga);
+                      }
+                    }}
+                  >
                     {/* Card header */}
                     <div className="bg-indigo-50 border-b border-indigo-100 px-2 py-1 shrink-0">
                       <div className="text-[10px] font-bold text-indigo-800 leading-tight truncate">
@@ -593,6 +616,50 @@ export default function ResultPage() {
 
         </>)}
       </div>
+
+      {/* ── D-Chart Modal ── */}
+      {modalVargaN && modalVargaChart && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/55 backdrop-blur-[1px] flex items-center justify-center p-4"
+          onClick={() => {
+            setModalVargaN(null);
+            setModalVargaChart(null);
+          }}
+        >
+          <div
+            className="w-full max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-3 border-b border-gray-200 bg-indigo-50 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-indigo-900">
+                  D{modalVargaN} – {VARGA_INFO[modalVargaN]?.name ?? ""}
+                </p>
+                <p className="text-xs text-gray-500 italic">
+                  {VARGA_INFO[modalVargaN]?.area ?? ""}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setModalVargaN(null);
+                  setModalVargaChart(null);
+                }}
+                className="text-gray-500 hover:text-gray-800 hover:bg-white rounded-lg p-1.5 transition-colors"
+                aria-label="Close modal"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-3">
+              <div className="rounded-xl border border-indigo-200 overflow-hidden" style={{ aspectRatio: "900/640" }}>
+                <ChartWheel chart={modalVargaChart} lang={lang} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
