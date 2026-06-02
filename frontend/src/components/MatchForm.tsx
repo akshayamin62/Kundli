@@ -28,6 +28,17 @@ function loadPerson(key: string): Partial<MatchPersonRequest> {
   } catch { return {}; }
 }
 
+function normalizePerson(p: MatchPersonRequest): MatchPersonRequest {
+  return {
+    name: (p.name ?? "").trim(),
+    birth_date: (p.birth_date ?? "").trim(),
+    birth_time: (p.birth_time ?? "").trim(),
+    birth_place: (p.birth_place ?? "").trim(),
+    house_system: (p.house_system ?? "whole_sign") as MatchPersonRequest["house_system"],
+    zodiac: (p.zodiac ?? "sidereal") as MatchPersonRequest["zodiac"],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Single-person form panel
 // ---------------------------------------------------------------------------
@@ -235,15 +246,18 @@ export default function MatchForm({
     setLoading(true);
     setError(null);
     try {
+      const payloadBoy = normalizePerson(boy);
+      const payloadGirl = normalizePerson(girl);
       const result = await calculateMatch({
-        boy,
-        girl,
+        boy: payloadBoy,
+        girl: payloadGirl,
         save_history: isEditMode ? false : true,
         history_id: historyId,
       });
-      onResult(result, { boy, girl });
+      onResult(result, { boy: payloadBoy, girl: payloadGirl });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Matching calculation failed");
+      const message = err instanceof Error ? err.message : "Matching calculation failed";
+      setError(message.replace(/\[object Object\],?/g, "").trim() || "Matching calculation failed");
     } finally {
       setLoading(false);
     }

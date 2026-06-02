@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MatchResponse, MatchKoot, MatchPersonRequest } from "@/types/chart";
+import { MatchResponse, MatchKoot, MatchPersonRequest, MatchRequest } from "@/types/chart";
 import ChartWheel from "@/components/ChartWheel";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES, PLANET_NAMES, SIGN_LORDS } from "@/lib/translations";
 import { downloadMatchReport } from "@/lib/reportGenerator";
@@ -10,6 +10,7 @@ import FormModal from "@/components/FormModal";
 import MatchForm from "@/components/MatchForm";
 import { saveMatchRequest, matchRequestFromResult } from "@/lib/editPrefill";
 import { resolveMatchHistoryId, setMatchHistoryId, getMatchHistoryId } from "@/lib/historySession";
+import { fetchHistoryItem } from "@/services/api";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -361,10 +362,15 @@ export default function MatchResultPage() {
         setEditError("No saved history record found for this match.");
         return;
       }
+      const full = await fetchHistoryItem(id);
+      const storedInput = full.input as MatchRequest | undefined;
+      const baseReq = storedInput ?? req;
       setEditHistoryId(id);
-      setEditBoy(req.boy);
-      setEditGirl(req.girl);
+      setEditBoy(baseReq.boy);
+      setEditGirl(baseReq.girl);
       setEditOpen(true);
+    } catch {
+      setEditError("Unable to open edit form for this match.");
     } finally {
       setResolvingEdit(false);
     }

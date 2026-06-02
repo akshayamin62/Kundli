@@ -93,7 +93,18 @@ export async function calculateMatch(req: MatchRequest): Promise<MatchResponse> 
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    const err = await res.json().catch(() => ({ detail: "Unknown error" })) as {
+      detail?: string | Array<{ msg?: string; loc?: Array<string | number> }>;
+    };
+    if (Array.isArray(err.detail)) {
+      const details = err.detail
+        .map((d) => {
+          const loc = Array.isArray(d.loc) ? d.loc.join(".") : "request";
+          return `${loc}: ${d.msg ?? "Invalid value"}`;
+        })
+        .join(" | ");
+      throw new Error(details || `HTTP ${res.status}`);
+    }
     throw new Error(err.detail || `HTTP ${res.status}`);
   }
 
