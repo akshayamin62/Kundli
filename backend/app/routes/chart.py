@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from datetime import date as date_type
+from datetime import date as date_type, datetime, timezone
 from app.models.schemas import (
     ChartRequest, ChartResponse, VargaRequest, VargaBulkRequest,
     ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition,
@@ -12,8 +12,40 @@ from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varg
 from app.services.astronomy import HOUSE_NAMES, longitude_to_sign_info
 from app.services.dasha import calculate_vimshottari
 from app.services.transit_calc import get_sign_transits
+from app.database import get_history_collection
 
 router = APIRouter()
+
+
+def _save_kundali_history(req: ChartRequest) -> None:
+    """Persist kundali INPUTS to MongoDB history (best-effort; never raises)."""
+    try:
+        if not req.save_history:
+            return
+        col = get_history_collection()
+        if col is None:
+            return
+        input_doc = {
+            "name": (req.name or "").strip(),
+            "birth_date": req.birth_date,
+            "birth_time": req.birth_time,
+            "birth_place": req.birth_place,
+            "house_system": req.house_system,
+            "zodiac": req.zodiac,
+        }
+
+        # Deduplicate exact same input set.
+        if col.find_one({"type": "kundali", "input": input_doc}) is not None:
+            return
+
+        doc = {
+            "type": "kundali",
+            "input": input_doc,
+            "created_at": datetime.now(timezone.utc),
+        }
+        col.insert_one(doc)
+    except Exception:
+        pass
 
 
 def _remap_to_varga(base: ChartResponse, n: int) -> ChartResponse:
@@ -111,7 +143,9 @@ def calculate_chart(req: ChartRequest):
     - Returns positions of Sun, Moon, and all planets
     """
     try:
-        return build_chart(req)
+        chart = build_chart(req)
+        _save_kundali_history(req)
+        return chart
     except GeocodingError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -1,4 +1,4 @@
-import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse } from "@/types/chart";
+import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull } from "@/types/chart";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -98,4 +98,39 @@ export async function calculateMatch(req: MatchRequest): Promise<MatchResponse> 
   }
 
   return res.json();
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+
+export async function fetchHistory(params?: {
+  search?: string;
+  type?: "kundali" | "match" | "";
+  limit?: number;
+  skip?: number;
+}): Promise<{ items: HistoryItemSummary[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  if (params?.type) qs.set("type", params.type);
+  if (params?.limit != null) qs.set("limit", String(params.limit));
+  if (params?.skip != null) qs.set("skip", String(params.skip));
+  const res = await fetch(`${API_URL}/api/history?${qs.toString()}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function fetchHistoryItem(id: string): Promise<HistoryItemFull> {
+  const res = await fetch(`${API_URL}/api/history/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteHistoryItem(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/history/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
 }

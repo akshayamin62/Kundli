@@ -18,6 +18,7 @@ export default function BirthForm({ onResult, storageKey }: Props) {
   const SK = storageKey ?? "jk_birth_form";
 
   const [form, setFormRaw] = useState<ChartRequest>({
+    name: "",
     birth_date: "",
     birth_time: "",
     birth_place: "",
@@ -40,6 +41,7 @@ export default function BirthForm({ onResult, storageKey }: Props) {
         const p = JSON.parse(raw) as Partial<ChartRequest & { _placeInput: string }>;
         setFormRaw((f) => ({
           ...f,
+          name: p.name ?? "",
           birth_date: p.birth_date ?? "",
           birth_time: p.birth_time ?? "",
           birth_place: p.birth_place ?? "",
@@ -133,6 +135,17 @@ export default function BirthForm({ onResult, storageKey }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      {field(
+        "Full Name",
+        <input
+          type="text"
+          placeholder="e.g. Ravi Sharma"
+          value={form.name ?? ""}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          className={inputCls}
+        />,
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         {field(
           "Birth Date",

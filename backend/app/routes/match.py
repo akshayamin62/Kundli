@@ -1,9 +1,52 @@
 from fastapi import APIRouter, HTTPException
+from datetime import datetime, timezone
 from app.models.schemas import MatchRequest, MatchResponse, MatchKoot
 from app.services.chart_builder import build_chart
 from app.services.matching import calculate_match
+from app.database import get_history_collection
 
 router = APIRouter()
+
+
+def _save_match_history_from_request(req: MatchRequest) -> None:
+    """Persist match INPUTS to MongoDB history (best-effort; never raises)."""
+    try:
+        if not req.save_history:
+            return
+        col = get_history_collection()
+        if col is None:
+            return
+        input_doc = {
+            "boy": {
+                "name": (req.boy.name or "").strip(),
+                "birth_date": req.boy.birth_date,
+                "birth_time": req.boy.birth_time,
+                "birth_place": req.boy.birth_place,
+                "house_system": req.boy.house_system,
+                "zodiac": req.boy.zodiac,
+            },
+            "girl": {
+                "name": (req.girl.name or "").strip(),
+                "birth_date": req.girl.birth_date,
+                "birth_time": req.girl.birth_time,
+                "birth_place": req.girl.birth_place,
+                "house_system": req.girl.house_system,
+                "zodiac": req.girl.zodiac,
+            },
+        }
+
+        # Deduplicate exact same full match form inputs.
+        if col.find_one({"type": "match", "input": input_doc}) is not None:
+            return
+
+        doc = {
+            "type": "match",
+            "input": input_doc,
+            "created_at": datetime.now(timezone.utc),
+        }
+        col.insert_one(doc)
+    except Exception:
+        pass
 
 
 @router.post("/calculate", response_model=MatchResponse)
@@ -29,7 +72,7 @@ def calculate_kundli_match(req: MatchRequest):
     sk_raw = result.get("sadsatkut")
     sadsatkut = MatchResponse.SadsatkutResult(**sk_raw) if sk_raw else None
 
-    return MatchResponse(
+    match_response = MatchResponse(
         total_score=result["total_score"],
         max_score=result["max_score"],
         percentage=result["percentage"],
@@ -52,3 +95,5 @@ def calculate_kundli_match(req: MatchRequest):
         girl_chart=girl_chart,
         sadsatkut=sadsatkut,
     )
+    _save_match_history_from_request(req)
+    return match_response

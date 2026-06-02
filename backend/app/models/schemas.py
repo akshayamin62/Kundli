@@ -3,6 +3,8 @@ from typing import Literal, Optional
 
 
 class ChartRequest(BaseModel):
+    name: Optional[str] = None   # person's name (for history)
+    save_history: bool = True
     birth_date: str          # "YYYY-MM-DD"
     birth_time: str          # "HH:MM" or "HH:MM:SS"
     birth_place: str         # "Mumbai, India"
@@ -156,6 +158,7 @@ class MatchPersonRequest(ChartRequest):
 class MatchRequest(BaseModel):
     boy: MatchPersonRequest
     girl: MatchPersonRequest
+    save_history: bool = True
 
 
 class MatchKoot(BaseModel):

@@ -63,11 +63,39 @@ export interface ChartResponse {
 }
 
 export interface ChartRequest {
+  name?: string;
+  save_history?: boolean;
   birth_date: string;
   birth_time: string;
   birth_place: string;
   house_system: string;
   zodiac: string;
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+
+export interface HistoryItemSummary {
+  id: string;
+  type: "kundali" | "match";
+  created_at: string;
+  // Kundali fields
+  name?: string;
+  birth_date?: string;
+  birth_time?: string;
+  birth_place?: string;
+  // Match fields
+  boy_name?: string;
+  girl_name?: string;
+  boy_birth_date?: string;
+  boy_birth_time?: string;
+  boy_birth_place?: string;
+  girl_birth_date?: string;
+  girl_birth_time?: string;
+  girl_birth_place?: string;
+}
+
+export interface HistoryItemFull extends HistoryItemSummary {
+  input?: ChartRequest | MatchRequest;
 }
 
 export interface VargaRequest extends ChartRequest {
@@ -128,6 +156,7 @@ export interface MatchPersonRequest extends ChartRequest {
 export interface MatchRequest {
   boy: MatchPersonRequest;
   girl: MatchPersonRequest;
+  save_history?: boolean;
 }
 
 export interface MatchKoot {

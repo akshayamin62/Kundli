@@ -268,7 +268,12 @@ export default function ResultPage() {
     const now = dt ?? nowIST();
     setGocharNow(now);
     try {
-      const result = await calculateChart({ ...reqData, birth_date: now.date, birth_time: now.time });
+      const result = await calculateChart({
+        ...reqData,
+        birth_date: now.date,
+        birth_time: now.time,
+        save_history: false,
+      });
       setGocharChart(result);
     } catch { /* silently ignore */ }
     finally { setGocharLoading(false); }
@@ -389,7 +394,10 @@ export default function ResultPage() {
           >
             ← New Chart
           </button>
-          <span className="font-bold text-sm truncate">{meta.birth_place}</span>
+          {req?.name && (
+            <span className="font-black text-sm text-white truncate">{req.name}</span>
+          )}
+          <span className={`text-sm truncate ${req?.name ? "text-indigo-300 font-normal" : "font-bold"}`}>{meta.birth_place}</span>
           <span className="text-indigo-300 text-xs shrink-0 hidden sm:block">
             {meta.birth_date} · {meta.birth_time} · {meta.timezone}
           </span>
