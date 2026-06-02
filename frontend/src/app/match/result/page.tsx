@@ -221,6 +221,71 @@ function ScoreCircle({ score, max, pct }: { score: number; max: number; pct: num
   );
 }
 
+// ─── Legend Button ────────────────────────────────────────────────────────────
+function LegendButton() {
+  return (
+    <div className="relative group shrink-0">
+      <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-indigo-700 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Legend
+      </button>
+      <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 w-72 hidden group-hover:block pointer-events-none">
+        {/* <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-3">Chart Legend</p> */}
+
+        {/* Dignity */}
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Graha Dignity</p>
+        <div className="space-y-1.5 mb-3.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-emerald-600 w-5">++</span>
+            <span className="text-sm text-gray-700">Swakshetra – own sign</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-blue-600 w-5">+</span>
+            <span className="text-sm text-gray-700">Uchcha – exalted</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-red-500 w-5">↓</span>
+            <span className="text-sm text-gray-700">Neecha – debilitated</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* <span className="text-xs font-bold text-red-600 w-5">-</span> */}
+            <svg width="28" height="10" viewBox="0 0 28 10">
+                <line x1="3" y1="5" x2="11" y2="5" stroke={"red"} strokeWidth="1" strokeDasharray="2 0"/>
+              </svg>
+            <span className="text-sm text-gray-700">Retrograde motion</span>
+          </div>
+        </div>
+
+        {/* Aspects */}
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Vedic Drishti (hover planet)</p>
+        <div className="space-y-1.5">
+          {([
+            { color: "#111827", label: "Ek Paad" },
+            { color: "#2563eb", label: "Dwi Paad" },
+            { color: "#16a34a", label: "Tri Paad" },
+            { color: "#dc2626", label: "Sampurna" },
+          ] as { color: string; label: string }[]).map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2">
+              <svg width="28" height="10" viewBox="0 0 28 10">
+                <line x1="0" y1="5" x2="28" y2="5" stroke={color} strokeWidth="2" strokeDasharray="5 3"/>
+              </svg>
+              <span className="text-sm text-gray-700">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Special aspects note */}
+        {/* <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Special Aspects (Sampurna)</p>
+          <p className="text-[10px] text-gray-500 leading-relaxed">Mars: 4th &amp; 8th · Jupiter: 5th &amp; 9th · Saturn: 3rd &amp; 10th</p>
+        </div> */}
+      </div>
+    </div>
+  );
+}
+
 // ─── Koot card (visual progress bar) ─────────────────────────────────────────
 function KootCard({ k, lang }: { k: MatchKoot; lang: Lang }) {
   const pct = k.score / k.max_score;
@@ -234,10 +299,10 @@ function KootCard({ k, lang }: { k: MatchKoot; lang: Lang }) {
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-2">
         <div className="min-w-0 flex-1 pr-2">
-          <p className="text-gray-900 text-xs font-bold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
-          <p className="text-gray-400 text-[10px] mt-0.5 leading-tight">{KOOT_DESC[lang][k.name] ?? ""}</p>
+          <p className="text-gray-900 text-sm font-bold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
+          <p className="text-gray-400 text-xs mt-0.5 leading-tight">{KOOT_DESC[lang][k.name] ?? ""}</p>
         </div>
-        <span className={`text-sm font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${scoreCls}`}>
+        <span className={`text-base font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${scoreCls}`}>
           {k.score}/{k.max_score}
         </span>
       </div>
@@ -247,11 +312,11 @@ function KootCard({ k, lang }: { k: MatchKoot; lang: Lang }) {
       </div>
       {/* Boy vs Girl */}
       <div className="flex items-center justify-between">
-        <span className="bg-indigo-50 text-indigo-700 text-[10px] px-2 py-0.5 rounded-full border border-indigo-100 font-semibold">
+          <span className="bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full border border-indigo-100 font-semibold">
           {tValue(k.boy_value, lang)}
         </span>
-        <span className="text-gray-300 text-[9px]">vs</span>
-        <span className="bg-rose-50 text-rose-700 text-[10px] px-2 py-0.5 rounded-full border border-rose-100 font-semibold">
+        <span className="text-gray-300 text-[10px]">vs</span>
+        <span className="bg-rose-50 text-rose-700 text-xs px-2 py-0.5 rounded-full border border-rose-100 font-semibold">
           {tValue(k.girl_value, lang)}
         </span>
       </div>
@@ -292,7 +357,7 @@ export default function MatchResultPage() {
   const girlInit = (data.girl_name || "G")[0].toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
 
       {/* ── Sticky Navbar ── */}
       <nav className="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-sm">
@@ -316,6 +381,8 @@ export default function MatchResultPage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            {/* Legend */}
+            <LegendButton />
             {/* Download Report */}
             <button
               onClick={() => downloadMatchReport(data)}
@@ -344,7 +411,7 @@ export default function MatchResultPage() {
 
       {/* ── HERO BANNER ── */}
       <div
-        className="relative overflow-hidden text-white"
+        className="relative overflow-hidden text-white lg:shrink-0"
         style={{ background: "linear-gradient(140deg, #1e0d42 0%, #3c1262 28%, #7b1b75 55%, #c0286a 80%, #d84060 100%)" }}
       >
         {/* Decorative blobs */}
@@ -406,16 +473,16 @@ export default function MatchResultPage() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="w-full px-4 sm:px-6 py-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5 items-start">
+      <div className="lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] lg:h-full">
 
           {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-4">
+          <div className="space-y-4 px-4 sm:px-6 py-5 lg:overflow-y-auto lg:h-full">
 
             {/* ── Birth Details comparison ── */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-rose-50 flex items-center justify-between">
-                <h2 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Birth Details</h2>
+                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Birth Details</h2>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-indigo-500" />
@@ -444,9 +511,9 @@ export default function MatchResultPage() {
                     },
                   ].map(({ label, bv, gv }, i) => (
                     <tr key={i} className="hover:bg-gray-50/60">
-                      <td className="py-2 px-4 text-gray-500 text-[11px] w-[35%]">{label}</td>
-                      <td className="py-2 px-3 text-indigo-700 text-[11px] font-medium w-[32.5%]">{bv || "—"}</td>
-                      <td className="py-2 px-3 text-rose-700 text-[11px] font-medium w-[32.5%]">{gv || "—"}</td>
+                      <td className="py-2 px-4 text-gray-500 text-sm w-[35%]">{label}</td>
+                      <td className="py-2 px-3 text-indigo-700 text-sm font-medium w-[32.5%]">{bv || "—"}</td>
+                      <td className="py-2 px-3 text-rose-700 text-sm font-medium w-[32.5%]">{gv || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -456,7 +523,7 @@ export default function MatchResultPage() {
             {/* ── Ashtakoot Visual Koots ── */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/60 flex items-center justify-between">
-                <h2 className="font-bold text-indigo-900 text-xs uppercase tracking-wider">{t.sub}</h2>
+                <h2 className="font-bold text-indigo-900 text-sm uppercase tracking-wider">{t.sub}</h2>
                 <div className={`text-sm font-black px-3 py-0.5 rounded-full border ${gradePill(data.grade)}`}>
                   {data.total_score}/36 · {pct}%
                 </div>
@@ -467,19 +534,19 @@ export default function MatchResultPage() {
               {/* Totals bar */}
               <div className="mx-3 mb-3 bg-gradient-to-r from-indigo-50 to-rose-50 rounded-xl px-4 py-3 border border-indigo-100 flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">{t.total}</p>
-                  <p className={`text-2xl font-black ${gradeTxt(data.grade)}`}>{data.total_score}<span className="text-gray-400 text-sm font-normal">/36</span></p>
+                  <p className="text-sm text-gray-500">{t.total}</p>
+                  <p className={`text-3xl font-black ${gradeTxt(data.grade)}`}>{data.total_score}<span className="text-gray-400 text-base font-normal">/36</span></p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-sm font-bold border rounded-full px-3 py-1 ${gradePill(data.grade)}`}>{data.grade}</span>
-                  <p className="text-gray-400 text-[10px] mt-1 italic">{data.recommendation}</p>
+                  <span className={`text-base font-bold border rounded-full px-3 py-1 ${gradePill(data.grade)}`}>{data.grade}</span>
+                  <p className="text-gray-400 text-xs mt-1 italic">{data.recommendation}</p>
                 </div>
               </div>
             </div>
 
             {/* ── Mangal Dosha ── */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
-              <p className="text-gray-700 font-bold text-xs mb-3 uppercase tracking-wider">{t.mangalTitle}</p>
+              <p className="text-gray-700 font-bold text-sm mb-3 uppercase tracking-wider">{t.mangalTitle}</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
@@ -488,20 +555,20 @@ export default function MatchResultPage() {
                   <div key={name} className={`flex items-center gap-2.5 rounded-xl px-4 py-3 border ${has ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
                     <span className={`text-xl ${has ? "text-red-400" : "text-emerald-400"}`}>{has ? "⚠" : "✓"}</span>
                     <div>
-                      <p className="font-bold text-gray-800 text-xs leading-tight">{name}</p>
-                      <p className={`text-xs leading-tight mt-0.5 font-medium ${has ? "text-red-600" : "text-emerald-600"}`}>{has ? t.mangalYes : t.mangalNo}</p>
+                      <p className="font-bold text-gray-800 text-sm leading-tight">{name}</p>
+                      <p className={`text-sm leading-tight mt-0.5 font-medium ${has ? "text-red-600" : "text-emerald-600"}`}>{has ? t.mangalYes : t.mangalNo}</p>
                     </div>
                   </div>
                 ))}
               </div>
               {data.mangal_dosha_cancelled && (
-                <div className="mt-2.5 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs">
+                <div className="mt-2.5 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-sm">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                   <p className="text-emerald-700 font-semibold">{t.mangalOff}</p>
                 </div>
               )}
               {data.mangal_dosha_note && (
-                <p className="text-gray-400 text-[10px] mt-1.5">{data.mangal_dosha_note}</p>
+                <p className="text-gray-400 text-xs mt-1.5">{data.mangal_dosha_note}</p>
               )}
             </div>
 
@@ -535,12 +602,12 @@ export default function MatchResultPage() {
               ];
               return (
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
-                  <p className="text-gray-700 font-bold text-xs mb-0.5 uppercase tracking-wider">{t.sadsatkutTitle}</p>
-                  <p className="text-gray-400 text-[10px] mb-3">{t.sadsatkutSub}</p>
+                  <p className="text-gray-700 font-bold text-sm mb-0.5 uppercase tracking-wider">{t.sadsatkutTitle}</p>
+                  <p className="text-gray-400 text-xs mb-3">{t.sadsatkutSub}</p>
                   <div className="space-y-3">
                     {pairGroups.map(({ label, items }) => (
                       <div key={label}>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
                         <div className="grid grid-cols-2 gap-1.5">
                           {items.map(({ key, titleKey, descKey, auspicious }) => {
                             const present = sk ? (sk[key] as boolean) : false;
@@ -560,9 +627,9 @@ export default function MatchResultPage() {
                               <div key={key} className={`rounded-xl px-2.5 py-2 border ${bg}`}>
                                 <div className="flex items-center gap-1 mb-0.5">
                                   <span className={`text-sm font-bold leading-none ${iconCls}`}>{present ? "✓" : "–"}</span>
-                                  <p className={`font-semibold text-[10px] leading-tight ${nameCls}`}>{t[titleKey] as string}</p>
+                                  <p className={`font-semibold text-xs leading-tight ${nameCls}`}>{t[titleKey] as string}</p>
                                 </div>
-                                <p className={`text-[9px] leading-tight ${descCls}`}>{t[descKey] as string}</p>
+                                <p className={`text-[10px] leading-tight ${descCls}`}>{t[descKey] as string}</p>
                               </div>
                             );
                           })}
@@ -576,10 +643,10 @@ export default function MatchResultPage() {
 
           </div>{/* end LEFT COLUMN */}
 
-          {/* ════ RIGHT COLUMN — sticky charts ════ */}
-          <div className="lg:sticky lg:top-14 space-y-4">
+          {/* ════ RIGHT COLUMN ════ */}
+          <div className="space-y-4 px-4 sm:px-6 py-5 lg:overflow-y-auto lg:h-full lg:border-l border-gray-100">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-              <h2 className="text-gray-700 font-bold text-xs mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+              <h2 className="text-gray-700 font-bold text-sm mb-3 flex items-center gap-1.5 uppercase tracking-wider">
                 🪐 {t.charts}
               </h2>
               <div className="space-y-4">
@@ -590,7 +657,7 @@ export default function MatchResultPage() {
                   <div key={name}>
                     <div className={`flex items-center gap-2 mb-1.5 ${bg} rounded-lg px-2.5 py-1.5`}>
                       <span className={`w-2 h-2 rounded-full ${dotCls} flex-shrink-0`} />
-                      <p className={`text-xs font-bold ${nameCls}`}>{name}</p>
+                      <p className={`text-sm font-bold ${nameCls}`}>{name}</p>
                     </div>
                     <div className={`border-2 rounded-xl overflow-hidden ${accentBorder} shadow-sm`} style={{ aspectRatio: "900/640" }}>
                       <ChartWheel chart={chart} lang={lang} />
@@ -599,7 +666,7 @@ export default function MatchResultPage() {
                 ))}
               </div>
             </div>
-            <p className="text-center text-gray-400 text-[10px] pb-2">{t.footer}</p>
+            <p className="text-center text-gray-400 text-xs pb-2">{t.footer}</p>
           </div>{/* end RIGHT COLUMN */}
 
         </div>

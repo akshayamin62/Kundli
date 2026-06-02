@@ -138,6 +138,71 @@ function ChartPanel({ title, accent = "indigo", headerRight, loading, children }
   );
 }
 
+// ─── Legend Button ────────────────────────────────────────────────────────────
+function LegendButton() {
+  return (
+    <div className="relative group shrink-0">
+      <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-indigo-700 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Legend
+      </button>
+      <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 w-72 hidden group-hover:block pointer-events-none">
+        {/* <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-3">Chart Legend</p> */}
+
+        {/* Dignity */}
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Graha Dignity</p>
+        <div className="space-y-1.5 mb-3.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-emerald-600 w-5">++</span>
+            <span className="text-sm text-gray-700">Swakshetra – own sign</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-blue-600 w-5">+</span>
+            <span className="text-sm text-gray-700">Uchcha – exalted</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-red-500 w-5">↓</span>
+            <span className="text-sm text-gray-700">Neecha – debilitated</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* <span className="text-xs font-bold text-red-600 w-5">-</span> */}
+            <svg width="28" height="10" viewBox="0 0 28 10">
+                <line x1="3" y1="5" x2="11" y2="5" stroke={"red"} strokeWidth="1" strokeDasharray="2 0"/>
+              </svg>
+            <span className="text-sm text-gray-700">Retrograde motion</span>
+          </div>
+        </div>
+
+        {/* Aspects */}
+        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Vedic Drishti (hover planet)</p>
+        <div className="space-y-1.5">
+          {([
+            { color: "#111827", label: "Ek Paad" },
+            { color: "#2563eb", label: "Dwi Paad" },
+            { color: "#16a34a", label: "Tri Paad" },
+            { color: "#dc2626", label: "Sampurna" },
+          ] as { color: string; label: string }[]).map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2">
+              <svg width="28" height="10" viewBox="0 0 28 10">
+                <line x1="0" y1="5" x2="28" y2="5" stroke={color} strokeWidth="2" strokeDasharray="5 3"/>
+              </svg>
+              <span className="text-sm text-gray-700">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Special aspects note */}
+        {/* <div className="mt-3 pt-3 border-t border-gray-100">
+          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Special Aspects (Sampurna)</p>
+          <p className="text-[10px] text-gray-500 leading-relaxed">Mars: 4th &amp; 8th · Jupiter: 5th &amp; 9th · Saturn: 3rd &amp; 10th</p>
+        </div> */}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ResultPage() {
   const router = useRouter();
@@ -358,24 +423,27 @@ export default function ResultPage() {
 
       {/* ── Top page-level tab bar ── */}
       <div className="bg-white border-b border-gray-200 px-4 shrink-0">
-        <div className="flex gap-0">
-          {([  
-            { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
-            { id: "grahsil" as MainTab, labels: { en: "Grahsil Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
-            { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
-          ]).map(({ id, labels }) => (
-            <button
-              key={id}
-              onClick={() => setMainTab(id)}
-              className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                mainTab === id
-                  ? "border-indigo-600 text-indigo-700 bg-indigo-50"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {labels[lang]}
-            </button>
-          ))}
+        <div className="flex items-center">
+          <div className="flex gap-0 flex-1">
+            {([  
+              { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
+              { id: "grahsil" as MainTab, labels: { en: "Grahsil Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
+              { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
+            ]).map(({ id, labels }) => (
+              <button
+                key={id}
+                onClick={() => setMainTab(id)}
+                className={`px-5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
+                  mainTab === id
+                    ? "border-indigo-600 text-indigo-700 bg-indigo-50"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {labels[lang]}
+              </button>
+            ))}
+          </div>
+          <LegendButton />
         </div>
       </div>
 
