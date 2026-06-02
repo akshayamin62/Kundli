@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from datetime import date as date_type, datetime, timezone
+from typing import Optional
+from bson import ObjectId
 from app.models.schemas import (
     ChartRequest, ChartResponse, VargaRequest, VargaBulkRequest,
     ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition,
@@ -17,35 +19,51 @@ from app.database import get_history_collection
 router = APIRouter()
 
 
-def _save_kundali_history(req: ChartRequest) -> None:
-    """Persist kundali INPUTS to MongoDB history (best-effort; never raises)."""
+def _kundali_input_doc(req: ChartRequest) -> dict:
+    return {
+        "name": (req.name or "").strip(),
+        "birth_date": req.birth_date,
+        "birth_time": req.birth_time,
+        "birth_place": req.birth_place,
+        "house_system": req.house_system,
+        "zodiac": req.zodiac,
+    }
+
+
+def _save_kundali_history(req: ChartRequest) -> Optional[str]:
+    """Persist or update kundali inputs in MongoDB. Returns history document id."""
     try:
-        if not req.save_history:
-            return
         col = get_history_collection()
         if col is None:
-            return
-        input_doc = {
-            "name": (req.name or "").strip(),
-            "birth_date": req.birth_date,
-            "birth_time": req.birth_time,
-            "birth_place": req.birth_place,
-            "house_system": req.house_system,
-            "zodiac": req.zodiac,
-        }
+            return None
+        input_doc = _kundali_input_doc(req)
 
-        # Deduplicate exact same input set.
-        if col.find_one({"type": "kundali", "input": input_doc}) is not None:
-            return
+        if req.history_id:
+            oid = ObjectId(req.history_id)
+            res = col.update_one(
+                {"_id": oid, "type": "kundali"},
+                {"$set": {"input": input_doc}},
+            )
+            if res.matched_count:
+                return req.history_id
+            return None
+
+        if not req.save_history:
+            return None
+
+        existing = col.find_one({"type": "kundali", "input": input_doc})
+        if existing is not None:
+            return str(existing["_id"])
 
         doc = {
             "type": "kundali",
             "input": input_doc,
             "created_at": datetime.now(timezone.utc),
         }
-        col.insert_one(doc)
+        ins = col.insert_one(doc)
+        return str(ins.inserted_id)
     except Exception:
-        pass
+        return None
 
 
 def _remap_to_varga(base: ChartResponse, n: int) -> ChartResponse:
@@ -144,8 +162,8 @@ def calculate_chart(req: ChartRequest):
     """
     try:
         chart = build_chart(req)
-        _save_kundali_history(req)
-        return chart
+        history_id = _save_kundali_history(req)
+        return chart.model_copy(update={"history_id": history_id})
     except GeocodingError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

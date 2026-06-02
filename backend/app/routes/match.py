@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timezone
+from typing import Optional
+from bson import ObjectId
 from app.models.schemas import MatchRequest, MatchResponse, MatchKoot
 from app.services.chart_builder import build_chart
 from app.services.matching import calculate_match
@@ -8,45 +10,61 @@ from app.database import get_history_collection
 router = APIRouter()
 
 
-def _save_match_history_from_request(req: MatchRequest) -> None:
-    """Persist match INPUTS to MongoDB history (best-effort; never raises)."""
+def _match_input_doc(req: MatchRequest) -> dict:
+    return {
+        "boy": {
+            "name": (req.boy.name or "").strip(),
+            "birth_date": req.boy.birth_date,
+            "birth_time": req.boy.birth_time,
+            "birth_place": req.boy.birth_place,
+            "house_system": req.boy.house_system,
+            "zodiac": req.boy.zodiac,
+        },
+        "girl": {
+            "name": (req.girl.name or "").strip(),
+            "birth_date": req.girl.birth_date,
+            "birth_time": req.girl.birth_time,
+            "birth_place": req.girl.birth_place,
+            "house_system": req.girl.house_system,
+            "zodiac": req.girl.zodiac,
+        },
+    }
+
+
+def _save_match_history_from_request(req: MatchRequest) -> Optional[str]:
+    """Persist or update match inputs in MongoDB. Returns history document id."""
     try:
-        if not req.save_history:
-            return
         col = get_history_collection()
         if col is None:
-            return
-        input_doc = {
-            "boy": {
-                "name": (req.boy.name or "").strip(),
-                "birth_date": req.boy.birth_date,
-                "birth_time": req.boy.birth_time,
-                "birth_place": req.boy.birth_place,
-                "house_system": req.boy.house_system,
-                "zodiac": req.boy.zodiac,
-            },
-            "girl": {
-                "name": (req.girl.name or "").strip(),
-                "birth_date": req.girl.birth_date,
-                "birth_time": req.girl.birth_time,
-                "birth_place": req.girl.birth_place,
-                "house_system": req.girl.house_system,
-                "zodiac": req.girl.zodiac,
-            },
-        }
+            return None
+        input_doc = _match_input_doc(req)
 
-        # Deduplicate exact same full match form inputs.
-        if col.find_one({"type": "match", "input": input_doc}) is not None:
-            return
+        if req.history_id:
+            oid = ObjectId(req.history_id)
+            res = col.update_one(
+                {"_id": oid, "type": "match"},
+                {"$set": {"input": input_doc}},
+            )
+            if res.matched_count:
+                return req.history_id
+            return None
+
+        if not req.save_history:
+            return None
+
+        existing = col.find_one({"type": "match", "input": input_doc})
+        if existing is not None:
+            return str(existing["_id"])
 
         doc = {
             "type": "match",
             "input": input_doc,
             "created_at": datetime.now(timezone.utc),
         }
-        col.insert_one(doc)
+        ins = col.insert_one(doc)
+        return str(ins.inserted_id)
     except Exception:
-        pass
+        return None
 
 
 @router.post("/calculate", response_model=MatchResponse)
@@ -95,5 +113,5 @@ def calculate_kundli_match(req: MatchRequest):
         girl_chart=girl_chart,
         sadsatkut=sadsatkut,
     )
-    _save_match_history_from_request(req)
-    return match_response
+    history_id = _save_match_history_from_request(req)
+    return match_response.model_copy(update={"history_id": history_id})

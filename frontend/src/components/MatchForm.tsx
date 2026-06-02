@@ -48,11 +48,9 @@ function PersonPanel({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync placeInput when parent restores value (e.g. on first render from localStorage)
   useEffect(() => {
     setPlaceInput(value.birth_place ?? "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount
+  }, [value.birth_place]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -178,26 +176,50 @@ function PersonPanel({
 // Public component
 // ---------------------------------------------------------------------------
 interface MatchFormProps {
-  onResult: (result: MatchResponse) => void;
+  onResult: (result: MatchResponse, req: { boy: MatchPersonRequest; girl: MatchPersonRequest }) => void;
+  initialBoy?: MatchPersonRequest;
+  initialGirl?: MatchPersonRequest;
+  persistStorage?: boolean;
+  submitLabel?: string;
+  historyId?: string;
 }
 
-export default function MatchForm({ onResult }: MatchFormProps) {
+export default function MatchForm({
+  onResult,
+  initialBoy,
+  initialGirl,
+  persistStorage = true,
+  submitLabel = "✦ Match Horoscopes ✦",
+  historyId,
+}: MatchFormProps) {
+  const isEditMode = !!historyId;
+
   const [boy, setBoyRaw] = useState<MatchPersonRequest>(() =>
-    emptyPerson(loadPerson("jk_match_boy")),
+    initialBoy ?? emptyPerson(persistStorage ? loadPerson("jk_match_boy") : undefined),
   );
   const [girl, setGirlRaw] = useState<MatchPersonRequest>(() =>
-    emptyPerson(loadPerson("jk_match_girl")),
+    initialGirl ?? emptyPerson(persistStorage ? loadPerson("jk_match_girl") : undefined),
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!initialBoy && !initialGirl) return;
+    if (initialBoy) setBoyRaw(initialBoy);
+    if (initialGirl) setGirlRaw(initialGirl);
+  }, [initialBoy, initialGirl]);
+
   const setBoy = (v: MatchPersonRequest) => {
     setBoyRaw(v);
-    try { localStorage.setItem("jk_match_boy", JSON.stringify(v)); } catch { /* ignore */ }
+    if (persistStorage) {
+      try { localStorage.setItem("jk_match_boy", JSON.stringify(v)); } catch { /* ignore */ }
+    }
   };
   const setGirl = (v: MatchPersonRequest) => {
     setGirlRaw(v);
-    try { localStorage.setItem("jk_match_girl", JSON.stringify(v)); } catch { /* ignore */ }
+    if (persistStorage) {
+      try { localStorage.setItem("jk_match_girl", JSON.stringify(v)); } catch { /* ignore */ }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,8 +235,13 @@ export default function MatchForm({ onResult }: MatchFormProps) {
     setLoading(true);
     setError(null);
     try {
-      const result = await calculateMatch({ boy, girl });
-      onResult(result);
+      const result = await calculateMatch({
+        boy,
+        girl,
+        save_history: isEditMode ? false : true,
+        history_id: historyId,
+      });
+      onResult(result, { boy, girl });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Matching calculation failed");
     } finally {
@@ -240,12 +267,14 @@ export default function MatchForm({ onResult }: MatchFormProps) {
         disabled={loading}
         className="w-full bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl transition-all tracking-wide text-sm shadow-lg"
       >
-        {loading ? "Calculating compatibility…" : "✦ Match Horoscopes ✦"}
+        {loading ? "Saving…" : submitLabel}
       </button>
 
-      <p className="text-center text-gray-400 text-xs">
-        Ashtakoot Guna Milan · 36 points · Parashari system
-      </p>
+      {!isEditMode && (
+        <p className="text-center text-gray-400 text-xs">
+          Ashtakoot Guna Milan · 36 points · Parashari system
+        </p>
+      )}
     </form>
   );
 }

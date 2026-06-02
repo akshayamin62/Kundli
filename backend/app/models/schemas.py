@@ -5,6 +5,7 @@ from typing import Literal, Optional
 class ChartRequest(BaseModel):
     name: Optional[str] = None   # person's name (for history)
     save_history: bool = True
+    history_id: Optional[str] = None  # update existing history row instead of inserting
     birth_date: str          # "YYYY-MM-DD"
     birth_time: str          # "HH:MM" or "HH:MM:SS"
     birth_place: str         # "Mumbai, India"
@@ -94,6 +95,7 @@ class ChartResponse(BaseModel):
     angles: ChartAngles
     houses: list[HouseCusp]
     planets: list[PlanetPosition]
+    history_id: Optional[str] = None
 
 
 class VargaRequest(ChartRequest):
@@ -159,6 +161,7 @@ class MatchRequest(BaseModel):
     boy: MatchPersonRequest
     girl: MatchPersonRequest
     save_history: bool = True
+    history_id: Optional[str] = None
 
 
 class MatchKoot(BaseModel):
@@ -205,3 +208,4 @@ class MatchResponse(BaseModel):
         nashtan_navpancham: bool
 
     sadsatkut: Optional[SadsatkutResult] = None
+    history_id: Optional[str] = None

@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BirthForm from "@/components/BirthForm";
 import MatchForm from "@/components/MatchForm";
-import { ChartResponse, ChartRequest, MatchResponse } from "@/types/chart";
+import { ChartResponse, ChartRequest, MatchResponse, MatchRequest } from "@/types/chart";
+import { saveMatchRequest } from "@/lib/editPrefill";
+import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
 
 type Tab = "kundali" | "milan";
 
@@ -25,11 +27,14 @@ export default function HomePage() {
   function handleChartResult(chart: ChartResponse, req: ChartRequest) {
     sessionStorage.setItem("astroChart", JSON.stringify(chart));
     sessionStorage.setItem("astroReq", JSON.stringify(req));
+    if (chart.history_id) setKundaliHistoryId(chart.history_id);
     router.push("/result");
   }
 
-  function handleMatchResult(result: MatchResponse) {
+  function handleMatchResult(result: MatchResponse, req: MatchRequest) {
     sessionStorage.setItem("matchResult", JSON.stringify(result));
+    saveMatchRequest(req);
+    if (result.history_id) setMatchHistoryId(result.history_id);
     router.push("/match/result");
   }
 

@@ -4,6 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { fetchHistory, fetchHistoryItem, deleteHistoryItem, calculateChart, calculateMatch } from "@/services/api";
 import { ChartRequest, HistoryItemSummary, MatchRequest } from "@/types/chart";
+import FormModal from "@/components/FormModal";
+import BirthForm from "@/components/BirthForm";
+import MatchForm from "@/components/MatchForm";
+import { saveMatchRequest } from "@/lib/editPrefill";
+import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
 
 type TabType = "kundali" | "match";
 
@@ -56,21 +61,33 @@ function EmptyState({ filtered }: { filtered: boolean }) {
 
 function RowActions({
   onView,
+  onEdit,
   onDelete,
   deleting,
+  editing,
 }: {
   onView: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   deleting: boolean;
+  editing: boolean;
 }) {
   const [confirmDel, setConfirmDel] = useState(false);
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 flex-wrap">
       <button
         onClick={onView}
-        className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md"
+        disabled={editing}
+        className="text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-md"
       >
         View
+      </button>
+      <button
+        onClick={onEdit}
+        disabled={editing}
+        className="text-sm font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 px-3 py-1.5 rounded-md"
+      >
+        {editing ? "..." : "Edit"}
       </button>
       {confirmDel ? (
         <>
@@ -143,6 +160,12 @@ export default function HistoryPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editModal, setEditModal] = useState<
+    | { type: "kundali"; id: string; initial: ChartRequest }
+    | { type: "match"; id: string; initial: MatchRequest }
+    | null
+  >(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -205,6 +228,7 @@ export default function HistoryPage() {
             zodiac: req.zodiac,
           })
         );
+        setKundaliHistoryId(item.id);
         router.push("/result");
       } else if (item.type === "match" && full.input) {
         const req: MatchRequest = {
@@ -213,12 +237,46 @@ export default function HistoryPage() {
         };
         const result = await calculateMatch(req);
         sessionStorage.setItem("matchResult", JSON.stringify(result));
+        saveMatchRequest(req);
+        setMatchHistoryId(item.id);
         router.push("/match/result");
       }
     } catch {
       /* ignore */
     } finally {
       setOpeningId(null);
+    }
+  };
+
+  const handleEdit = async (item: HistoryItemSummary) => {
+    setEditingId(item.id);
+    try {
+      const full = await fetchHistoryItem(item.id);
+      if (item.type === "kundali" && full.input) {
+        const input = full.input as ChartRequest;
+        setEditModal({
+          type: "kundali",
+          id: item.id,
+          initial: {
+            name: full.name ?? input.name,
+            birth_date: input.birth_date,
+            birth_time: input.birth_time,
+            birth_place: input.birth_place,
+            house_system: input.house_system,
+            zodiac: input.zodiac,
+          },
+        });
+      } else if (item.type === "match" && full.input) {
+        setEditModal({
+          type: "match",
+          id: item.id,
+          initial: full.input as MatchRequest,
+        });
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setEditingId(null);
     }
   };
 
@@ -331,11 +389,11 @@ export default function HistoryPage() {
           {activeTab === "kundali" ? (
             <div className="grid grid-cols-12 gap-3 px-4 py-3 text-[13px] font-bold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200">
               <div className="col-span-2">Person</div>
-              <div className="col-span-2">Birth Date</div>
+              <div className="col-span-1">Birth Date</div>
               <div className="col-span-1">Time</div>
               <div className="col-span-4">Birth Place</div>
               <div className="col-span-2">Saved On</div>
-              <div className="col-span-1">Actions</div>
+              <div className="col-span-2">Actions</div>
             </div>
           ) : (
             <div className="grid grid-cols-12 gap-3 px-4 py-3 text-[13px] font-bold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-200">
@@ -358,7 +416,8 @@ export default function HistoryPage() {
               {items.map((item) => {
                 const isOpening = openingId === item.id;
                 const isDeleting = deletingId === item.id;
-                const disabled = isOpening || isDeleting;
+                const isEditing = editingId === item.id;
+                const disabled = isOpening || isDeleting || isEditing;
 
                 return activeTab === "kundali" ? (
                   <div key={item.id} className={`grid grid-cols-12 gap-3 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50/60 ${disabled ? "opacity-60 pointer-events-none" : ""}`}>
@@ -366,15 +425,17 @@ export default function HistoryPage() {
                       <p className="text-base font-semibold text-slate-800 truncate">{item.name || "Unnamed"}</p>
                       {/* <p className="text-sm text-slate-400">Janam Kundli</p> */}
                     </div>
-                    <div className="col-span-2 text-base text-slate-700">{formatInputDate(item.birth_date)}</div>
+                    <div className="col-span-1 text-base text-slate-700">{formatInputDate(item.birth_date)}</div>
                     <div className="col-span-1 text-base text-slate-700">{item.birth_time || "—"}</div>
                     <div className="col-span-4 text-base text-slate-700 truncate">{item.birth_place || "—"}</div>
                     <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <RowActions
                         onView={() => handleView(item)}
+                        onEdit={() => handleEdit(item)}
                         onDelete={() => handleDelete(item.id)}
                         deleting={isDeleting}
+                        editing={isEditing}
                       />
                     </div>
                   </div>
@@ -400,12 +461,14 @@ export default function HistoryPage() {
                       </p>
                       <p className="text-sm text-black-400 truncate">{item.girl_birth_place || "—"}</p>
                     </div>
-                    <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
-                    <div className="col-span-1">
+                    <div className="col-span-1 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
+                    <div className="col-span-2">
                       <RowActions
                         onView={() => handleView(item)}
+                        onEdit={() => handleEdit(item)}
                         onDelete={() => handleDelete(item.id)}
                         deleting={isDeleting}
+                        editing={isEditing}
                       />
                     </div>
                   </div>
@@ -415,6 +478,40 @@ export default function HistoryPage() {
           )}
         </div>
       </div>
+
+      {editModal?.type === "kundali" && (
+        <FormModal title="Edit Janam Kundli" onClose={() => setEditModal(null)}>
+          <BirthForm
+            key={editModal.id}
+            initialValues={editModal.initial}
+            initialPlaceInput={editModal.initial.birth_place}
+            persistStorage={false}
+            submitLabel="Save changes"
+            historyId={editModal.id}
+            onResult={() => {
+              setEditModal(null);
+              loadHistory();
+            }}
+          />
+        </FormModal>
+      )}
+
+      {editModal?.type === "match" && (
+        <FormModal title="Edit Kundli Milan" onClose={() => setEditModal(null)} wide>
+          <MatchForm
+            key={editModal.id}
+            initialBoy={editModal.initial.boy}
+            initialGirl={editModal.initial.girl}
+            persistStorage={false}
+            submitLabel="Save changes"
+            historyId={editModal.id}
+            onResult={() => {
+              setEditModal(null);
+              loadHistory();
+            }}
+          />
+        </FormModal>
+      )}
     </div>
   );
 }

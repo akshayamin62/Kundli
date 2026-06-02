@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from typing import Literal, Optional
 from bson import ObjectId
+from pydantic import BaseModel
 from app.database import get_history_collection
 
 router = APIRouter()
@@ -75,6 +76,24 @@ def list_history(
         "items": [_serialize(d) for d in docs],
         "total": total,
     }
+
+
+class HistoryLookupBody(BaseModel):
+    type: Literal["kundali", "match"]
+    input: dict
+
+
+@router.post("/lookup", tags=["History"])
+def lookup_history(body: HistoryLookupBody):
+    """Find an existing history row by exact stored input (no insert)."""
+    col = get_history_collection()
+    if col is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    doc = col.find_one({"type": body.type, "input": body.input})
+    if doc is None:
+        raise HTTPException(status_code=404, detail="History item not found")
+    return {"id": str(doc["_id"])}
 
 
 @router.get("/{item_id}", tags=["History"])

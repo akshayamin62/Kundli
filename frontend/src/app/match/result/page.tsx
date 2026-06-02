@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MatchResponse, MatchKoot } from "@/types/chart";
+import { MatchResponse, MatchKoot, MatchPersonRequest } from "@/types/chart";
 import ChartWheel from "@/components/ChartWheel";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES, PLANET_NAMES, SIGN_LORDS } from "@/lib/translations";
 import { downloadMatchReport } from "@/lib/reportGenerator";
+import FormModal from "@/components/FormModal";
+import MatchForm from "@/components/MatchForm";
+import { saveMatchRequest, matchRequestFromResult } from "@/lib/editPrefill";
+import { resolveMatchHistoryId, setMatchHistoryId, getMatchHistoryId } from "@/lib/historySession";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -326,6 +330,12 @@ export default function MatchResultPage() {
   const router = useRouter();
   const [data, setData] = useState<MatchResponse | null>(null);
   const [lang, setLang] = useState<Lang>("en");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
+  const [editBoy, setEditBoy] = useState<MatchPersonRequest | null>(null);
+  const [editGirl, setEditGirl] = useState<MatchPersonRequest | null>(null);
+  const [resolvingEdit, setResolvingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     const sl = localStorage.getItem("jk_lang") as Lang | null;
@@ -338,6 +348,35 @@ export default function MatchResultPage() {
   const switchLang = (l: Lang) => {
     setLang(l);
     try { localStorage.setItem("jk_lang", l); } catch { /* ignore */ }
+  };
+
+  const openEditModal = async () => {
+    if (!data) return;
+    setEditError(null);
+    setResolvingEdit(true);
+    try {
+      const req = matchRequestFromResult(data);
+      const id = getMatchHistoryId() ?? (await resolveMatchHistoryId(req));
+      if (!id) {
+        setEditError("No saved history record found for this match.");
+        return;
+      }
+      setEditHistoryId(id);
+      setEditBoy(req.boy);
+      setEditGirl(req.girl);
+      setEditOpen(true);
+    } finally {
+      setResolvingEdit(false);
+    }
+  };
+
+  const handleEditSaved = (result: MatchResponse) => {
+    if (result.history_id) setMatchHistoryId(result.history_id);
+    else if (editHistoryId) setMatchHistoryId(editHistoryId);
+    setData(result);
+    sessionStorage.setItem("matchResult", JSON.stringify(result));
+    saveMatchRequest(matchRequestFromResult(result));
+    setEditOpen(false);
   };
 
   if (!data) {
@@ -383,6 +422,16 @@ export default function MatchResultPage() {
           </div>
           <div className="flex items-center gap-2.5">
             <LegendButton />
+            <button
+              onClick={() => openEditModal()}
+              disabled={resolvingEdit}
+              className="inline-flex items-center gap-1.5 bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-700 border border-slate-200 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Edit
+            </button>
             <button
               onClick={() => downloadMatchReport(data)}
               className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm shadow-indigo-200"
@@ -640,6 +689,27 @@ export default function MatchResultPage() {
 
         </div>
       </div>
+
+      {editError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] bg-red-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+          {editError}
+          <button className="ml-3 underline" onClick={() => setEditError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {editOpen && editHistoryId && editBoy && editGirl && (
+        <FormModal title="Edit match details" onClose={() => setEditOpen(false)} wide>
+          <MatchForm
+            key={editHistoryId}
+            initialBoy={editBoy}
+            initialGirl={editGirl}
+            persistStorage={false}
+            submitLabel="Save changes"
+            historyId={editHistoryId}
+            onResult={(result) => handleEditSaved(result)}
+          />
+        </FormModal>
+      )}
     </div>
   );
 }

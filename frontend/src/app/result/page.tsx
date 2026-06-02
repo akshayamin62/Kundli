@@ -11,6 +11,9 @@ import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang } from "@/lib/translations";
 import { downloadKundliReport } from "@/lib/reportGenerator";
+import FormModal from "@/components/FormModal";
+import BirthForm from "@/components/BirthForm";
+import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -242,6 +245,12 @@ export default function ResultPage() {
   const [gocharLoading, setGocharLoading] = useState(false);
   const [gocharNow, setGocharNow]         = useState(nowIST());
 
+  // Edit modal
+  const [editOpen, setEditOpen] = useState(false);
+  const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
+  const [resolvingEdit, setResolvingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   // ── Load from sessionStorage ───────────────────────────────────────────────
   useEffect(() => {
     const raw  = sessionStorage.getItem("astroChart");
@@ -301,6 +310,37 @@ export default function ResultPage() {
       setAllVargaLoadingNs(new Set());
     })();
   }, [mainTab, req, allVargaStarted]);
+
+  const openEditModal = async () => {
+    if (!req) return;
+    setEditError(null);
+    setResolvingEdit(true);
+    try {
+      const id = await resolveKundaliHistoryId(req);
+      if (!id) {
+        setEditError("No saved history record found for this chart.");
+        return;
+      }
+      setEditHistoryId(id);
+      setEditOpen(true);
+    } finally {
+      setResolvingEdit(false);
+    }
+  };
+
+  const handleEditSaved = (newChart: ChartResponse, updatedReq: ChartRequest) => {
+    const hid = newChart.history_id ?? editHistoryId;
+    if (hid) setKundaliHistoryId(hid);
+    setChart(newChart);
+    setReq(updatedReq);
+    sessionStorage.setItem("astroChart", JSON.stringify(newChart));
+    sessionStorage.setItem("astroReq", JSON.stringify(updatedReq));
+    setVargaChart(null);
+    setAllVargaCharts({});
+    setAllVargaStarted(false);
+    setGocharChart(null);
+    setEditOpen(false);
+  };
 
   // ESC closes D-chart modal
   useEffect(() => {
@@ -416,8 +456,18 @@ export default function ResultPage() {
             {meta.birth_date} · {meta.birth_time} · {meta.timezone}
           </span>
         </div>
-        {/* Language toggle + Download */}
+        {/* Language toggle + Edit + Download */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => openEditModal()}
+            disabled={!req || resolvingEdit}
+            className="inline-flex items-center gap-1.5 bg-indigo-800 hover:bg-indigo-700 disabled:opacity-50 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors border border-indigo-600"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+            Edit
+          </button>
           <button
             onClick={() => chart && downloadKundliReport(chart)}
             className="inline-flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
@@ -659,6 +709,34 @@ export default function ResultPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[110] bg-red-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+          {editError}
+          <button className="ml-3 underline" onClick={() => setEditError(null)}>Dismiss</button>
+        </div>
+      )}
+
+      {editOpen && req && editHistoryId && (
+        <FormModal title="Edit birth details" onClose={() => setEditOpen(false)}>
+          <BirthForm
+            key={editHistoryId}
+            initialValues={{
+              name: req.name ?? "",
+              birth_date: req.birth_date,
+              birth_time: req.birth_time,
+              birth_place: req.birth_place,
+              house_system: req.house_system,
+              zodiac: req.zodiac,
+            }}
+            initialPlaceInput={req.birth_place}
+            persistStorage={false}
+            submitLabel="Save changes"
+            historyId={editHistoryId}
+            onResult={handleEditSaved}
+          />
+        </FormModal>
       )}
     </div>
   );

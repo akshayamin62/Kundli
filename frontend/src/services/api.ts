@@ -134,3 +134,20 @@ export async function deleteHistoryItem(id: string): Promise<void> {
     throw new Error(err.detail || `HTTP ${res.status}`);
   }
 }
+
+export async function lookupHistoryId(
+  type: "kundali" | "match",
+  input: Record<string, unknown>,
+): Promise<string> {
+  const res = await fetch(`${API_URL}/api/history/lookup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, input }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  const data = (await res.json()) as { id: string };
+  return data.id;
+}

@@ -60,11 +60,13 @@ export interface ChartResponse {
   angles: ChartAngles;
   houses: HouseCusp[];
   planets: PlanetPosition[];
+  history_id?: string | null;
 }
 
 export interface ChartRequest {
   name?: string;
   save_history?: boolean;
+  history_id?: string;
   birth_date: string;
   birth_time: string;
   birth_place: string;
@@ -157,6 +159,7 @@ export interface MatchRequest {
   boy: MatchPersonRequest;
   girl: MatchPersonRequest;
   save_history?: boolean;
+  history_id?: string;
 }
 
 export interface MatchKoot {
@@ -202,4 +205,6 @@ export interface MatchResponse {
     shubh_navpancham: boolean;
     nashtan_navpancham: boolean;
   };
+
+  history_id?: string | null;
 }

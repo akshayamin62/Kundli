@@ -7,6 +7,11 @@ import { ChartRequest, ChartResponse } from "@/types/chart";
 interface Props {
   onResult: (chart: ChartResponse, req: ChartRequest) => void;
   storageKey?: string;
+  initialValues?: ChartRequest;
+  initialPlaceInput?: string;
+  persistStorage?: boolean;
+  submitLabel?: string;
+  historyId?: string;
 }
 
 interface PlaceSuggestion {
@@ -14,27 +19,41 @@ interface PlaceSuggestion {
   display_name: string;
 }
 
-export default function BirthForm({ onResult, storageKey }: Props) {
-  const SK = storageKey ?? "jk_birth_form";
+const defaultForm = (): ChartRequest => ({
+  name: "",
+  birth_date: "",
+  birth_time: "",
+  birth_place: "",
+  house_system: "whole_sign",
+  zodiac: "sidereal",
+});
 
-  const [form, setFormRaw] = useState<ChartRequest>({
-    name: "",
-    birth_date: "",
-    birth_time: "",
-    birth_place: "",
-    house_system: "whole_sign",
-    zodiac: "sidereal",
-  });
+export default function BirthForm({
+  onResult,
+  storageKey,
+  initialValues,
+  initialPlaceInput,
+  persistStorage = true,
+  submitLabel = "Generate Chart",
+  historyId,
+}: Props) {
+  const SK = storageKey ?? "jk_birth_form";
+  const isEditMode = !!historyId;
+
+  const [form, setFormRaw] = useState<ChartRequest>(() => initialValues ?? defaultForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [placeInput, setPlaceInput] = useState("");
+  const [placeInput, setPlaceInput] = useState(
+    initialPlaceInput ?? initialValues?.birth_place ?? "",
+  );
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Restore saved form from localStorage on mount
+  // Restore saved form from localStorage on mount (home page only)
   useEffect(() => {
+    if (initialValues || !persistStorage) return;
     try {
       const raw = localStorage.getItem(SK);
       if (raw) {
@@ -50,23 +69,30 @@ export default function BirthForm({ onResult, storageKey }: Props) {
       }
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [SK]);
+  }, [SK, persistStorage, initialValues]);
 
-  // Save helper — wraps setFormRaw and persists to localStorage
+  // Sync when modal opens with new initial values
+  useEffect(() => {
+    if (!initialValues) return;
+    setFormRaw(initialValues);
+    setPlaceInput(initialPlaceInput ?? initialValues.birth_place ?? "");
+  }, [initialValues, initialPlaceInput]);
+
   const setForm = useCallback(
     (updater: ChartRequest | ((prev: ChartRequest) => ChartRequest)) => {
       setFormRaw((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater;
-        try {
-          localStorage.setItem(SK, JSON.stringify(next));
-        } catch { /* ignore */ }
+        if (persistStorage) {
+          try {
+            localStorage.setItem(SK, JSON.stringify(next));
+          } catch { /* ignore */ }
+        }
         return next;
       });
     },
-    [SK],
+    [SK, persistStorage],
   );
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -114,7 +140,12 @@ export default function BirthForm({ onResult, storageKey }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const result = await calculateChart(form);
+      const payload: ChartRequest = {
+        ...form,
+        save_history: isEditMode ? false : (form.save_history ?? true),
+        history_id: historyId,
+      };
+      const result = await calculateChart(payload);
       onResult(result, form);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Calculation failed");
@@ -204,12 +235,15 @@ export default function BirthForm({ onResult, storageKey }: Props) {
         disabled={loading}
         className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors tracking-wide text-sm"
       >
-        {loading ? "Calculating..." : "Generate Chart"}
+        {loading ? "Saving…" : submitLabel}
       </button>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600">
-        North Indian mode: <span className="font-semibold text-gray-900">Whole Sign</span> + <span className="font-semibold text-gray-900">Sidereal (Lahiri)</span>
-      </div>
+      {!isEditMode && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600">
+          North Indian mode: <span className="font-semibold text-gray-900">Whole Sign</span> +{" "}
+          <span className="font-semibold text-gray-900">Sidereal (Lahiri)</span>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-300 rounded-lg px-3 py-2 text-red-600 text-sm">
