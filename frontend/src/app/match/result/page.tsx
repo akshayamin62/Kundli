@@ -127,7 +127,7 @@ function formatTime(t: string) {
   const h = parseInt(hStr);
   const ampm = h < 12 ? "AM" : "PM";
   const h12 = h % 12 || 12;
-  return `${String(h12).padStart(2, "0")} : ${mStr} ${ampm}`;
+  return `${String(h12).padStart(2, "0")}:${mStr} ${ampm}`;
 }
 
 // ─── Translation helpers ───────────────────────────────────────────────────────
@@ -169,50 +169,58 @@ function tValue(val: string, l: Lang) {
 
 // ─── Grade helpers ─────────────────────────────────────────────────────────────
 function gradeTxt(g: string) {
-  const m: Record<string,string> = {Excellent:"text-emerald-600","Very Good":"text-green-600",Good:"text-lime-600",Average:"text-amber-600","Below Average":"text-orange-600"};
+  const m: Record<string,string> = {
+    Excellent:"text-emerald-600","Very Good":"text-green-600",
+    Good:"text-lime-600",Average:"text-amber-600","Below Average":"text-orange-600"
+  };
   return m[g] ?? "text-red-600";
 }
 function gradePill(g: string) {
-  const m: Record<string,string> = {Excellent:"bg-emerald-50 border-emerald-200 text-emerald-700","Very Good":"bg-green-50 border-green-200 text-green-700",Good:"bg-lime-50 border-lime-200 text-lime-700",Average:"bg-amber-50 border-amber-200 text-amber-700","Below Average":"bg-orange-50 border-orange-200 text-orange-700"};
+  const m: Record<string,string> = {
+    Excellent:"bg-emerald-50 border-emerald-200 text-emerald-700",
+    "Very Good":"bg-green-50 border-green-200 text-green-700",
+    Good:"bg-lime-50 border-lime-200 text-lime-700",
+    Average:"bg-amber-50 border-amber-200 text-amber-700",
+    "Below Average":"bg-orange-50 border-orange-200 text-orange-700"
+  };
   return m[g] ?? "bg-red-50 border-red-200 text-red-700";
 }
-function gradeBar(pct: number) {
-  if (pct >= 83) return "bg-emerald-500";
-  if (pct >= 67) return "bg-green-500";
-  if (pct >= 58) return "bg-lime-500";
-  if (pct >= 50) return "bg-amber-500";
-  if (pct >= 33) return "bg-orange-500";
-  return "bg-red-500";
+function gradeBarColor(pct: number) {
+  if (pct >= 83) return "#10b981";
+  if (pct >= 67) return "#22c55e";
+  if (pct >= 58) return "#84cc16";
+  if (pct >= 50) return "#f59e0b";
+  if (pct >= 33) return "#f97316";
+  return "#ef4444";
 }
 
-// ─── Score Circle (SVG gauge) ─────────────────────────────────────────────────
+// ─── Score Circle (SVG gauge) — light theme ───────────────────────────────────
 function ScoreCircle({ score, max, pct }: { score: number; max: number; pct: number }) {
-  const r = 54;
+  const r = 60;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - score / max);
-  const color = pct >= 83 ? "#10b981" : pct >= 67 ? "#22c55e" : pct >= 50 ? "#f59e0b" : pct >= 33 ? "#f97316" : "#ef4444";
+  const color = gradeBarColor(pct);
   const stars = Math.round((score / max) * 5);
   return (
-    <div className="flex flex-col items-center gap-1.5">
-      <svg width="136" height="136" viewBox="0 0 136 136">
-        {/* glow ring */}
-        <circle cx="68" cy="68" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="11" />
-        {/* progress ring */}
-        <circle
-          cx="68" cy="68" r={r} fill="none"
-          stroke={color} strokeWidth="11"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round"
-          transform="rotate(-90 68 68)"
-          style={{ filter: `drop-shadow(0 0 6px ${color}88)` }}
-        />
-        <text x="68" y="63" textAnchor="middle" fill="white" fontSize="30" fontWeight="900" fontFamily="system-ui">{score}</text>
-        <text x="68" y="80" textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="11" fontFamily="system-ui">/ {max}</text>
-      </svg>
-      {/* Stars */}
-      <div className="flex gap-0.5">
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative">
+        <svg width="148" height="148" viewBox="0 0 148 148">
+          <circle cx="74" cy="74" r={r} fill="none" stroke="#f1f5f9" strokeWidth="12" />
+          <circle
+            cx="74" cy="74" r={r} fill="none"
+            stroke={color} strokeWidth="12"
+            strokeDasharray={circ} strokeDashoffset={offset}
+            strokeLinecap="round"
+            transform="rotate(-90 74 74)"
+            style={{ filter: `drop-shadow(0 0 8px ${color}55)` }}
+          />
+          <text x="74" y="68" textAnchor="middle" fill="#0f172a" fontSize="34" fontWeight="900" fontFamily="system-ui">{score}</text>
+          <text x="74" y="87" textAnchor="middle" fill="#94a3b8" fontSize="13" fontFamily="system-ui">/ {max}</text>
+        </svg>
+      </div>
+      <div className="flex gap-1">
         {[1,2,3,4,5].map(i => (
-          <svg key={i} width="13" height="13" viewBox="0 0 24 24" fill={i <= stars ? "#fbbf24" : "rgba(255,255,255,0.18)"}>
+          <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill={i <= stars ? "#f59e0b" : "#e2e8f0"}>
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
         ))}
@@ -225,98 +233,87 @@ function ScoreCircle({ score, max, pct }: { score: number; max: number; pct: num
 function LegendButton() {
   return (
     <div className="relative group shrink-0">
-      <button className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-indigo-700 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all">
-        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-700 border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-all">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         Legend
       </button>
-      <div className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-2xl p-4 w-72 hidden group-hover:block pointer-events-none">
-        {/* <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest mb-3">Chart Legend</p> */}
-
-        {/* Dignity */}
-        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Graha Dignity</p>
-        <div className="space-y-1.5 mb-3.5">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-emerald-600 w-5">++</span>
-            <span className="text-sm text-gray-700">Swakshetra – own sign</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-blue-600 w-5">+</span>
-            <span className="text-sm text-gray-700">Uchcha – exalted</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-red-500 w-5">↓</span>
-            <span className="text-sm text-gray-700">Neecha – debilitated</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* <span className="text-xs font-bold text-red-600 w-5">-</span> */}
+      <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-2xl shadow-slate-200/60 p-4 w-72 hidden group-hover:block pointer-events-none">
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Chart Legend</p>
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Graha Dignity</p>
+        <div className="space-y-2 mb-4">
+          {[
+            { sym: "++", cls: "text-emerald-600", label: "Swakshetra – own sign" },
+            { sym: "+", cls: "text-blue-600", label: "Uchcha – exalted" },
+            { sym: "↓", cls: "text-red-500", label: "Neecha – debilitated" },
+          ].map(({ sym, cls, label }) => (
+            <div key={sym} className="flex items-center gap-2.5">
+              <span className={`text-sm font-bold w-5 ${cls}`}>{sym}</span>
+              <span className="text-sm text-slate-600">{label}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-2.5">
             <svg width="28" height="10" viewBox="0 0 28 10">
-                <line x1="3" y1="5" x2="11" y2="5" stroke={"red"} strokeWidth="1" strokeDasharray="2 0"/>
-              </svg>
-            <span className="text-sm text-gray-700">Retrograde motion</span>
+              <line x1="3" y1="5" x2="25" y2="5" stroke="red" strokeWidth="1.5" strokeDasharray="3 2"/>
+            </svg>
+            <span className="text-sm text-slate-600">Retrograde motion</span>
           </div>
         </div>
-
-        {/* Aspects */}
-        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Vedic Drishti (hover planet)</p>
-        <div className="space-y-1.5">
-          {([
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Vedic Drishti (hover planet)</p>
+        <div className="space-y-2">
+          {[
             { color: "#111827", label: "Ek Paad" },
             { color: "#2563eb", label: "Dwi Paad" },
             { color: "#16a34a", label: "Tri Paad" },
             { color: "#dc2626", label: "Sampurna" },
-          ] as { color: string; label: string }[]).map(({ color, label }) => (
-            <div key={label} className="flex items-center gap-2">
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2.5">
               <svg width="28" height="10" viewBox="0 0 28 10">
                 <line x1="0" y1="5" x2="28" y2="5" stroke={color} strokeWidth="2" strokeDasharray="5 3"/>
               </svg>
-              <span className="text-sm text-gray-700">{label}</span>
+              <span className="text-sm text-slate-600">{label}</span>
             </div>
           ))}
         </div>
-
-        {/* Special aspects note */}
-        {/* <div className="mt-3 pt-3 border-t border-gray-100">
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mb-1">Special Aspects (Sampurna)</p>
-          <p className="text-[10px] text-gray-500 leading-relaxed">Mars: 4th &amp; 8th · Jupiter: 5th &amp; 9th · Saturn: 3rd &amp; 10th</p>
-        </div> */}
       </div>
     </div>
   );
 }
 
-// ─── Koot card (visual progress bar) ─────────────────────────────────────────
+// ─── Koot card ────────────────────────────────────────────────────────────────
 function KootCard({ k, lang }: { k: MatchKoot; lang: Lang }) {
   const pct = k.score / k.max_score;
-  const barGrad = pct >= 1 ? "from-emerald-400 to-emerald-500"
-    : pct >= 0.5 ? "from-amber-400 to-amber-500"
-    : "from-red-400 to-red-500";
-  const scoreCls = pct >= 1 ? "text-emerald-600 bg-emerald-50 border-emerald-200"
-    : pct >= 0.5 ? "text-amber-600 bg-amber-50 border-amber-200"
-    : "text-red-500 bg-red-50 border-red-200";
+  const barColor = pct >= 1 ? "#10b981" : pct >= 0.5 ? "#f59e0b" : "#ef4444";
+  const scoreCls = pct >= 1
+    ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+    : pct >= 0.5
+    ? "text-amber-700 bg-amber-50 border-amber-200"
+    : "text-red-600 bg-red-50 border-red-200";
+
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-2">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md hover:border-slate-200 transition-all duration-200">
+      <div className="flex items-start justify-between mb-3">
         <div className="min-w-0 flex-1 pr-2">
-          <p className="text-gray-900 text-sm font-bold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
-          <p className="text-gray-400 text-xs mt-0.5 leading-tight">{KOOT_DESC[lang][k.name] ?? ""}</p>
+          <p className="text-slate-800 text-sm font-bold leading-tight">{KOOT_NAMES[lang][k.name] ?? k.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5 leading-tight">{KOOT_DESC[lang][k.name] ?? ""}</p>
         </div>
-        <span className={`text-base font-black px-2 py-0.5 rounded-lg border flex-shrink-0 ${scoreCls}`}>
+        <span className={`text-sm font-bold px-2.5 py-0.5 rounded-lg border flex-shrink-0 ${scoreCls}`}>
           {k.score}/{k.max_score}
         </span>
       </div>
-      {/* Progress bar */}
-      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-2">
-        <div className={`h-full rounded-full bg-gradient-to-r ${barGrad}`} style={{ width: `${pct * 100}%` }} />
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct * 100}%`, backgroundColor: barColor }}
+        />
       </div>
-      {/* Boy vs Girl */}
       <div className="flex items-center justify-between">
-          <span className="bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full border border-indigo-100 font-semibold">
+        <span className="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-lg border border-indigo-100 font-semibold">
           {tValue(k.boy_value, lang)}
         </span>
-        <span className="text-gray-300 text-[10px]">vs</span>
-        <span className="bg-rose-50 text-rose-700 text-xs px-2 py-0.5 rounded-full border border-rose-100 font-semibold">
+        <span className="text-slate-300 text-xs font-medium">vs</span>
+        <span className="bg-rose-50 text-rose-700 text-xs px-2.5 py-1 rounded-lg border border-rose-100 font-semibold">
           {tValue(k.girl_value, lang)}
         </span>
       </div>
@@ -345,8 +342,11 @@ export default function MatchResultPage() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400 text-sm animate-pulse">Loading\u2026</p>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Loading\u2026</p>
+        </div>
       </div>
     );
   }
@@ -355,51 +355,49 @@ export default function MatchResultPage() {
   const pct = data.percentage;
   const boyInit = (data.boy_name || "B")[0].toUpperCase();
   const girlInit = (data.girl_name || "G")[0].toUpperCase();
+  const barColor = gradeBarColor(pct);
 
   return (
-    <div className="bg-gray-50 lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
+    <div className="bg-white min-h-screen lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
 
-      {/* ── Sticky Navbar ── */}
-      <nav className="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="w-full px-4 h-12 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+      {/* ── Navbar ── */}
+      <nav className="bg-white border-b border-slate-100 sticky top-0 z-40">
+        <div className="w-full px-5 h-14 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/")}
-              className="font-bold text-indigo-700 text-sm tracking-tight hover:text-indigo-500 transition-colors"
+              className="flex items-center gap-2 group"
             >
-              Jyotish
+              <span className="text-lg font-black text-indigo-700 tracking-tight group-hover:text-indigo-500 transition-colors">✦ Jyotish</span>
             </button>
-            <span className="text-gray-300">|</span>
+            <span className="text-slate-200 text-lg">|</span>
             <button
               onClick={() => router.push("/")}
-              className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-800 text-xs transition-colors"
+              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm transition-colors font-medium"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
               </svg>
               {t.back}
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Legend */}
+          <div className="flex items-center gap-2.5">
             <LegendButton />
-            {/* Download Report */}
             <button
               onClick={() => downloadMatchReport(data)}
-              className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm shadow-indigo-200"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/>
               </svg>
-              Download Report
+              Download
             </button>
-            {/* Language */}
-            <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
               {(["en","hi","gu"] as Lang[]).map(l => (
                 <button
                   key={l}
                   onClick={() => switchLang(l)}
-                  className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all ${lang === l ? "bg-white text-indigo-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                  className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${lang === l ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >
                   {l === "en" ? "EN" : l === "hi" ? "हि" : "ગુ"}
                 </button>
@@ -409,86 +407,25 @@ export default function MatchResultPage() {
         </div>
       </nav>
 
-      {/* ── HERO BANNER ── */}
-      <div
-        className="relative overflow-hidden text-white lg:shrink-0"
-        style={{ background: "linear-gradient(140deg, #1e0d42 0%, #3c1262 28%, #7b1b75 55%, #c0286a 80%, #d84060 100%)" }}
-      >
-        {/* Decorative blobs */}
-        <div className="absolute -top-16 -left-16 w-64 h-64 bg-purple-400/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -right-8 w-72 h-72 bg-pink-500/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-fuchsia-300/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 px-6 py-8 max-w-3xl mx-auto">
-          {/* Subtitle */}
-          <p className="text-center text-white/60 text-[10px] font-bold uppercase tracking-[4px] mb-5">
-            Ashtakoot Kundli Milan
-          </p>
-
-          {/* Three columns: Boy | Score | Girl */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 sm:gap-8">
-
-            {/* Boy */}
-            <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-400/30 border-2 border-indigo-300/60 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-indigo-900/40">
-                <span className="text-3xl font-black text-white">{boyInit}</span>
-              </div>
-              <p className="font-extrabold text-white text-base leading-tight truncate">{data.boy_name || "Var"}</p>
-              <p className="text-indigo-200 text-xs mt-1">{tSign(data.boy_moon_sign, lang)}</p>
-              <p className="text-indigo-200/70 text-[10px] mt-0.5">{tNak(data.boy_nakshatra, lang)}</p>
-              <p className="text-white/50 text-[9px] mt-1.5 tracking-widest uppercase">♂ Groom</p>
-            </div>
-
-            {/* Score Circle */}
-            <div className="flex flex-col items-center gap-1.5">
-              <ScoreCircle score={data.total_score} max={36} pct={pct} />
-              <span className={`text-xs font-bold px-3 py-0.5 rounded-full border ${gradePill(data.grade)}`}>
-                {data.grade}
-              </span>
-              <p className="text-white/60 text-[11px] text-center italic max-w-[130px] leading-tight mt-0.5">
-                {data.recommendation}
-              </p>
-            </div>
-
-            {/* Girl */}
-            <div className="text-center">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-rose-400/30 border-2 border-rose-300/60 flex items-center justify-center mx-auto mb-3 shadow-xl shadow-rose-900/40">
-                <span className="text-3xl font-black text-white">{girlInit}</span>
-              </div>
-              <p className="font-extrabold text-white text-base leading-tight truncate">{data.girl_name || "Vadhu"}</p>
-              <p className="text-pink-200 text-xs mt-1">{tSign(data.girl_moon_sign, lang)}</p>
-              <p className="text-pink-200/70 text-[10px] mt-0.5">{tNak(data.girl_nakshatra, lang)}</p>
-              <p className="text-white/50 text-[9px] mt-1.5 tracking-widest uppercase">♀ Bride</p>
-            </div>
-          </div>
-
-          {/* Compatibility bar */}
-          <div className="max-w-xs mx-auto mt-6">
-            <div className="h-2 bg-white/15 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${gradeBar(pct)}`} style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-center text-white/55 text-[11px] mt-2 font-medium">{pct}% Compatibility</p>
-          </div>
-        </div>
-      </div>
+      
 
       {/* ── Main content ── */}
       <div className="lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] lg:h-full">
 
           {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-4 px-4 sm:px-6 py-5 lg:overflow-y-auto lg:h-full">
+          <div className="px-5 sm:px-7 py-6 lg:overflow-y-auto lg:h-full space-y-5">
 
-            {/* ── Birth Details comparison ── */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-rose-50 flex items-center justify-between">
-                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Birth Details</h2>
+            {/* ── Birth Details ── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                <h2 className="text-slate-800 font-bold text-base">Birth Details</h2>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-indigo-500" />
                     <span className="text-indigo-600 font-semibold">{data.boy_name || "Groom"}</span>
                   </span>
-                  <span className="text-gray-300">|</span>
+                  <span className="text-slate-200">|</span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-rose-400" />
                     <span className="text-rose-600 font-semibold">{data.girl_name || "Bride"}</span>
@@ -496,7 +433,7 @@ export default function MatchResultPage() {
                 </div>
               </div>
               <table className="w-full">
-                <tbody className="divide-y divide-gray-50">
+                <tbody>
                   {[
                     { label: t.dob,      bv: formatDate(data.boy_chart.meta.birth_date),  gv: formatDate(data.girl_chart.meta.birth_date) },
                     { label: t.tob,      bv: formatTime(data.boy_chart.meta.birth_time),  gv: formatTime(data.girl_chart.meta.birth_time) },
@@ -506,94 +443,107 @@ export default function MatchResultPage() {
                     { label: t.janmaNak, bv: tNak(data.boy_nakshatra, lang),               gv: tNak(data.girl_nakshatra, lang) },
                     { label: t.nakLord,  bv: tPlanet(data.boy_nakshatra_lord, lang),       gv: tPlanet(data.girl_nakshatra_lord, lang) },
                     { label: t.dosha,
-                      bv: data.boy_mangal_dosha  ? <span className="text-red-600 font-semibold">⚠ {t.mangalYes}</span>  : <span className="text-emerald-600 font-semibold">✓ {t.mangalNo}</span>,
-                      gv: data.girl_mangal_dosha ? <span className="text-red-600 font-semibold">⚠ {t.mangalYes}</span> : <span className="text-emerald-600 font-semibold">✓ {t.mangalNo}</span>,
+                      bv: data.boy_mangal_dosha  ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span>  : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,
+                      gv: data.girl_mangal_dosha ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span> : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,
                     },
                   ].map(({ label, bv, gv }, i) => (
-                    <tr key={i} className="hover:bg-gray-50/60">
-                      <td className="py-2 px-4 text-gray-500 text-sm w-[35%]">{label}</td>
-                      <td className="py-2 px-3 text-indigo-700 text-sm font-medium w-[32.5%]">{bv || "—"}</td>
-                      <td className="py-2 px-3 text-rose-700 text-sm font-medium w-[32.5%]">{gv || "—"}</td>
+                    <tr key={i} className={`${i % 2 === 0 ? "bg-white" : "bg-slate-50/50"} hover:bg-indigo-50/30 transition-colors`}>
+                      <td className="py-2.5 px-5 text-slate-500 text-sm w-[35%] font-medium">{label}</td>
+                      <td className="py-2.5 px-4 text-indigo-700 text-sm font-semibold w-[32.5%]">{bv || "—"}</td>
+                      <td className="py-2.5 px-4 text-rose-600 text-sm font-semibold w-[32.5%]">{gv || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* ── Ashtakoot Visual Koots ── */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/60 flex items-center justify-between">
-                <h2 className="font-bold text-indigo-900 text-sm uppercase tracking-wider">{t.sub}</h2>
-                <div className={`text-sm font-black px-3 py-0.5 rounded-full border ${gradePill(data.grade)}`}>
+            {/* ── Ashtakoot Koots ── */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                <div>
+                  <h2 className="text-slate-800 font-bold text-base">{t.sub}</h2>
+                  <p className="text-slate-400 text-xs mt-0.5">8 Ashtakoot compatibility factors</p>
+                </div>
+                <div className={`text-xs font-bold px-3 py-1.5 rounded-full border ${gradePill(data.grade)}`}>
                   {data.total_score}/36 · {pct}%
                 </div>
               </div>
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-2 gap-2">
+              <div className="p-4 grid grid-cols-2 gap-3">
                 {data.koots.map(k => <KootCard key={k.name} k={k} lang={lang} />)}
               </div>
-              {/* Totals bar */}
-              <div className="mx-3 mb-3 bg-gradient-to-r from-indigo-50 to-rose-50 rounded-xl px-4 py-3 border border-indigo-100 flex items-center justify-between">
+              {/* Total summary */}
+              <div className="mx-4 mb-4 rounded-2xl border border-slate-100 bg-slate-50 px-5 py-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">{t.total}</p>
-                  <p className={`text-3xl font-black ${gradeTxt(data.grade)}`}>{data.total_score}<span className="text-gray-400 text-base font-normal">/36</span></p>
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-0.5">{t.total} Score</p>
+                  <p className={`text-4xl font-black leading-none ${gradeTxt(data.grade)}`}>
+                    {data.total_score}
+                    <span className="text-slate-300 text-lg font-normal ml-1">/36</span>
+                  </p>
                 </div>
                 <div className="text-right">
-                  <span className={`text-base font-bold border rounded-full px-3 py-1 ${gradePill(data.grade)}`}>{data.grade}</span>
-                  <p className="text-gray-400 text-xs mt-1 italic">{data.recommendation}</p>
+                  <span className={`text-sm font-bold border rounded-xl px-3 py-1.5 ${gradePill(data.grade)}`}>{data.grade}</span>
+                  <p className="text-slate-400 text-xs mt-1.5 italic max-w-[140px] text-right leading-snug">{data.recommendation}</p>
                 </div>
               </div>
             </div>
 
             {/* ── Mangal Dosha ── */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
-              <p className="text-gray-700 font-bold text-sm mb-3 uppercase tracking-wider">{t.mangalTitle}</p>
-              <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
+              <h2 className="text-slate-800 font-bold text-base mb-4">{t.mangalTitle}</h2>
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
                   { name: data.girl_name || "Bride", has: data.girl_mangal_dosha },
                 ].map(({ name, has }) => (
-                  <div key={name} className={`flex items-center gap-2.5 rounded-xl px-4 py-3 border ${has ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
-                    <span className={`text-xl ${has ? "text-red-400" : "text-emerald-400"}`}>{has ? "⚠" : "✓"}</span>
+                  <div key={name} className={`flex items-center gap-3 rounded-xl px-4 py-3.5 border ${has ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${has ? "bg-red-100" : "bg-emerald-100"}`}>
+                      <span className={`text-lg ${has ? "text-red-500" : "text-emerald-500"}`}>{has ? "⚠" : "✓"}</span>
+                    </div>
                     <div>
-                      <p className="font-bold text-gray-800 text-sm leading-tight">{name}</p>
-                      <p className={`text-sm leading-tight mt-0.5 font-medium ${has ? "text-red-600" : "text-emerald-600"}`}>{has ? t.mangalYes : t.mangalNo}</p>
+                      <p className="font-bold text-slate-800 text-sm leading-tight">{name}</p>
+                      <p className={`text-xs leading-tight mt-0.5 font-medium ${has ? "text-red-600" : "text-emerald-600"}`}>
+                        {has ? t.mangalYes : t.mangalNo}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
               {data.mangal_dosha_cancelled && (
-                <div className="mt-2.5 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-sm">
+                <div className="mt-3 flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-2.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                  <p className="text-emerald-700 font-semibold">{t.mangalOff}</p>
+                  <p className="text-emerald-700 font-semibold text-sm">{t.mangalOff}</p>
                 </div>
               )}
               {data.mangal_dosha_note && (
-                <p className="text-gray-400 text-xs mt-1.5">{data.mangal_dosha_note}</p>
+                <p className="text-slate-400 text-xs mt-2 leading-relaxed">{data.mangal_dosha_note}</p>
               )}
             </div>
 
-            {/* ── Sadsatkut Kostkaani ── */}
+            {/* ── Sadsatkut ── */}
             {(() => {
               const sk = data.sadsatkut;
               type SkKey = "priti_shadashtak"|"mrityu_shadashtak"|"shubh_dvadashatak"|"ashubh_dvadashatak"|"shubh_navpancham"|"nashtan_navpancham";
               type TKey = keyof typeof t;
-              const pairGroups: { label: string; items: { key: SkKey; titleKey: TKey; descKey: TKey; auspicious: boolean }[] }[] = [
+              const pairGroups: { label: string; sub: string; items: { key: SkKey; titleKey: TKey; descKey: TKey; auspicious: boolean }[] }[] = [
                 {
-                  label: "Shadashtak · 6/8",
+                  label: "Shadashtak",
+                  sub: "",
                   items: [
                     { key: "priti_shadashtak",  titleKey: "priti",  descKey: "pritiDesc",  auspicious: true  },
                     { key: "mrityu_shadashtak", titleKey: "mrityu", descKey: "mrityuDesc", auspicious: false },
                   ],
                 },
                 {
-                  label: "Dvadashatak · 2/12",
+                  label: "Dvadashatak",
+                  sub: "",
                   items: [
                     { key: "shubh_dvadashatak",  titleKey: "shubhDva",  descKey: "shubhDvaDesc",  auspicious: true  },
                     { key: "ashubh_dvadashatak", titleKey: "ashubhDva", descKey: "ashubhDvaDesc", auspicious: false },
                   ],
                 },
                 {
-                  label: "Navpancham · 5/9",
+                  label: "Navpancham",
+                  sub: "",
                   items: [
                     { key: "shubh_navpancham",   titleKey: "shubhNav",   descKey: "shubhNavDesc",   auspicious: true  },
                     { key: "nashtan_navpancham", titleKey: "nashtanNav", descKey: "nashtanNavDesc", auspicious: false },
@@ -601,35 +551,46 @@ export default function MatchResultPage() {
                 },
               ];
               return (
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-4">
-                  <p className="text-gray-700 font-bold text-sm mb-0.5 uppercase tracking-wider">{t.sadsatkutTitle}</p>
-                  <p className="text-gray-400 text-xs mb-3">{t.sadsatkutSub}</p>
-                  <div className="space-y-3">
-                    {pairGroups.map(({ label, items }) => (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 mb-2">
+                  <h2 className="text-slate-800 font-bold text-base mb-0.5">{t.sadsatkutTitle}</h2>
+                  <p className="text-slate-400 text-xs mb-5">{t.sadsatkutSub}</p>
+                  <div className="space-y-5">
+                    {pairGroups.map(({ label, sub, items }) => (
                       <div key={label}>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</p>
-                        <div className="grid grid-cols-2 gap-1.5">
+                        <div className="flex items-center gap-2 mb-2.5">
+                          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</p>
+                          <span className="text-slate-200">·</span>
+                          <p className="text-xs text-slate-400">{sub}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
                           {items.map(({ key, titleKey, descKey, auspicious }) => {
                             const present = sk ? (sk[key] as boolean) : false;
-                            const bg = present
-                              ? auspicious ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
-                              : "bg-gray-50 border-gray-100";
-                            const iconCls = present
-                              ? auspicious ? "text-emerald-500" : "text-red-400"
-                              : "text-gray-300";
-                            const nameCls = present
-                              ? auspicious ? "text-emerald-800" : "text-red-700"
-                              : "text-gray-400";
-                            const descCls = present
-                              ? auspicious ? "text-emerald-600" : "text-red-400"
-                              : "text-gray-300";
+                            const isActive = present && auspicious;
+                            const isWarning = present && !auspicious;
                             return (
-                              <div key={key} className={`rounded-xl px-2.5 py-2 border ${bg}`}>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <span className={`text-sm font-bold leading-none ${iconCls}`}>{present ? "✓" : "–"}</span>
-                                  <p className={`font-semibold text-xs leading-tight ${nameCls}`}>{t[titleKey] as string}</p>
+                              <div
+                                key={key}
+                                className={`rounded-xl px-3.5 py-3 border transition-all ${
+                                  isActive ? "bg-emerald-50 border-emerald-200" :
+                                  isWarning ? "bg-red-50 border-red-200" :
+                                  "bg-slate-50 border-slate-100"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    isActive ? "bg-emerald-200" : isWarning ? "bg-red-200" : "bg-slate-200"
+                                  }`}>
+                                    <span className={`text-[9px] font-black ${
+                                      isActive ? "text-emerald-700" : isWarning ? "text-red-600" : "text-slate-400"
+                                    }`}>{present ? "✓" : "–"}</span>
+                                  </div>
+                                  <p className={`font-bold text-xs leading-tight ${
+                                    isActive ? "text-emerald-800" : isWarning ? "text-red-700" : "text-slate-400"
+                                  }`}>{t[titleKey] as string}</p>
                                 </div>
-                                <p className={`text-[10px] leading-tight ${descCls}`}>{t[descKey] as string}</p>
+                                <p className={`text-[11px] leading-snug ml-6 ${
+                                  isActive ? "text-emerald-600" : isWarning ? "text-red-500" : "text-slate-400"
+                                }`}>{t[descKey] as string}</p>
                               </div>
                             );
                           })}
@@ -644,30 +605,38 @@ export default function MatchResultPage() {
           </div>{/* end LEFT COLUMN */}
 
           {/* ════ RIGHT COLUMN ════ */}
-          <div className="space-y-4 px-4 sm:px-6 py-5 lg:overflow-y-auto lg:h-full lg:border-l border-gray-100">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-              <h2 className="text-gray-700 font-bold text-sm mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                🪐 {t.charts}
+          <div className="px-5 sm:px-7 py-6 lg:overflow-y-auto lg:h-full lg:border-l border-slate-100 space-y-5">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <h2 className="text-slate-800 font-bold text-base mb-4 flex items-center gap-2">
+                <span className="text-lg">🪐</span>
+                {t.charts}
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {[
-                  { name: data.boy_name  || "Groom", chart: data.boy_chart,  accentBorder: "border-indigo-200", dotCls: "bg-indigo-500", nameCls: "text-indigo-700", bg: "bg-indigo-50" },
-                  { name: data.girl_name || "Bride", chart: data.girl_chart, accentBorder: "border-rose-200",   dotCls: "bg-rose-400",   nameCls: "text-rose-700",  bg: "bg-rose-50"  },
-                ].map(({ name, chart, accentBorder, dotCls, nameCls, bg }) => (
+                  { name: data.boy_name  || "Groom", chart: data.boy_chart,  accent: "indigo" },
+                  { name: data.girl_name || "Bride", chart: data.girl_chart, accent: "rose"   },
+                ].map(({ name, chart, accent }) => (
                   <div key={name}>
-                    <div className={`flex items-center gap-2 mb-1.5 ${bg} rounded-lg px-2.5 py-1.5`}>
-                      <span className={`w-2 h-2 rounded-full ${dotCls} flex-shrink-0`} />
-                      <p className={`text-sm font-bold ${nameCls}`}>{name}</p>
+                    <div className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${accent === "indigo" ? "bg-indigo-50" : "bg-rose-50"}`}>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${accent === "indigo" ? "bg-indigo-500" : "bg-rose-400"}`} />
+                      <p className={`text-sm font-bold ${accent === "indigo" ? "text-indigo-700" : "text-rose-600"}`}>{name}</p>
                     </div>
-                    <div className={`border-2 rounded-xl overflow-hidden ${accentBorder} shadow-sm`} style={{ aspectRatio: "900/640" }}>
+                    <div
+                      className={`border-2 rounded-2xl overflow-hidden shadow-sm ${accent === "indigo" ? "border-indigo-100" : "border-rose-100"}`}
+                      style={{ aspectRatio: "900/640" }}
+                    >
                       <ChartWheel chart={chart} lang={lang} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <p className="text-center text-gray-400 text-xs pb-2">{t.footer}</p>
-          </div>{/* end RIGHT COLUMN */}
+
+            {/* Footer */}
+            <div className="text-center pb-2">
+              <p className="text-slate-300 text-xs">{t.footer}</p>
+            </div>
+          </div>
 
         </div>
       </div>
