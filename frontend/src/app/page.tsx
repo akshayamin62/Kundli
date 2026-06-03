@@ -64,7 +64,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 px-6 py-4">
+              <div className="bg-[#0346b0] px-6 py-4">
                 <h2 className="text-white font-bold text-base tracking-wide">Birth Details</h2>
               </div>
               <div className="p-6">

@@ -48,3 +48,27 @@ def get_history_collection() -> Optional[Collection]:
     if db is None:
         return None
     return db["history"]
+
+
+def get_users_collection() -> Optional[Collection]:
+    db = get_db()
+    if db is None:
+        return None
+    return db["users"]
+
+
+def get_captcha_collection() -> Optional[Collection]:
+    db = get_db()
+    if db is None:
+        return None
+    return db["captcha"]
+
+
+def ensure_auth_indexes() -> None:
+    """Create indexes for auth collections (idempotent)."""
+    users = get_users_collection()
+    if users is not None:
+        users.create_index("email", unique=True)
+    captcha = get_captcha_collection()
+    if captcha is not None:
+        captcha.create_index("expiresAt", expireAfterSeconds=0)

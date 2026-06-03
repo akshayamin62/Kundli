@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from app.deps.auth import require_auth
 from typing import Literal, Optional
 from bson import ObjectId
 from pydantic import BaseModel
 from app.database import get_history_collection
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 
 def _serialize(doc: dict) -> dict:

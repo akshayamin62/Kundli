@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from app.deps.auth import require_auth
 from datetime import date as date_type, datetime, timezone
 from typing import Optional
 from bson import ObjectId
@@ -16,7 +17,7 @@ from app.services.dasha import calculate_vimshottari
 from app.services.transit_calc import get_sign_transits
 from app.database import get_history_collection
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 
 def _kundali_input_doc(req: ChartRequest) -> dict:

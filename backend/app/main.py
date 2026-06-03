@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from app.routes.chart import router as chart_router
 from app.routes.match import router as match_router
 from app.routes.history import router as history_router
-from app.database import get_db
+from app.routes.auth import router as auth_router
+from app.database import get_db, ensure_auth_indexes
 
 load_dotenv()
 
@@ -27,6 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/api/auth")
 app.include_router(chart_router, prefix="/api")
 app.include_router(match_router, prefix="/api/match")
 app.include_router(history_router, prefix="/api/history")
@@ -40,6 +42,10 @@ def startup_db_check():
         print("[MongoDB] Not connected. Check MONGODB_URI in backend/.env")
     else:
         print(f"[MongoDB] Startup OK. Using database: {db.name}")
+        try:
+            ensure_auth_indexes()
+        except Exception as exc:
+            print(f"[MongoDB] Auth index setup warning: {exc}")
 
 
 @app.get("/")

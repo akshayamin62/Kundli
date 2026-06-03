@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import AppLogo from "@/components/AppLogo";
+import { clearAuth } from "@/lib/authStorage";
 
 export type NavSection = "kundali" | "milan" | "history";
 
@@ -42,6 +43,11 @@ export default function AppNavbar({
   };
 
   const goHistory = () => router.push("/history");
+
+  const handleLogout = () => {
+    clearAuth();
+    router.push("/login");
+  };
 
   const btn = (section: NavSection, onClick: () => void, children: React.ReactNode) => {
     const isActive = active === section;
@@ -107,6 +113,13 @@ export default function AppNavbar({
               <span>History</span>
             </>
           ))}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-base font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all"
+          >
+            Logout
+          </button>
         </div>
       </div>
     </nav>

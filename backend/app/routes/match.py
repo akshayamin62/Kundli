@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from app.deps.auth import require_auth
 from datetime import datetime, timezone
 from typing import Optional
 from bson import ObjectId
@@ -7,7 +8,7 @@ from app.services.chart_builder import build_chart
 from app.services.matching import calculate_match
 from app.database import get_history_collection
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_auth)])
 
 
 def _person_doc(p) -> dict:

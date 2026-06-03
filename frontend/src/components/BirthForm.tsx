@@ -241,7 +241,7 @@ export default function BirthForm({
         <button
           type="button"
           onClick={toggleCoords}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-800 underline underline-offset-2 transition-colors"
+          className="text-sm font-medium text-[#0346b0] underline underline-offset-2 transition-colors"
         >
           {useCoords ? "Use place name instead" : "Use lat / lon instead"}
         </button>
@@ -315,7 +315,7 @@ export default function BirthForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors tracking-wide text-base"
+        className="w-full bg-[#0346b0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors tracking-wide text-base"
       >
         {loading ? "Saving…" : submitLabel}
       </button>

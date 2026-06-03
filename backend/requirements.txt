@@ -9,5 +9,7 @@ python-dotenv==1.0.1
 skyfield==1.54
 jplephem==2.24
 pymongo[srv]==4.7.2
+PyJWT==2.8.0
+email-validator==2.1.1
 # Optional best-accuracy backend if build tools are available on host:
 # pyswisseph==2.10.3.2
