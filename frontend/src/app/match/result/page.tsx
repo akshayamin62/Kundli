@@ -11,6 +11,7 @@ import MatchForm from "@/components/MatchForm";
 import { saveMatchRequest, matchRequestFromResult } from "@/lib/editPrefill";
 import { resolveMatchHistoryId, setMatchHistoryId, getMatchHistoryId } from "@/lib/historySession";
 import { fetchHistoryItem } from "@/services/api";
+import AppLogo from "@/components/AppLogo";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -407,18 +408,13 @@ export default function MatchResultPage() {
 
       {/* ── Navbar ── */}
       <nav className="bg-white border-b border-slate-100 sticky top-0 z-40">
-        <div className="w-full px-5 h-14 flex items-center justify-between gap-4">
+        <div className="w-full px-5 h-20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <AppLogo href="/" height={44} />
+            <span className="text-slate-200 text-xl">|</span>
             <button
               onClick={() => router.push("/")}
-              className="flex items-center gap-2 group"
-            >
-              <span className="text-lg font-black text-indigo-700 tracking-tight group-hover:text-indigo-500 transition-colors">✦ Jyotish</span>
-            </button>
-            <span className="text-slate-200 text-lg">|</span>
-            <button
-              onClick={() => router.push("/")}
-              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm transition-colors font-medium"
+              className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-base transition-colors font-semibold"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />

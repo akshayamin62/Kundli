@@ -9,6 +9,8 @@ import BirthForm from "@/components/BirthForm";
 import MatchForm from "@/components/MatchForm";
 import { saveMatchRequest } from "@/lib/editPrefill";
 import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
+import AppNavbar from "@/components/AppNavbar";
+import { formatBirthPlaceDisplay } from "@/lib/birthPlaceDisplay";
 
 type TabType = "kundali" | "match";
 
@@ -224,6 +226,8 @@ export default function HistoryPage() {
             birth_date: req.birth_date,
             birth_time: req.birth_time,
             birth_place: req.birth_place,
+            birth_lat: req.birth_lat,
+            birth_lon: req.birth_lon,
             house_system: req.house_system,
             zodiac: req.zodiac,
           })
@@ -262,6 +266,8 @@ export default function HistoryPage() {
             birth_date: input.birth_date,
             birth_time: input.birth_time,
             birth_place: input.birth_place,
+            birth_lat: input.birth_lat,
+            birth_lon: input.birth_lon,
             house_system: input.house_system,
             zodiac: input.zodiac,
           },
@@ -300,30 +306,7 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
 
-      {/* ── Navbar ── */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push("/")}
-              className="font-black text-indigo-700 text-base tracking-tight hover:text-indigo-500 transition-colors"
-            >
-              ✦ Jyotish
-            </button>
-            <span className="text-slate-200 text-lg">|</span>
-            <span className="text-base font-semibold text-slate-600">History</span>
-          </div>
-          <button
-            onClick={() => router.push("/")}
-            className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            New Chart
-          </button>
-        </div>
-      </nav>
+      <AppNavbar active="history" borderClass="border-slate-200" fullWidth />
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -427,7 +410,9 @@ export default function HistoryPage() {
                     </div>
                     <div className="col-span-1 text-base text-slate-700">{formatInputDate(item.birth_date)}</div>
                     <div className="col-span-1 text-base text-slate-700">{item.birth_time || "—"}</div>
-                    <div className="col-span-4 text-base text-slate-700 truncate">{item.birth_place || "—"}</div>
+                    <div className="col-span-4 text-base text-slate-700 truncate" title={formatBirthPlaceDisplay(item.birth_place, item.birth_lat, item.birth_lon)}>
+                      {formatBirthPlaceDisplay(item.birth_place, item.birth_lat, item.birth_lon)}
+                    </div>
                     <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
                     <div className="col-span-2">
                       <RowActions
@@ -452,14 +437,18 @@ export default function HistoryPage() {
                       <p className="text-sm text-black-500 truncate">
                         {formatInputDate(item.boy_birth_date)} · {item.boy_birth_time || "—"}
                       </p>
-                      <p className="text-sm text-black-400 truncate">{item.boy_birth_place || "—"}</p>
+                      <p className="text-sm text-black-400 truncate" title={formatBirthPlaceDisplay(item.boy_birth_place, item.boy_birth_lat, item.boy_birth_lon)}>
+                        {formatBirthPlaceDisplay(item.boy_birth_place, item.boy_birth_lat, item.boy_birth_lon)}
+                      </p>
                     </div>
                     <div className="col-span-3 min-w-0">
                       {/* <p className="text-base text-rose-700 font-semibold truncate">{item.girl_name || "Bride"}</p> */}
                       <p className="text-sm text-black-500 truncate">
                         {formatInputDate(item.girl_birth_date)} · {item.girl_birth_time || "—"}
                       </p>
-                      <p className="text-sm text-black-400 truncate">{item.girl_birth_place || "—"}</p>
+                      <p className="text-sm text-black-400 truncate" title={formatBirthPlaceDisplay(item.girl_birth_place, item.girl_birth_lat, item.girl_birth_lon)}>
+                        {formatBirthPlaceDisplay(item.girl_birth_place, item.girl_birth_lat, item.girl_birth_lon)}
+                      </p>
                     </div>
                     <div className="col-span-1 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
                     <div className="col-span-2">

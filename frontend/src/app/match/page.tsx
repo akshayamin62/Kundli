@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import MatchForm from "@/components/MatchForm";
 import { MatchResponse } from "@/types/chart";
+import AppNavbar from "@/components/AppNavbar";
 
 export default function MatchPage() {
   const router = useRouter();
@@ -15,20 +16,7 @@ export default function MatchPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center gap-4">
-          <button
-            onClick={() => router.push("/")}
-            className="inline-flex items-center gap-1.5 text-indigo-700 font-bold text-base tracking-tight hover:text-indigo-500 transition-colors"
-          >
-            ✦ Jyotish
-          </button>
-          <div className="h-5 w-px bg-gray-200" />
-          <span className="text-sm font-medium text-rose-700 bg-rose-50 px-3 py-1 rounded-lg">
-            💞 Kundli Milan
-          </span>
-        </div>
-      </nav>
+      <AppNavbar active="milan" />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <div className="text-center mb-7">

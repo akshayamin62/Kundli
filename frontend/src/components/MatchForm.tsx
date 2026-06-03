@@ -3,20 +3,18 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { calculateMatch } from "@/services/api";
 import { MatchPersonRequest, MatchResponse } from "@/types/chart";
-
-interface PlaceSuggestion {
-  place_id: number;
-  display_name: string;
-}
+import { fetchPlaceSuggestions, PlaceSuggestion } from "@/lib/geocoding";
 
 function emptyPerson(saved?: Partial<MatchPersonRequest>): MatchPersonRequest {
   return {
-    name:        saved?.name        ?? "",
-    birth_date:  saved?.birth_date  ?? "",
-    birth_time:  saved?.birth_time  ?? "",
-    birth_place: saved?.birth_place ?? "",
+    name:         saved?.name         ?? "",
+    birth_date:   saved?.birth_date   ?? "",
+    birth_time:   saved?.birth_time   ?? "",
+    birth_place:  saved?.birth_place  ?? "",
+    birth_lat:    saved?.birth_lat,
+    birth_lon:    saved?.birth_lon,
     house_system: "whole_sign",
-    zodiac: "sidereal",
+    zodiac:       "sidereal",
   };
 }
 
@@ -30,17 +28,19 @@ function loadPerson(key: string): Partial<MatchPersonRequest> {
 
 function normalizePerson(p: MatchPersonRequest): MatchPersonRequest {
   return {
-    name: (p.name ?? "").trim(),
-    birth_date: (p.birth_date ?? "").trim(),
-    birth_time: (p.birth_time ?? "").trim(),
-    birth_place: (p.birth_place ?? "").trim(),
+    name:         (p.name ?? "").trim(),
+    birth_date:   (p.birth_date ?? "").trim(),
+    birth_time:   (p.birth_time ?? "").trim(),
+    birth_place:  (p.birth_place ?? "").trim(),
+    birth_lat:    p.birth_lat,
+    birth_lon:    p.birth_lon,
     house_system: (p.house_system ?? "whole_sign") as MatchPersonRequest["house_system"],
-    zodiac: (p.zodiac ?? "sidereal") as MatchPersonRequest["zodiac"],
+    zodiac:       (p.zodiac ?? "sidereal") as MatchPersonRequest["zodiac"],
   };
 }
 
 // ---------------------------------------------------------------------------
-// Single-person form panel
+// PersonPanel
 // ---------------------------------------------------------------------------
 function PersonPanel({
   label,
@@ -56,14 +56,22 @@ function PersonPanel({
   const [placeInput, setPlaceInput] = useState(value.birth_place ?? "");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [useCoords, setUseCoords] = useState(!!(value.birth_lat && value.birth_lon));
+  const [latInput, setLatInput] = useState(value.birth_lat?.toString() ?? "");
+  const [lonInput, setLonInput] = useState(value.birth_lon?.toString() ?? "");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPlaceInput(value.birth_place ?? "");
-  }, [value.birth_place]);
+    const hasCoords = !!(value.birth_lat && value.birth_lon);
+    if (hasCoords) {
+      setUseCoords(true);
+      setLatInput(value.birth_lat?.toString() ?? "");
+      setLonInput(value.birth_lon?.toString() ?? "");
+    }
+  }, [value.birth_place, value.birth_lat, value.birth_lon]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -74,50 +82,67 @@ function PersonPanel({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const fetchSuggestions = useCallback(async (query: string) => {
-    if (query.length < 3) { setSuggestions([]); setShowDropdown(false); return; }
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&addressdetails=0`;
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      const data: PlaceSuggestion[] = await res.json();
-      setSuggestions(data);
-      setShowDropdown(data.length > 0);
-    } catch { setSuggestions([]); setShowDropdown(false); }
-  }, []);
-
-  const handlePlaceChange = (v: string) => {
+  const handlePlaceChange = useCallback((v: string) => {
     setPlaceInput(v);
-    onChange({ ...value, birth_place: v });
+    onChange({ ...value, birth_place: v, birth_lat: undefined, birth_lon: undefined });
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchSuggestions(v), 350);
-  };
+    debounceRef.current = setTimeout(async () => {
+      const results = await fetchPlaceSuggestions(v);
+      setSuggestions(results);
+      setShowDropdown(results.length > 0);
+    }, 350);
+  }, [value, onChange]);
 
   const handleSelect = (s: PlaceSuggestion) => {
-    setPlaceInput(s.display_name);
-    onChange({ ...value, birth_place: s.display_name });
+    setPlaceInput(s.label);
+    onChange({ ...value, birth_place: s.label, birth_lat: s.lat, birth_lon: s.lon });
     setSuggestions([]);
     setShowDropdown(false);
   };
 
+  const handleLatChange = (v: string) => {
+    setLatInput(v);
+    const n = parseFloat(v);
+    onChange({ ...value, birth_lat: isNaN(n) ? undefined : n });
+  };
+
+  const handleLonChange = (v: string) => {
+    setLonInput(v);
+    const n = parseFloat(v);
+    onChange({ ...value, birth_lon: isNaN(n) ? undefined : n });
+  };
+
+  const toggleCoords = () => {
+    const next = !useCoords;
+    setUseCoords(next);
+    if (!next) {
+      onChange({ ...value, birth_lat: undefined, birth_lon: undefined });
+    } else {
+      setPlaceInput("");
+      onChange({ ...value, birth_place: "", birth_lat: undefined, birth_lon: undefined });
+    }
+  };
+
   const ring = accent === "indigo"
-    ? "focus:border-indigo-400 focus:ring-indigo-400"
-    : "focus:border-rose-400 focus:ring-rose-400";
+    ? "focus:border-indigo-400 focus:ring-indigo-100"
+    : "focus:border-rose-400 focus:ring-rose-100";
   const header = accent === "indigo" ? "bg-indigo-600" : "bg-rose-600";
-  const inputCls = `bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-1 ${ring} w-full`;
+  const accentText = accent === "indigo" ? "text-indigo-600 hover:text-indigo-800" : "text-rose-600 hover:text-rose-800";
+  const inputCls = `bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 ${ring} w-full`;
 
   const row = (lbl: string, node: React.ReactNode) => (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs text-gray-500 font-medium">{lbl}</label>
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm text-gray-600 font-semibold">{lbl}</label>
       {node}
     </div>
   );
 
   return (
     <div className="bg-white rounded-2xl shadow-md border border-gray-100">
-      <div className={`${header} px-5 py-3 rounded-t-2xl`}>
-        <span className="text-white font-semibold text-sm tracking-wide">{label}</span>
+      <div className={`${header} px-6 py-3.5 rounded-t-2xl`}>
+        <span className="text-white font-bold text-base tracking-wide">{label}</span>
       </div>
-      <div className="p-5 space-y-3">
+      <div className="p-6 space-y-4">
         {row(
           "Name",
           <input
@@ -128,7 +153,7 @@ function PersonPanel({
             className={inputCls}
           />,
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {row(
             "Birth Date",
             <input
@@ -150,8 +175,60 @@ function PersonPanel({
             />,
           )}
         </div>
-        {row(
-          "Birth Place",
+
+        {/* Location toggle */}
+        <div className="flex items-center justify-between">
+          <label className="text-sm text-gray-600 font-semibold">Birth Location</label>
+          <button
+            type="button"
+            onClick={toggleCoords}
+            className={`text-xs font-semibold underline underline-offset-2 transition-colors ${accentText}`}
+          >
+            {useCoords ? "Use place name" : "Use lat / lon"}
+          </button>
+        </div>
+
+        {useCoords ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              {row(
+                "Latitude",
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. 22.3072"
+                  value={latInput}
+                  onChange={(e) => handleLatChange(e.target.value)}
+                  className={inputCls}
+                />,
+              )}
+              {row(
+                "Longitude",
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="e.g. 73.1812"
+                  value={lonInput}
+                  onChange={(e) => handleLonChange(e.target.value)}
+                  className={inputCls}
+                />,
+              )}
+            </div>
+            {row(
+              "Place Label (optional)",
+              <input
+                type="text"
+                placeholder="e.g. Vadodara, India"
+                value={placeInput}
+                onChange={(e) => {
+                  setPlaceInput(e.target.value);
+                  onChange({ ...value, birth_place: e.target.value });
+                }}
+                className={inputCls}
+              />,
+            )}
+          </div>
+        ) : (
           <div ref={containerRef} className="relative">
             <input
               type="text"
@@ -164,19 +241,19 @@ function PersonPanel({
               className={inputCls}
             />
             {showDropdown && suggestions.length > 0 && (
-              <ul className="absolute z-[200] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-52 overflow-y-auto text-sm">
+              <ul className="absolute z-[200] left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-56 overflow-y-auto text-base">
                 {suggestions.map((s) => (
                   <li
-                    key={s.place_id}
+                    key={s.id}
                     onMouseDown={() => handleSelect(s)}
-                    className="px-3 py-2.5 cursor-pointer hover:bg-indigo-50 text-gray-700 border-b border-gray-100 last:border-0 leading-snug"
+                    className="px-4 py-3 cursor-pointer hover:bg-indigo-50 text-gray-700 border-b border-gray-100 last:border-0 leading-snug"
                   >
-                    {s.display_name}
+                    {s.label}
                   </li>
                 ))}
               </ul>
             )}
-          </div>,
+          </div>
         )}
       </div>
     </div>
@@ -235,12 +312,14 @@ export default function MatchForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!boy.birth_date || !boy.birth_time || !boy.birth_place) {
-      setError("Please fill all birth details for the Boy.");
+    const boyMissingLoc = !boy.birth_place.trim() && (boy.birth_lat == null || boy.birth_lon == null);
+    const girlMissingLoc = !girl.birth_place.trim() && (girl.birth_lat == null || girl.birth_lon == null);
+    if (!boy.birth_date || !boy.birth_time || boyMissingLoc) {
+      setError("Please fill all birth details for the Boy (including location).");
       return;
     }
-    if (!girl.birth_date || !girl.birth_time || !girl.birth_place) {
-      setError("Please fill all birth details for the Girl.");
+    if (!girl.birth_date || !girl.birth_time || girlMissingLoc) {
+      setError("Please fill all birth details for the Girl (including location).");
       return;
     }
     setLoading(true);
@@ -264,14 +343,14 @@ export default function MatchForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <PersonPanel label="♂ Boy / Vark"  accent="indigo" value={boy}  onChange={setBoy}  />
         <PersonPanel label="♀ Girl / Kanya" accent="rose"   value={girl} onChange={setGirl} />
       </div>
 
       {error && (
-        <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-sm text-center">
+        <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-base text-center">
           {error}
         </p>
       )}
@@ -279,13 +358,13 @@ export default function MatchForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl transition-all tracking-wide text-sm shadow-lg"
+        className="w-full bg-gradient-to-r from-indigo-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all tracking-wide text-base shadow-lg"
       >
         {loading ? "Saving…" : submitLabel}
       </button>
 
       {!isEditMode && (
-        <p className="text-center text-gray-400 text-xs">
+        <p className="text-center text-gray-400 text-sm">
           Ashtakoot Guna Milan · 36 points · Parashari system
         </p>
       )}

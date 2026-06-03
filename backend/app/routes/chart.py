@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 def _kundali_input_doc(req: ChartRequest) -> dict:
-    return {
+    doc = {
         "name": (req.name or "").strip(),
         "birth_date": req.birth_date,
         "birth_time": req.birth_time,
@@ -28,6 +28,11 @@ def _kundali_input_doc(req: ChartRequest) -> dict:
         "house_system": req.house_system,
         "zodiac": req.zodiac,
     }
+    if req.birth_lat is not None:
+        doc["birth_lat"] = req.birth_lat
+    if req.birth_lon is not None:
+        doc["birth_lon"] = req.birth_lon
+    return doc
 
 
 def _save_kundali_history(req: ChartRequest) -> Optional[str]:

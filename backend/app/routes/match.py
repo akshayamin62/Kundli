@@ -10,24 +10,26 @@ from app.database import get_history_collection
 router = APIRouter()
 
 
+def _person_doc(p) -> dict:
+    doc = {
+        "name": (p.name or "").strip(),
+        "birth_date": p.birth_date,
+        "birth_time": p.birth_time,
+        "birth_place": p.birth_place,
+        "house_system": p.house_system,
+        "zodiac": p.zodiac,
+    }
+    if p.birth_lat is not None:
+        doc["birth_lat"] = p.birth_lat
+    if p.birth_lon is not None:
+        doc["birth_lon"] = p.birth_lon
+    return doc
+
+
 def _match_input_doc(req: MatchRequest) -> dict:
     return {
-        "boy": {
-            "name": (req.boy.name or "").strip(),
-            "birth_date": req.boy.birth_date,
-            "birth_time": req.boy.birth_time,
-            "birth_place": req.boy.birth_place,
-            "house_system": req.boy.house_system,
-            "zodiac": req.boy.zodiac,
-        },
-        "girl": {
-            "name": (req.girl.name or "").strip(),
-            "birth_date": req.girl.birth_date,
-            "birth_time": req.girl.birth_time,
-            "birth_place": req.girl.birth_place,
-            "house_system": req.girl.house_system,
-            "zodiac": req.girl.zodiac,
-        },
+        "boy": _person_doc(req.boy),
+        "girl": _person_doc(req.girl),
     }
 
 

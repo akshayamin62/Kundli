@@ -3,12 +3,14 @@ from typing import Literal, Optional
 
 
 class ChartRequest(BaseModel):
-    name: Optional[str] = None   # person's name (for history)
+    name: Optional[str] = None
     save_history: bool = True
-    history_id: Optional[str] = None  # update existing history row instead of inserting
+    history_id: Optional[str] = None
     birth_date: str          # "YYYY-MM-DD"
     birth_time: str          # "HH:MM" or "HH:MM:SS"
-    birth_place: str         # "Mumbai, India"
+    birth_place: str = ""    # "Mumbai, India" — optional when birth_lat/birth_lon provided
+    birth_lat: Optional[float] = None   # decimal degrees, e.g. 22.3072
+    birth_lon: Optional[float] = None   # decimal degrees, e.g. 73.1812
     house_system: Literal[
         "placidus", "koch", "equal", "whole_sign", "porphyry", "regiomontanus", "campanus"
     ] = "placidus"

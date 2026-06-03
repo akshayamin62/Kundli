@@ -13,6 +13,7 @@ import { type Lang } from "@/lib/translations";
 import { downloadKundliReport } from "@/lib/reportGenerator";
 import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
+import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
@@ -440,11 +441,12 @@ export default function ResultPage() {
     <div className="h-screen flex flex-col overflow-hidden bg-gray-100">
 
       {/* ── Header ── */}
-      <header className="bg-indigo-950 text-white px-4 py-2 flex items-center justify-between shrink-0 shadow-md">
+      <header className="bg-indigo-950 text-white px-4 py-3 flex items-center justify-between shrink-0 shadow-md">
         <div className="flex items-center gap-3 min-w-0">
+          {/* <AppLogo href="/" height={32} className="brightness-0 invert" /> */}
           <button
             onClick={() => router.push("/")}
-            className="bg-indigo-800 hover:bg-indigo-700 px-3 py-1 rounded-lg text-xs font-semibold shrink-0 transition-colors"
+            className="bg-indigo-800 hover:bg-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold shrink-0 transition-colors"
           >
             ← New Chart
           </button>
@@ -456,7 +458,6 @@ export default function ResultPage() {
             {meta.birth_date} · {meta.birth_time} · {meta.timezone}
           </span>
         </div>
-        {/* Language toggle + Edit + Download */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => openEditModal()}
@@ -478,17 +479,17 @@ export default function ResultPage() {
             Download Report
           </button>
           <div className="flex items-center gap-1">
-          {(["en", "hi", "gu"] as Lang[]).map(l => (
-            <button
-              key={l}
-              onClick={() => setLang(l)}
-              className={`px-2.5 py-0.5 rounded text-xs font-bold transition-colors ${
-                lang === l ? "bg-white text-indigo-900" : "text-indigo-300 hover:text-white"
-              }`}
-            >
-              {l === "en" ? "EN" : l === "hi" ? "हि" : "ગુ"}
-            </button>
-          ))}
+            {(["en", "hi", "gu"] as Lang[]).map(l => (
+              <button
+                key={l}
+                onClick={() => setLang(l)}
+                className={`px-2.5 py-0.5 rounded text-xs font-bold transition-colors ${
+                  lang === l ? "bg-white text-indigo-900" : "text-indigo-300 hover:text-white"
+                }`}
+              >
+                {l === "en" ? "EN" : l === "hi" ? "हि" : "ગુ"}
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -499,7 +500,7 @@ export default function ResultPage() {
           <div className="flex gap-0 flex-1">
             {([  
               { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
-              { id: "grahsil" as MainTab, labels: { en: "Grahsil Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
+              { id: "grahsil" as MainTab, labels: { en: "Grahasheel Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
               { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
             ]).map(({ id, labels }) => (
               <button

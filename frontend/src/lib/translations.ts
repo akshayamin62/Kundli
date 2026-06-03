@@ -202,7 +202,7 @@ export const GRAHSHIL_PLANET_HEADERS: Record<Lang, string[]> = {
 
 // ── Grahshil Chakra title ──────────────────────────────────────────────────────
 export const GRAHSHIL_TITLE: Record<Lang, string> = {
-  en: "Grahshil Chakra (ग्रहशील चक्र) — Planetary Reference",
+  en: "Grahasheel Chakra (ग्रहशील चक्र) — Planetary Reference",
   hi: "ग्रहशील चक्र — ग्रह संदर्भ तालिका",
   gu: "ગ્રહશીલ ચક્ર — ગ્રહ સંદર્ભ કોષ્ટક",
 };

@@ -18,6 +18,10 @@ def _serialize(doc: dict) -> dict:
         doc["birth_date"] = inp.get("birth_date")
         doc["birth_time"] = inp.get("birth_time")
         doc["birth_place"] = inp.get("birth_place")
+        if inp.get("birth_lat") is not None:
+            doc["birth_lat"] = inp.get("birth_lat")
+        if inp.get("birth_lon") is not None:
+            doc["birth_lon"] = inp.get("birth_lon")
     elif doc.get("type") == "match":
         boy = inp.get("boy") or {}
         girl = inp.get("girl") or {}
@@ -25,10 +29,18 @@ def _serialize(doc: dict) -> dict:
         doc["boy_birth_date"] = boy.get("birth_date")
         doc["boy_birth_time"] = boy.get("birth_time")
         doc["boy_birth_place"] = boy.get("birth_place")
+        if boy.get("birth_lat") is not None:
+            doc["boy_birth_lat"] = boy.get("birth_lat")
+        if boy.get("birth_lon") is not None:
+            doc["boy_birth_lon"] = boy.get("birth_lon")
         doc["girl_name"] = girl.get("name")
         doc["girl_birth_date"] = girl.get("birth_date")
         doc["girl_birth_time"] = girl.get("birth_time")
         doc["girl_birth_place"] = girl.get("birth_place")
+        if girl.get("birth_lat") is not None:
+            doc["girl_birth_lat"] = girl.get("birth_lat")
+        if girl.get("birth_lon") is not None:
+            doc["girl_birth_lon"] = girl.get("birth_lon")
     return doc
 
 

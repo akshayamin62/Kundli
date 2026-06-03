@@ -46,12 +46,17 @@ def build_chart(req: ChartRequest) -> ChartResponse:
     second = int(time_parts[2]) if len(time_parts) == 3 else 0
 
     # ------------------------------------------------------------------
-    # 2. Geocode
+    # 2. Geocode (skip when client already supplies coordinates)
     # ------------------------------------------------------------------
-    geo = geocode_place(req.birth_place)
-    lat = geo["lat"]
-    lon = geo["lon"]
-    display_name = geo["display_name"]
+    if req.birth_lat is not None and req.birth_lon is not None:
+        lat = float(req.birth_lat)
+        lon = float(req.birth_lon)
+        display_name = req.birth_place if req.birth_place.strip() else f"{lat:.4f}, {lon:.4f}"
+    else:
+        geo = geocode_place(req.birth_place)
+        lat = geo["lat"]
+        lon = geo["lon"]
+        display_name = geo["display_name"]
 
     # ------------------------------------------------------------------
     # 3. Timezone → UTC

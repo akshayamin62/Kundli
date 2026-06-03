@@ -70,6 +70,8 @@ export interface ChartRequest {
   birth_date: string;
   birth_time: string;
   birth_place: string;
+  birth_lat?: number;
+  birth_lon?: number;
   house_system: string;
   zodiac: string;
 }
@@ -85,15 +87,21 @@ export interface HistoryItemSummary {
   birth_date?: string;
   birth_time?: string;
   birth_place?: string;
+  birth_lat?: number;
+  birth_lon?: number;
   // Match fields
   boy_name?: string;
   girl_name?: string;
   boy_birth_date?: string;
   boy_birth_time?: string;
   boy_birth_place?: string;
+  boy_birth_lat?: number;
+  boy_birth_lon?: number;
   girl_birth_date?: string;
   girl_birth_time?: string;
   girl_birth_place?: string;
+  girl_birth_lat?: number;
+  girl_birth_lon?: number;
 }
 
 export interface HistoryItemFull extends HistoryItemSummary {
