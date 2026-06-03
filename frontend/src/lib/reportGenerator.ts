@@ -1,4 +1,15 @@
-import { ChartResponse, MatchResponse } from "@/types/chart";
+import {
+  ChartResponse,
+  MatchResponse,
+  ChartRequest,
+  DashaResponse,
+  MatchRequest,
+} from "@/types/chart";
+import { calculateVargaBulk, calculateDasha, calculateVarga } from "@/services/api";
+import { toMoonChart } from "@/lib/chartTransforms";
+import { vargaChartLabel } from "@/lib/vargaMeta";
+import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
+import { matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
 
 // ── Chart SVG builder (pure, no React) ───────────────────────────────────────
 const R_SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -167,8 +178,152 @@ function openAndPrint(html: string) {
   w.focus();
 }
 
+function sectionHeader(title: string): string {
+  return `
+    <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
+      <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">${title}</p>
+    </div>`;
+}
+
+function chartBlockHtml(label: string, chart: ChartResponse): string {
+  return `
+    <div style="break-inside:avoid;page-break-inside:avoid;">
+      <p style="font-size:10px;font-weight:700;color:#334155;margin-bottom:6px;">${label}</p>
+      <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fafafa;">${buildChartSvgHtml(chart)}</div>
+    </div>`;
+}
+
+function twoColumnChartGridHtml(items: { label: string; chart: ChartResponse }[]): string {
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px;">
+      ${items.map((item) => chartBlockHtml(item.label, item.chart)).join("")}
+    </div>`;
+}
+
+function boyGirlChartRowHtml(
+  subsection: string,
+  boyName: string,
+  boyChart: ChartResponse,
+  girlName: string,
+  girlChart: ChartResponse,
+): string {
+  return `
+    <div style="padding:0 16px 16px;">
+      <p style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">${subsection}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        ${chartBlockHtml(boyName, boyChart)}
+        ${chartBlockHtml(girlName, girlChart)}
+      </div>
+    </div>`;
+}
+
+function fmtDashaDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function buildDashaTableHtml(dasha: DashaResponse): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = dasha.periods.map((row, i) => {
+    const isActive = row.start_date <= today && today < row.end_date;
+    const isPast = row.end_date < today;
+    const bg = isActive ? "#fefce8" : i % 2 === 0 ? "#fff" : "#f8fafc";
+    const opacity = isPast && !isActive ? "opacity:0.65;" : "";
+    return `
+      <tr style="background:${bg};${opacity}">
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;color:#1e1b4b;">${row.md}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:600;color:#334155;">${row.ad}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#475569;">${row.pd}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#64748b;">${fmtDashaDate(row.start_date)}${isActive ? " ●" : ""}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#64748b;">${fmtDashaDate(row.end_date)}</td>
+      </tr>`;
+  }).join("");
+
+  return `
+    <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+      ${sectionHeader("Vimshottari Dasha")}
+      <div style="padding:12px 16px;background:#eef2ff;border-bottom:1px solid #e2e8f0;">
+        <p style="font-size:12px;color:#3730a3;font-weight:600;">
+          Birth Nakshatra: <strong>${dasha.nakshatra_name}</strong> · Lord: <strong>${dasha.nakshatra_lord}</strong>
+        </p>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">MD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">AD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">PD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">Start</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">End</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function buildSadsatkutHtml(sk: NonNullable<MatchResponse["sadsatkut"]>): string {
+  type SkKey = keyof typeof sk;
+  const groups: {
+    label: string;
+    items: { key: SkKey; title: string; desc: string; auspicious: boolean }[];
+  }[] = [
+    {
+      label: "Shadashtak",
+      items: [
+        { key: "priti_shadashtak", title: "Priti Shadashtak", desc: "mutual love & attraction", auspicious: true },
+        { key: "mrityu_shadashtak", title: "Mrityu Shadashtak", desc: "tension & obstacles", auspicious: false },
+      ],
+    },
+    {
+      label: "Dvadashatak",
+      items: [
+        { key: "shubh_dvadashatak", title: "Shubh Dvadashatak", desc: "prosperity & support", auspicious: true },
+        { key: "ashubh_dvadashatak", title: "Ashubh Dvadashatak", desc: "financial stress", auspicious: false },
+      ],
+    },
+    {
+      label: "Navpancham",
+      items: [
+        { key: "shubh_navpancham", title: "Shubh Navpancham", desc: "fortune & children", auspicious: true },
+        { key: "nashtan_navpancham", title: "Nashtan Navpancham", desc: "misfortune", auspicious: false },
+      ],
+    },
+  ];
+
+  const cards = groups.map(({ label, items }) => {
+    const inner = items.map(({ key, title, desc, auspicious }) => {
+      const present = sk[key] as boolean;
+      const active = present && auspicious;
+      const warn = present && !auspicious;
+      const bg = active ? "#ecfdf5" : warn ? "#fef2f2" : "#f8fafc";
+      const border = active ? "#a7f3d0" : warn ? "#fecaca" : "#e2e8f0";
+      const titleCol = active ? "#065f46" : warn ? "#991b1b" : "#94a3b8";
+      return `
+        <div style="border-radius:10px;padding:12px 14px;background:${bg};border:1px solid ${border};">
+          <p style="font-size:12px;font-weight:800;color:${titleCol};margin-bottom:4px;">${title} · ${present ? "Present" : "Absent"}</p>
+          <p style="font-size:10px;color:#64748b;">${desc}</p>
+        </div>`;
+    }).join("");
+    return `
+      <div style="margin-bottom:14px;">
+        <p style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${label}</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${inner}</div>
+      </div>`;
+  }).join("");
+
+  return `
+    <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+      ${sectionHeader("Sadsatkut Kostkaani")}
+      <div style="padding:16px 20px;">
+        <p style="font-size:11px;color:#64748b;margin-bottom:14px;">Six-fold sign compatibility groups (Rashi distance: ${sk.distance})</p>
+        ${cards}
+      </div>
+    </div>`;
+}
+
 // ── Kundali Report ────────────────────────────────────────────────────────────
-export function downloadKundliReport(chart: ChartResponse) {
+export async function downloadKundliReport(chart: ChartResponse, req: ChartRequest) {
   const m = chart.meta;
   const today = new Date().toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
@@ -192,6 +347,34 @@ export function downloadKundliReport(chart: ChartResponse) {
   `).join("");
 
   const chartSvg = buildChartSvgHtml(chart);
+
+  let divisionalSection = "";
+  let dashaSection = "";
+  try {
+    const moonChart = toMoonChart(chart);
+    const ns = Array.from({ length: 59 }, (_, i) => i + 2);
+    const [vargaBulk, dasha] = await Promise.all([
+      calculateVargaBulk({ ...req, save_history: false }, ns),
+      calculateDasha({ ...req, years_ahead: 120, save_history: false }),
+    ]);
+    const gridItems: { label: string; chart: ChartResponse }[] = [
+      { label: "Moon Chart", chart: moonChart },
+      { label: vargaChartLabel(1), chart },
+    ];
+    for (let n = 2; n <= 60; n++) {
+      const v = vargaBulk[n];
+      if (v) gridItems.push({ label: vargaChartLabel(n), chart: v });
+    }
+    divisionalSection = `
+      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+        ${sectionHeader("Moon Chart & All D-Charts (D1–D60)")}
+        ${twoColumnChartGridHtml(gridItems)}
+      </div>`;
+    dashaSection = buildDashaTableHtml(dasha);
+  } catch (e) {
+    alert(e instanceof Error ? e.message : "Failed to generate report data");
+    return;
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -293,6 +476,10 @@ export function downloadKundliReport(chart: ChartResponse) {
         </table>
       </div>
 
+      ${divisionalSection}
+
+      ${dashaSection}
+
       <!-- FOOTER -->
       <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #e2e8f0;">
         <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa · Ashtakoot Parashari System</p>
@@ -307,7 +494,7 @@ export function downloadKundliReport(chart: ChartResponse) {
 }
 
 // ── Match (Kundli Milan) Report ───────────────────────────────────────────────
-export function downloadMatchReport(data: MatchResponse) {
+export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchRequest) {
   const today = new Date().toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
   });
@@ -369,8 +556,33 @@ export function downloadMatchReport(data: MatchResponse) {
     `;
   }).join("");
 
-  const boyChartSvg  = buildChartSvgHtml(data.boy_chart);
-  const girlChartSvg = buildChartSvgHtml(data.girl_chart);
+  const req = matchReq ?? loadStoredMatchRequest() ?? matchRequestFromResult(data);
+  const boyName = data.boy_name || "Groom";
+  const girlName = data.girl_name || "Bride";
+
+  let chartsSection = "";
+  let sadsatkutSection = "";
+  try {
+    const boyMoon = toMoonChart(data.boy_chart);
+    const girlMoon = toMoonChart(data.girl_chart);
+    const [boyD9, girlD9] = await Promise.all([
+      calculateVarga(vargaRequestForPerson(data.boy_chart, req.boy, 9)),
+      calculateVarga(vargaRequestForPerson(data.girl_chart, req.girl, 9)),
+    ]);
+    chartsSection = `
+      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+        ${sectionHeader("Charts — Birth, Moon & D9")}
+        ${boyGirlChartRowHtml("Birth Chart", boyName, data.boy_chart, girlName, data.girl_chart)}
+        ${boyGirlChartRowHtml("Moon Chart", boyName, boyMoon, girlName, girlMoon)}
+        ${boyGirlChartRowHtml("D9 Chart (Navamsa)", boyName, boyD9, girlName, girlD9)}
+      </div>`;
+    if (data.sadsatkut) {
+      sadsatkutSection = buildSadsatkutHtml(data.sadsatkut);
+    }
+  } catch (e) {
+    alert(e instanceof Error ? e.message : "Failed to generate match report data");
+    return;
+  }
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -513,6 +725,8 @@ export function downloadMatchReport(data: MatchResponse) {
         </table>
       </div>
 
+      ${sadsatkutSection}
+
       <!-- MANGAL DOSHA -->
       <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
         <div style="background:#1e1b4b;padding:13px 20px;">
@@ -540,22 +754,7 @@ export function downloadMatchReport(data: MatchResponse) {
         ` : ""}
       </div>
 
-      <!-- BIRTH CHARTS -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;">
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Birth Charts</p>
-        </div>
-        <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div>
-            <p style="font-size:11px;font-weight:700;color:#1e40af;margin-bottom:8px;">● ${data.boy_name || "Groom"}</p>
-            <div style="border:1px solid #ddd6fe;border-radius:8px;overflow:hidden;">${boyChartSvg}</div>
-          </div>
-          <div>
-            <p style="font-size:11px;font-weight:700;color:#9f1239;margin-bottom:8px;">● ${data.girl_name || "Bride"}</p>
-            <div style="border:1px solid #fecdd3;border-radius:8px;overflow:hidden;">${girlChartSvg}</div>
-          </div>
-        </div>
-      </div>
+      ${chartsSection}
 
       <!-- FOOTER -->
       <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #e2e8f0;">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ChartWheel from "@/components/ChartWheel";
 import HouseTable from "@/components/HouseTable";
@@ -15,6 +15,7 @@ import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
 import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
+import { toMoonChart } from "@/lib/chartTransforms";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -228,7 +229,7 @@ export default function ResultPage() {
   };
 
   // D-chart (middle panel)
-  const [selectedN, setSelectedN]     = useState(9);
+  const [selectedVarga, setSelectedVarga] = useState<number | "moon">(9);
   const [vargaChart, setVargaChart]   = useState<ChartResponse | null>(null);
   const [vargaLoading, setVargaLoading] = useState(false);
   const [vargaOpen, setVargaOpen]     = useState(false);
@@ -238,7 +239,7 @@ export default function ResultPage() {
   const [allVargaCharts, setAllVargaCharts]   = useState<Record<number, ChartResponse>>({});
   const [allVargaLoadingNs, setAllVargaLoadingNs] = useState<Set<number>>(new Set());
   const [allVargaStarted, setAllVargaStarted] = useState(false);
-  const [modalVargaN, setModalVargaN] = useState<number | null>(null);
+  const [modalVargaN, setModalVargaN] = useState<number | "moon" | null>(null);
   const [modalVargaChart, setModalVargaChart] = useState<ChartResponse | null>(null);
 
   // Gochar (right-bottom panel)
@@ -251,6 +252,7 @@ export default function ResultPage() {
   const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
   const [resolvingEdit, setResolvingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // ── Load from sessionStorage ───────────────────────────────────────────────
   useEffect(() => {
@@ -270,10 +272,17 @@ export default function ResultPage() {
     try {
       const result = await calculateVarga({ ...reqData, n });
       setVargaChart(result);
-      setSelectedN(n);
+      setSelectedVarga(n);
     } catch { /* silently ignore */ }
     finally { setVargaLoading(false); }
   }, []);
+
+  const selectMoonChartPanel = useCallback(() => {
+    if (!chart) return;
+    setVargaChart(toMoonChart(chart));
+    setSelectedVarga("moon");
+    setVargaLoading(false);
+  }, [chart]);
 
   const fetchGochar = useCallback(async (reqData: ChartRequest, dt?: { date: string; time: string }) => {
     setGocharLoading(true);
@@ -365,8 +374,10 @@ export default function ResultPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const moonChart = useMemo(() => (chart ? toMoonChart(chart) : null), [chart]);
+
   // ── Not yet loaded ─────────────────────────────────────────────────────────
-  if (!chart) {
+  if (!chart || !moonChart) {
     return (
       <div className="flex items-center justify-center h-screen bg-indigo-50 text-indigo-700 text-sm font-semibold">
         <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none">
@@ -379,7 +390,8 @@ export default function ResultPage() {
   }
 
   const meta = chart.meta;
-  const selectedLabel = vargaTitle(selectedN);
+  const selectedLabel =
+    selectedVarga === "moon" ? "Moon Chart" : vargaTitle(selectedVarga);
 
   // ── Varga selector header button ───────────────────────────────────────────
   const VargaSelector = (
@@ -392,15 +404,24 @@ export default function ResultPage() {
       </button>
       {vargaOpen && (
         <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl py-1 w-72 max-h-72 overflow-y-auto">
-          {/* Quick picks */}
+          <button
+            type="button"
+            onClick={() => { selectMoonChartPanel(); setVargaOpen(false); }}
+            className={`w-full text-left px-3 py-2 transition-colors ${selectedVarga === "moon" ? "bg-amber-50 text-amber-900" : "text-gray-700 hover:bg-gray-50"}`}
+          >
+            <span className={`block text-xs ${selectedVarga === "moon" ? "font-bold" : "font-semibold"}`}>Moon Chart</span>
+            <span className="block text-[10px] italic text-gray-600 leading-tight">Chandra Kundli — Moon sign as Lagna</span>
+          </button>
+          <div className="border-t border-gray-100 my-1"/>
           <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Popular</div>
           {QUICK_VARGAS.map(n => (
             <button
               key={n}
+              type="button"
               onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
-              className={`w-full text-left px-3 py-2 transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+              className={`w-full text-left px-3 py-2 transition-colors ${selectedVarga === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
             >
-              <span className={`block text-xs ${selectedN === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
+              <span className={`block text-xs ${selectedVarga === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
               <span className="block text-[10px] italic text-gray-600 leading-tight">{VARGA_INFO[n]?.area ?? ""}</span>
             </button>
           ))}
@@ -411,10 +432,11 @@ export default function ResultPage() {
             .map(n => (
               <button
                 key={n}
+                type="button"
                 onClick={() => { fetchVarga(n, req!); setVargaOpen(false); }}
-                className={`w-full text-left px-3 py-2 transition-colors ${selectedN === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
+                className={`w-full text-left px-3 py-2 transition-colors ${selectedVarga === n ? "bg-indigo-50 text-indigo-700" : "text-gray-700 hover:bg-gray-50"}`}
               >
-                <span className={`block text-xs ${selectedN === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
+                <span className={`block text-xs ${selectedVarga === n ? "font-bold" : "font-semibold"}`}>{vargaTitle(n)}</span>
                 <span className="block text-[10px] italic text-gray-600 leading-tight">{VARGA_INFO[n]?.area ?? ""}</span>
               </button>
             ))}
@@ -470,13 +492,22 @@ export default function ResultPage() {
             Edit
           </button>
           <button
-            onClick={() => chart && downloadKundliReport(chart)}
-            className="inline-flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
+            onClick={async () => {
+              if (!chart || !req) return;
+              setReportLoading(true);
+              try {
+                await downloadKundliReport(chart, req);
+              } finally {
+                setReportLoading(false);
+              }
+            }}
+            disabled={!chart || !req || reportLoading}
+            className="inline-flex items-center gap-1.5 bg-indigo-700 hover:bg-indigo-600 disabled:opacity-60 text-white px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
           >
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/>
             </svg>
-            Download Report
+            {reportLoading ? "Preparing…" : "Download Report"}
           </button>
           <div className="flex items-center gap-1">
             {(["en", "hi", "gu"] as Lang[]).map(l => (
@@ -537,6 +568,29 @@ export default function ResultPage() {
               className="grid gap-2 p-2"
               style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
             >
+              {/* Moon Chart — first */}
+              <div
+                className="flex flex-col rounded-lg border border-amber-200 bg-white overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:border-amber-400 transition-all"
+                onClick={() => {
+                  setModalVargaN("moon");
+                  setModalVargaChart(moonChart);
+                }}
+              >
+                <div className="bg-amber-50 border-b border-amber-100 px-2 py-1 shrink-0">
+                  <div className="text-[10px] font-bold text-amber-900 leading-tight truncate">
+                    Moon Chart
+                  </div>
+                  <div className="text-[9px] text-gray-500 italic leading-tight truncate">
+                    Chandra Kundli — Moon sign as Lagna
+                  </div>
+                </div>
+                <div className="relative w-full" style={{ paddingTop: "71.1%" }}>
+                  <div className="absolute inset-0">
+                    <ChartWheel chart={moonChart} lang={lang} />
+                  </div>
+                </div>
+              </div>
+
               {Array.from({ length: 60 }, (_, i) => i + 1).map((n) => {
                 const varga = n === 1 ? chart : allVargaCharts[n];
                 const isLoading = n > 1 && allVargaLoadingNs.has(n);
@@ -683,12 +737,21 @@ export default function ResultPage() {
           >
             <div className="px-5 py-3 border-b border-gray-200 bg-indigo-50 flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-indigo-900">
-                  D{modalVargaN} – {VARGA_INFO[modalVargaN]?.name ?? ""}
-                </p>
-                <p className="text-xs text-gray-500 italic">
-                  {VARGA_INFO[modalVargaN]?.area ?? ""}
-                </p>
+                {modalVargaN === "moon" ? (
+                  <>
+                    <p className="text-sm font-bold text-indigo-900">Moon Chart</p>
+                    <p className="text-xs text-gray-500 italic">Chandra Kundli — Moon sign as Lagna</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-indigo-900">
+                      D{modalVargaN} – {VARGA_INFO[modalVargaN as number]?.name ?? ""}
+                    </p>
+                    <p className="text-xs text-gray-500 italic">
+                      {VARGA_INFO[modalVargaN as number]?.area ?? ""}
+                    </p>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => {

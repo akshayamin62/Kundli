@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { MatchResponse, MatchKoot, MatchPersonRequest, MatchRequest } from "@/types/chart";
+import { MatchResponse, MatchKoot, MatchPersonRequest, MatchRequest, ChartResponse } from "@/types/chart";
 import ChartWheel from "@/components/ChartWheel";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES, PLANET_NAMES, SIGN_LORDS } from "@/lib/translations";
 import { downloadMatchReport } from "@/lib/reportGenerator";
 import FormModal from "@/components/FormModal";
 import MatchForm from "@/components/MatchForm";
-import { saveMatchRequest, matchRequestFromResult } from "@/lib/editPrefill";
+import { saveMatchRequest, matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
+import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { resolveMatchHistoryId, setMatchHistoryId, getMatchHistoryId } from "@/lib/historySession";
-import { fetchHistoryItem } from "@/services/api";
+import { fetchHistoryItem, calculateVarga } from "@/services/api";
 import AppLogo from "@/components/AppLogo";
+import { toMoonChart } from "@/lib/chartTransforms";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -23,6 +25,9 @@ const M: Record<Lang, Record<string, string>> = {
     mangalYes: "Mangal Dosha present", mangalNo: "No Mangal Dosha",
     mangalOff: "Dosha cancelled \u2014 both partners have Mangal Dosha.",
     charts: "Birth Charts",
+    chartBirth: "Birth Chart",
+    chartMoon: "Moon Chart",
+    chartD9: "D9 Chart",
     footer: "Swiss Ephemeris \u00B7 Lahiri Ayanamsa \u00B7 Ashtakoot Parashari System",
     detail: "Detail",
     dob: "Date of Birth", tob: "Time of Birth", place: "Place",
@@ -54,6 +59,9 @@ const M: Record<Lang, Record<string, string>> = {
     mangalNo: "\u092E\u093E\u0902\u0917\u0932\u093F\u0915 \u0926\u094B\u0937 \u0928\u0939\u0940\u0902",
     mangalOff: "\u0926\u094B\u0928\u094B\u0902 \u092E\u093E\u0902\u0917\u0932\u093F\u0915 \u2014 \u0926\u094B\u0937 \u0928\u093F\u0930\u0938\u094D\u0924\u0964",
     charts: "\u091C\u0928\u094D\u092E \u0915\u0941\u0902\u0921\u0932\u0940",
+    chartBirth: "\u091C\u0928\u094D\u092E \u0915\u0941\u0902\u0921\u0932\u0940",
+    chartMoon: "\u091A\u0902\u0926\u094D\u0930 \u0915\u0941\u0902\u0921\u0932\u0940",
+    chartD9: "D9 \u0915\u0941\u0902\u0921\u0932\u0940",
     footer: "\u0938\u094D\u0935\u093F\u0938 \u090F\u092B\u0947\u092E\u0947\u0930\u093F\u0938 \u00B7 \u0932\u093E\u0939\u093F\u0930\u0940 \u0905\u092F\u0928\u093E\u0902\u0936 \u00B7 \u0905\u0937\u094D\u0920\u0915\u0942\u0920 \u092A\u093E\u0930\u093E\u0936\u0930\u0940 \u092A\u0926\u094D\u0927\u0924\u093F",
     detail: "\u0935\u093F\u0935\u0930\u0923",
     dob: "\u091C\u0928\u094D\u092E \u0924\u093F\u0925\u093F", tob: "\u091C\u0928\u094D\u092E \u0938\u092E\u092F", place: "\u0938\u094D\u0925\u093E\u0928",
@@ -85,6 +93,9 @@ const M: Record<Lang, Record<string, string>> = {
     mangalNo: "\u0AAE\u0ABE\u0A82\u0A97\u0AB3\u0ABF\u0A95 \u0AA6\u0ACB\u0AB7 \u0AA8\u0AA5\u0AC0",
     mangalOff: "\u0AAC\u0A82\u0AA8\u0AC7 \u0AAE\u0ABE\u0A82\u0A97\u0AB3\u0ABF\u0A95 \u2014 \u0AA6\u0ACB\u0AB7 \u0AB0\u0AA6.",
     charts: "\u0A9C\u0AA8\u0ACD\u0AAE \u0A95\u0AC1\u0A82\u0AA1\u0AB3\u0AC0",
+    chartBirth: "\u0A9C\u0AA8\u0ACD\u0AAE \u0A95\u0AC1\u0A82\u0AA1\u0AB3\u0AC0",
+    chartMoon: "\u0A9A\u0AA8\u0ACD\u0AA6\u0ACD\u0AB0 \u0A95\u0AC1\u0A82\u0AA1\u0AB3\u0AC0",
+    chartD9: "D9 \u0A95\u0AC1\u0A82\u0AA1\u0AB3\u0AC0",
     footer: "\u0AB8\u0ACD\u0AB5\u0ABF\u0AB8 \u0A87\u0AAB\u0AC7\u0AAE\u0AC7\u0AB0\u0ABF\u0AB8 \u00B7 \u0AB2\u0ABE\u0AB9\u0ABF\u0AB0\u0AC0 \u0A85\u0AAF\u0AA8\u0ABE\u0A82\u0AB6 \u00B7 \u0A85\u0AB7\u0ACD\u0A9F\u0A95\u0AC2\u0A9F \u0AAA\u0ABE\u0AB0\u0ABE\u0AB6\u0AB0\u0AC0 \u0AAA\u0AA6\u0ACD\u0AA7\u0AA4\u0ABF",
     detail: "\u0AB5\u0ABF\u0A97\u0AA4",
     dob: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AA4\u0ABE\u0AB0\u0ABF\u0A96", tob: "\u0A9C\u0AA8\u0ACD\u0AAE \u0AB8\u0AAE\u0AAF", place: "\u0AB8\u0ACD\u0AA5\u0AB3",
@@ -339,6 +350,15 @@ export default function MatchResultPage() {
   const [resolvingEdit, setResolvingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  type MatchChartView = "birth" | "moon" | "d9";
+  const [chartView, setChartView] = useState<MatchChartView>("birth");
+  const [chartDropdownOpen, setChartDropdownOpen] = useState(false);
+  const [boyD9, setBoyD9] = useState<ChartResponse | null>(null);
+  const [girlD9, setGirlD9] = useState<ChartResponse | null>(null);
+  const [d9Loading, setD9Loading] = useState(false);
+  const [d9Error, setD9Error] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+
   useEffect(() => {
     const sl = localStorage.getItem("jk_lang") as Lang | null;
     if (sl) setLang(sl);
@@ -351,6 +371,63 @@ export default function MatchResultPage() {
     setLang(l);
     try { localStorage.setItem("jk_lang", l); } catch { /* ignore */ }
   };
+
+  const boyMoonChart = useMemo(
+    () => (data ? toMoonChart(data.boy_chart) : null),
+    [data],
+  );
+  const girlMoonChart = useMemo(
+    () => (data ? toMoonChart(data.girl_chart) : null),
+    [data],
+  );
+
+  const loadD9Charts = useCallback(async () => {
+    if (!data) return;
+    if (boyD9 && girlD9) return;
+    setD9Loading(true);
+    setD9Error(null);
+    try {
+      const stored = loadStoredMatchRequest();
+      const req = stored ?? matchRequestFromResult(data);
+      const [b, g] = await Promise.all([
+        calculateVarga(vargaRequestForPerson(data.boy_chart, req.boy, 9)),
+        calculateVarga(vargaRequestForPerson(data.girl_chart, req.girl, 9)),
+      ]);
+      setBoyD9(b);
+      setGirlD9(g);
+    } catch (err) {
+      setD9Error(err instanceof Error ? err.message : "Failed to load D9 charts");
+      setBoyD9(null);
+      setGirlD9(null);
+    } finally {
+      setD9Loading(false);
+    }
+  }, [data, boyD9, girlD9]);
+
+  useEffect(() => {
+    if (chartView === "d9") void loadD9Charts();
+  }, [chartView, loadD9Charts]);
+
+  const chartViewLabel = (view: MatchChartView) => {
+    const labels = M[lang];
+    if (view === "birth") return labels.chartBirth;
+    if (view === "moon") return labels.chartMoon;
+    return labels.chartD9;
+  };
+
+  const displayCharts = useMemo(() => {
+    if (!data) return null;
+    if (chartView === "birth") {
+      return { boy: data.boy_chart, girl: data.girl_chart };
+    }
+    if (chartView === "moon" && boyMoonChart && girlMoonChart) {
+      return { boy: boyMoonChart, girl: girlMoonChart };
+    }
+    if (chartView === "d9" && boyD9 && girlD9) {
+      return { boy: boyD9, girl: girlD9 };
+    }
+    return null;
+  }, [data, chartView, boyMoonChart, girlMoonChart, boyD9, girlD9]);
 
   const openEditModal = async () => {
     if (!data) return;
@@ -381,6 +458,9 @@ export default function MatchResultPage() {
     if (result.history_id) setMatchHistoryId(result.history_id);
     else if (editHistoryId) setMatchHistoryId(editHistoryId);
     setData(result);
+    setBoyD9(null);
+    setGirlD9(null);
+    setD9Error(null);
     sessionStorage.setItem("matchResult", JSON.stringify(result));
     saveMatchRequest(matchRequestFromResult(result));
     setEditOpen(false);
@@ -435,13 +515,23 @@ export default function MatchResultPage() {
               Edit
             </button>
             <button
-              onClick={() => downloadMatchReport(data)}
-              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm shadow-indigo-200"
+              onClick={async () => {
+                if (!data) return;
+                setReportLoading(true);
+                try {
+                  const stored = loadStoredMatchRequest();
+                  await downloadMatchReport(data, stored ?? matchRequestFromResult(data));
+                } finally {
+                  setReportLoading(false);
+                }
+              }}
+              disabled={reportLoading}
+              className="inline-flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm shadow-indigo-200"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 4v11"/>
               </svg>
-              Download
+              {reportLoading ? "Preparing…" : "Download"}
             </button>
             <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
               {(["en","hi","gu"] as Lang[]).map(l => (
@@ -658,28 +748,97 @@ export default function MatchResultPage() {
           {/* ════ RIGHT COLUMN ════ */}
           <div className="px-5 sm:px-7 py-6 lg:overflow-y-auto lg:h-full lg:border-l border-slate-100 space-y-5">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <h2 className="text-slate-800 font-bold text-base mb-4 flex items-center gap-2">
-                <span className="text-lg">🪐</span>
-                {t.charts}
-              </h2>
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <h2 className="text-slate-800 font-bold text-base flex items-center gap-2">
+                  <span className="text-lg">🪐</span>
+                  {chartViewLabel(chartView)}
+                </h2>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setChartDropdownOpen((o) => !o)}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-sm font-semibold text-slate-700 transition-colors"
+                  >
+                    {chartViewLabel(chartView)}
+                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {chartDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        aria-hidden
+                        onClick={() => setChartDropdownOpen(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 z-40 min-w-[160px] bg-white border border-slate-200 rounded-xl shadow-lg py-1 overflow-hidden">
+                        {(["birth", "moon", "d9"] as MatchChartView[]).map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => {
+                              setChartView(v);
+                              setChartDropdownOpen(false);
+                              if (v === "d9") {
+                                setD9Error(null);
+                              }
+                            }}
+                            className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors ${
+                              chartView === v ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            {chartViewLabel(v)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
               <div className="space-y-5">
-                {[
-                  { name: data.boy_name  || "Groom", chart: data.boy_chart,  accent: "indigo" },
-                  { name: data.girl_name || "Bride", chart: data.girl_chart, accent: "rose"   },
-                ].map(({ name, chart, accent }) => (
-                  <div key={name}>
-                    <div className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${accent === "indigo" ? "bg-indigo-50" : "bg-rose-50"}`}>
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${accent === "indigo" ? "bg-indigo-500" : "bg-rose-400"}`} />
-                      <p className={`text-sm font-bold ${accent === "indigo" ? "text-indigo-700" : "text-rose-600"}`}>{name}</p>
-                    </div>
-                    <div
-                      className={`border-2 rounded-2xl overflow-hidden shadow-sm ${accent === "indigo" ? "border-indigo-100" : "border-rose-100"}`}
-                      style={{ aspectRatio: "900/640" }}
-                    >
-                      <ChartWheel chart={chart} lang={lang} />
-                    </div>
+                {d9Loading && chartView === "d9" && !displayCharts ? (
+                  <div className="flex items-center justify-center py-16 text-slate-500 text-sm font-medium">
+                    <svg className="animate-spin h-5 w-5 mr-2 text-indigo-500" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                    </svg>
+                    Loading D9 charts…
                   </div>
-                ))}
+                ) : chartView === "d9" && d9Error ? (
+                  <div className="text-center py-12 px-4">
+                    <p className="text-red-600 text-sm mb-3">{d9Error}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBoyD9(null);
+                        setGirlD9(null);
+                        setD9Error(null);
+                        void loadD9Charts();
+                      }}
+                      className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : displayCharts ? (
+                  [
+                    { name: data.boy_name  || "Groom", chart: displayCharts.boy,  accent: "indigo" as const },
+                    { name: data.girl_name || "Bride", chart: displayCharts.girl, accent: "rose" as const },
+                  ].map(({ name, chart, accent }) => (
+                    <div key={name}>
+                      <div className={`flex items-center gap-2 mb-2 px-3 py-2 rounded-xl ${accent === "indigo" ? "bg-indigo-50" : "bg-rose-50"}`}>
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${accent === "indigo" ? "bg-indigo-500" : "bg-rose-400"}`} />
+                        <p className={`text-sm font-bold ${accent === "indigo" ? "text-indigo-700" : "text-rose-600"}`}>{name}</p>
+                      </div>
+                      <div
+                        className={`border-2 rounded-2xl overflow-hidden shadow-sm ${accent === "indigo" ? "border-indigo-100" : "border-rose-100"}`}
+                        style={{ aspectRatio: "900/640" }}
+                      >
+                        <ChartWheel chart={chart} lang={lang} />
+                      </div>
+                    </div>
+                  ))
+                ) : null}
               </div>
             </div>
 
