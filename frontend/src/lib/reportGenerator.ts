@@ -10,6 +10,32 @@ import { toMoonChart } from "@/lib/chartTransforms";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
+import {
+  chunkArray,
+  downloadPdfFromHtml,
+  REPORT_PDF_STYLES,
+  reportKeepTogether,
+  reportTableBlock,
+} from "@/lib/pdfExport";
+
+/** Inline colors only — sizing/centering from .report-badge in pdfExport REPORT_PDF_STYLES */
+function reportBadge(
+  text: string,
+  colors: string,
+  size: "sm" | "md" | "lg" = "sm",
+  radius: "pill" | "pill-sm" = "pill",
+): string {
+  const classes = [
+    "report-badge",
+    radius === "pill-sm" ? "report-badge--pill-sm" : "report-badge--pill",
+    size !== "sm" ? `report-badge--${size}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return `<span class="${classes}" style="${colors}"><span class="report-badge__text">${text}</span></span>`;
+}
+
+const TD = "padding:9px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;";
 
 // ── Chart SVG builder (pure, no React) ───────────────────────────────────────
 const R_SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -74,8 +100,10 @@ function rGetInnerVertex(house: number, W: number, H: number): RPt {
   return v[house]??[cx,cy];
 }
 
-function buildChartSvgHtml(chart: ChartResponse): string {
-  const W = 900, H = 640;
+function buildChartSvgHtml(chart: ChartResponse, compact = false): string {
+  const W = compact ? 540 : 900;
+  const H = compact ? Math.round((W * 640) / 900) : 640;
+  const s = W / 900;
   const h1 = chart.houses.find(h => h.number === 1);
   const lagnaSign = h1 ? (R_SIGN_TO_NUM[h1.sign] ?? 1) : 1;
   const signByHouse: Record<number,number> = {};
@@ -109,7 +137,8 @@ function buildChartSvgHtml(chart: ChartResponse): string {
   const centroids = rBuildCentroids(W, H);
   const diamondHouses = new Set([1,4,7,10]);
 
-  let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial,sans-serif;width:100%;height:auto;display:block;">`;
+  const svgH = compact ? H : "auto";
+  let svg = `<svg width="100%" height="${svgH}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial,sans-serif;max-width:100%;display:block;vertical-align:top;">`;
   svg += `<rect width="${W}" height="${H}" fill="#ffffff"/>`;
 
   // Polygons
@@ -130,35 +159,37 @@ function buildChartSvgHtml(chart: ChartResponse): string {
     const [ivX, ivY] = rGetInnerVertex(house, W, H);
     const numX = ivX + (x - ivX) * 0.22;
     const numY = ivY + (y - ivY) * 0.22;
-    svg += `<text x="${numX.toFixed(1)}" y="${numY.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="16" font-weight="700">${signNum}</text>`;
+    svg += `<text x="${numX.toFixed(1)}" y="${numY.toFixed(1)}" text-anchor="middle" dominant-baseline="central" fill="#374151" font-size="${Math.round(16 * s)}" font-weight="700">${signNum}</text>`;
 
     if (isLagna) {
       const asc = chart.angles.ascendant;
-      svg += `<text x="${x}" y="${y-22}" text-anchor="middle" fill="#6d28d9" font-size="18" font-weight="700">Lag</text>`;
-      svg += `<text x="${x}" y="${y-6}" text-anchor="middle" fill="#6d28d9" font-size="12">${asc.degree}°${String(asc.minutes).padStart(2,"0")}′</text>`;
+      svg += `<text x="${x}" y="${y - 22 * s}" text-anchor="middle" fill="#6d28d9" font-size="${Math.round(18 * s)}" font-weight="700">Lag</text>`;
+      svg += `<text x="${x}" y="${y - 6 * s}" text-anchor="middle" fill="#6d28d9" font-size="${Math.round(12 * s)}">${asc.degree}°${String(asc.minutes).padStart(2, "0")}′</text>`;
     }
 
-    const lineHeight = 45;
+    const lineHeight = 45 * s;
     const nRows = Math.ceil(housePlanets.length / 2);
-    const HEADER_H = isLagna ? 46 : 0;
+    const HEADER_H = isLagna ? 46 * s : 0;
     const blockH = HEADER_H + nRows * lineHeight;
-    const MARGIN = 8;
+    const MARGIN = 8 * s;
     let blockTop = y - blockH / 2;
     blockTop = Math.max(MARGIN, Math.min(H - blockH - MARGIN, blockTop));
     const avail = (H - MARGIN) - (blockTop + HEADER_H);
-    const effLH = nRows > 0 ? Math.min(lineHeight, Math.max(26, avail / nRows)) : lineHeight;
+    const effLH = nRows > 0 ? Math.min(lineHeight, Math.max(26 * s, avail / nRows)) : lineHeight;
     const planetStartY = blockTop + HEADER_H + Math.floor(effLH * 0.65);
 
     housePlanets.forEach((p, idx) => {
       const total = housePlanets.length;
       const col = total > 1 ? idx % 2 : 0;
       const row = total > 1 ? Math.floor(idx / 2) : idx;
-      const colOff = total === 1 ? 0 : col === 0 ? -40 : 40;
+      const colOff = total === 1 ? 0 : col === 0 ? -40 * s : 40 * s;
       const px = x + colOff;
       const py = planetStartY + row * effLH;
       const retMark = p.retrograde ? `<tspan fill="#dc2626">-</tspan>` : ``;
       const suffMark = p.suffix ? `<tspan fill="${p.color}">${p.suffix}</tspan>` : ``;
-      svg += `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" text-anchor="middle" fill="${p.color}" font-size="22" font-weight="600">${p.label}${suffMark}${retMark}<tspan x="${px.toFixed(1)}" dy="18" font-size="15" font-weight="400" fill="#374151">${p.degree}°${String(p.minutes).padStart(2,"0")}′</tspan></text>`;
+      const fsMain = Math.round(22 * s);
+      const fsDeg = Math.round(15 * s);
+      svg += `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" text-anchor="middle" fill="${p.color}" font-size="${fsMain}" font-weight="600">${p.label}${suffMark}${retMark}<tspan x="${px.toFixed(1)}" dy="${Math.round(18 * s)}" font-size="${fsDeg}" font-weight="400" fill="#374151">${p.degree}°${String(p.minutes).padStart(2, "0")}′</tspan></text>`;
     });
   }
 
@@ -167,15 +198,20 @@ function buildChartSvgHtml(chart: ChartResponse): string {
   return svg;
 }
 
-function openAndPrint(html: string) {
-  const w = window.open("", "_blank", "width=960,height=780");
-  if (!w) {
-    alert("Please allow popups to download the report.");
-    return;
-  }
-  w.document.write(html);
-  w.document.close();
-  w.focus();
+function reportHtmlDocument(title: string, body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>${title}</title>
+  <style>${REPORT_PDF_STYLES}</style>
+</head>
+<body>
+  <div class="report-root" style="background:#fff;padding:0;">
+    ${body}
+  </div>
+</body>
+</html>`;
 }
 
 function sectionHeader(title: string): string {
@@ -185,11 +221,14 @@ function sectionHeader(title: string): string {
     </div>`;
 }
 
-function chartBlockHtml(label: string, chart: ChartResponse): string {
+function chartBlockHtml(label: string, chart: ChartResponse, compact = false): string {
+  const chartBox = compact
+    ? `<div style="border:1px solid #e2e8f0;border-radius:8px;background:#fafafa;padding:6px 6px 10px 6px;line-height:0;overflow:visible;">${buildChartSvgHtml(chart, true)}</div>`
+    : `<div style="border:1px solid #e2e8f0;border-radius:8px;background:#fafafa;padding:8px;">${buildChartSvgHtml(chart, false)}</div>`;
   return `
-    <div style="break-inside:avoid;page-break-inside:avoid;">
+    <div style="margin-bottom:4px;">
       <p style="font-size:10px;font-weight:700;color:#334155;margin-bottom:6px;">${label}</p>
-      <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fafafa;">${buildChartSvgHtml(chart)}</div>
+      ${chartBox}
     </div>`;
 }
 
@@ -200,21 +239,121 @@ function twoColumnChartGridHtml(items: { label: string; chart: ChartResponse }[]
     </div>`;
 }
 
+/** Divisional charts: 6 charts (3 rows × 2 cols) per PDF chunk/page. */
+function divisionalChartsSectionHtml(items: { label: string; chart: ChartResponse }[]): string {
+  const pages = chunkArray(items, 6);
+  return pages
+    .map((pageItems, pageIdx) => {
+      const title =
+        pageIdx === 0
+          ? sectionHeader("Moon Chart & All D-Charts (D1–D60)")
+          : `<div style="background:#1e1b4b;padding:10px 20px;">
+              <p style="color:white;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;">D-Charts (continued)</p>
+            </div>`;
+      return `
+        <div class="report-pdf-chunk" style="padding:0 0 8px;">
+          <div style="border-radius:14px;border:1px solid #e2e8f0;">
+            ${title}
+            ${twoColumnChartGridHtml(pageItems)}
+          </div>
+        </div>`;
+    })
+    .join("");
+}
+
 function boyGirlChartRowHtml(
   subsection: string,
   boyName: string,
   boyChart: ChartResponse,
   girlName: string,
   girlChart: ChartResponse,
+  compact = false,
 ): string {
   return `
-    <div style="padding:0 16px 16px;">
-      <p style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;">${subsection}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-        ${chartBlockHtml(boyName, boyChart)}
-        ${chartBlockHtml(girlName, girlChart)}
+    <div style="padding:0 16px 14px;">
+      <p style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">${subsection}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+        ${chartBlockHtml(boyName, boyChart, compact)}
+        ${chartBlockHtml(girlName, girlChart, compact)}
       </div>
     </div>`;
+}
+
+function matchReportFooterInnerHtml(): string {
+  return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;margin-top:14px;border-top:1px solid #e2e8f0;background:#f8fafc;border-radius:10px;">
+        <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa · Ashtakoot Parashari System</p>
+        <p style="font-size:10px;color:#94a3b8;">${new Date().toLocaleString("en-IN")}</p>
+      </div>`;
+}
+
+function matchChartsAndFooterPageHtml(
+  boyName: string,
+  girlName: string,
+  boyChart: ChartResponse,
+  girlChart: ChartResponse,
+  boyMoon: ChartResponse,
+  girlMoon: ChartResponse,
+  boyD9: ChartResponse,
+  girlD9: ChartResponse,
+): string {
+  return `
+    <div class="report-pdf-chunk">
+      <div style="border-radius:14px;border:1px solid #e2e8f0;padding-bottom:8px;">
+        ${sectionHeader("Charts — Birth, Moon & D9")}
+        ${boyGirlChartRowHtml("Birth Chart", boyName, boyChart, girlName, girlChart, true)}
+        ${boyGirlChartRowHtml("Moon Chart", boyName, boyMoon, girlName, girlMoon, true)}
+        ${boyGirlChartRowHtml("D9 Chart (Navamsa)", boyName, boyD9, girlName, girlD9, true)}
+      </div>
+    </div>
+    `;
+}
+
+function buildPlanetTableRows(chart: ChartResponse): string {
+  return chart.planets
+    .map((p, idx) => {
+      const retro = p.retrograde;
+      return `
+    <tr style="background:${idx % 2 === 0 ? "#fff" : "#f8fafc"};">
+      <td style="${TD}">
+        <div class="report-cell-flex">
+          <span style="font-size:17px;line-height:1;display:inline-flex;align-items:center;flex-shrink:0;">${p.symbol}</span>
+          <strong style="font-size:12px;color:#0f172a;line-height:1.2;">${p.name}</strong>
+        </div>
+      </td>
+      <td style="${TD}font-size:12px;font-weight:600;color:#1e1b4b;">${p.sign}</td>
+      <td style="${TD}font-size:11px;color:#64748b;font-family:monospace;">${p.degree}°${String(p.minutes).padStart(2, "0")}'${String(p.seconds).padStart(2, "0")}"</td>
+      <td style="${TD}text-align:center;">
+        ${reportBadge(String(p.house), "background:#eef2ff;color:#3730a3;font-weight:700;border:1px solid #c7d2fe;min-width:28px;")}
+      </td>
+      <td style="${TD}text-align:center;">
+        ${reportBadge(retro ? "- Retro" : "Direct", `background:${retro ? "#fef2f2" : "#f0fdf4"};color:${retro ? "#dc2626" : "#16a34a"};font-weight:700;border:1px solid ${retro ? "#fecaca" : "#bbf7d0"};`)}
+      </td>
+    </tr>`;
+    })
+    .join("");
+}
+
+function buildGrahaSthitiTableHtml(chart: ChartResponse): string {
+  return reportTableBlock(`
+      <div style="border-radius:14px;border:1px solid #e2e8f0;">
+        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
+          <span style="color:white;font-size:16px;line-height:1;">✦</span>
+          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Graha Sthiti · Planet Positions</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+          <thead style="display:table-header-group;">
+            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:22%;">Planet</th>
+              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:18%;">Sign (Rashi)</th>
+              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:28%;">Degree</th>
+              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:12%;">House</th>
+              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:20%;">Status</th>
+            </tr>
+          </thead>
+          <tbody>${buildPlanetTableRows(chart)}</tbody>
+        </table>
+      </div>`);
 }
 
 function fmtDashaDate(iso: string): string {
@@ -240,7 +379,7 @@ function buildDashaTableHtml(dasha: DashaResponse): string {
   }).join("");
 
   return `
-    <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="border-radius:14px;border:1px solid #e2e8f0;">
       ${sectionHeader("Vimshottari Dasha")}
       <div style="padding:12px 16px;background:#eef2ff;border-bottom:1px solid #e2e8f0;">
         <p style="font-size:12px;color:#3730a3;font-weight:600;">
@@ -248,7 +387,7 @@ function buildDashaTableHtml(dasha: DashaResponse): string {
         </p>
       </div>
       <table style="width:100%;border-collapse:collapse;">
-        <thead>
+        <thead style="display:table-header-group;">
           <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
             <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">MD</th>
             <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">AD</th>
@@ -313,12 +452,54 @@ function buildSadsatkutHtml(sk: NonNullable<MatchResponse["sadsatkut"]>): string
   }).join("");
 
   return `
-    <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+    <div style="border-radius:14px;border:1px solid #e2e8f0;margin-bottom:18px;">
       ${sectionHeader("Sadsatkut Kostkaani")}
       <div style="padding:16px 20px;">
-        <p style="font-size:11px;color:#64748b;margin-bottom:14px;">Six-fold sign compatibility groups (Rashi distance: ${sk.distance})</p>
         ${cards}
       </div>
+    </div>`;
+}
+
+function buildMangalDoshaHtml(data: MatchResponse): string {
+  return `
+    <div style="border-radius:14px;border:1px solid #e2e8f0;">
+      ${sectionHeader("Mangal Dosha (Kuja Dosha)")}
+      <div style="padding:16px 20px;display:flex;gap:14px;">
+        ${[
+          { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
+          { name: data.girl_name || "Bride", has: data.girl_mangal_dosha },
+        ]
+          .map(
+            ({ name, has }) => `
+            <div style="flex:1;border-radius:10px;padding:12px 16px;background:${has ? "#fef2f2" : "#f0fdf4"};border:1px solid ${has ? "#fecaca" : "#bbf7d0"};display:flex;align-items:center;gap:10px;">
+              <span style="font-size:20px;">${has ? "!" : "OK"}</span>
+              <div>
+                <p style="font-size:12px;font-weight:700;color:#0f172a;">${name}</p>
+                <p style="font-size:11px;color:${has ? "#dc2626" : "#16a34a"};font-weight:600;">${has ? "Mangal Dosha Present" : "No Mangal Dosha"}</p>
+              </div>
+            </div>`,
+          )
+          .join("")}
+      </div>
+      ${
+        data.mangal_dosha_cancelled
+          ? `
+          <div style="margin:0 20px 16px;border-radius:10px;padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;">
+            <p style="font-size:11px;color:#15803d;font-weight:600;">Dosha cancelled — both partners have Mangal Dosha.</p>
+          </div>`
+          : ""
+      }
+    </div>`;
+}
+
+function buildSadsatkutMangalPageHtml(
+  sk: NonNullable<MatchResponse["sadsatkut"]>,
+  data: MatchResponse,
+): string {
+  return `
+    <div class="report-pdf-chunk">
+      ${buildSadsatkutHtml(sk)}
+      ${buildMangalDoshaHtml(data)}
     </div>`;
 }
 
@@ -328,23 +509,6 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
   const today = new Date().toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
   });
-
-  const planetRows = chart.planets.map((p, idx) => `
-    <tr style="background:${idx % 2 === 0 ? "#fff" : "#f8fafc"};">
-      <td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;">
-        <span style="font-size:16px;margin-right:6px;">${p.symbol}</span>
-        <strong style="font-size:12px;color:#0f172a;">${p.name}</strong>
-      </td>
-      <td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#1e1b4b;">${p.sign}</td>
-      <td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b;font-family:monospace;">${p.degree}°${String(p.minutes).padStart(2,"0")}'${String(p.seconds).padStart(2,"0")}"</td>
-      <td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;">
-        <span style="background:#eef2ff;color:#3730a3;font-size:10px;font-weight:700;padding:3px 9px;border-radius:12px;border:1px solid #c7d2fe;">${p.house}</span>
-      </td>
-      <td style="padding:9px 14px;border-bottom:1px solid #f1f5f9;">
-        <span style="background:${p.retrograde ? "#fef2f2" : "#f0fdf4"};color:${p.retrograde ? "#dc2626" : "#16a34a"};font-size:10px;font-weight:700;padding:3px 9px;border-radius:12px;border:1px solid ${p.retrograde ? "#fecaca" : "#bbf7d0"};">${p.retrograde ? "- Retro" : "Direct"}</span>
-      </td>
-    </tr>
-  `).join("");
 
   const chartSvg = buildChartSvgHtml(chart);
 
@@ -365,42 +529,19 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
       const v = vargaBulk[n];
       if (v) gridItems.push({ label: vargaChartLabel(n), chart: v });
     }
-    divisionalSection = `
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        ${sectionHeader("Moon Chart & All D-Charts (D1–D60)")}
-        ${twoColumnChartGridHtml(gridItems)}
-      </div>`;
-    dashaSection = buildDashaTableHtml(dasha);
+    divisionalSection = divisionalChartsSectionHtml(gridItems);
+    dashaSection = `<div class="report-pdf-chunk">${buildDashaTableHtml(dasha)}</div>`;
   } catch (e) {
     alert(e instanceof Error ? e.message : "Failed to generate report data");
     return;
   }
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>Janma Kundli – ${m.birth_place}</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f1f5f9;color:#0f172a;min-height:100vh}
-    @page{size:A4;margin:10mm}
-    @media print{.no-print{display:none!important};body{background:#fff};.page-card{box-shadow:none;border-radius:0}}
-  </style>
-</head>
-<body>
-  <!-- Print bar -->
-  <div class="no-print" style="background:linear-gradient(90deg,#1e1b4b,#312e81);padding:12px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-    <button onclick="window.print()" style="background:#6366f1;color:white;border:none;padding:10px 22px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;transition:background 0.2s;" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">
-      ⬇&nbsp; Download / Print PDF
-    </button>
-    <span style="color:rgba(255,255,255,0.55);font-size:11px;">Choose "Save as PDF" in the print dialog</span>
-  </div>
-
-  <div class="page-card" style="max-width:800px;margin:24px auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1);">
+  const safeName = (req.name || "Kundli").replace(/[^\w\s-]/g, "").trim() || "Kundli";
+  const body = `
+  <div class="report-pdf-chunk" style="border-radius:20px;border:1px solid #e2e8f0;">
 
     <!-- HEADER -->
-    <div style="background:linear-gradient(135deg,#0f0c2e 0%,#1e1b4b 45%,#312e81 75%,#4338ca 100%);padding:32px 36px;color:white;">
+    <div style="background:#1e1b4b;padding:28px 32px;color:white;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;">
         <div>
           <p style="font-size:9px;letter-spacing:4px;text-transform:uppercase;opacity:0.55;margin-bottom:8px;">Astrogyan · Vedic Astrology Report</p>
@@ -447,50 +588,30 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
 
     <div style="padding:24px 28px;display:flex;flex-direction:column;gap:22px;">
 
-      <!-- CHART -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+      ${reportKeepTogether(`
+      <div style="border-radius:14px;border:1px solid #e2e8f0;">
         <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
-          <span style="color:white;font-size:16px;">◈</span>
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Janma Kundli · Birth Chart</p>
+          <span style="color:white;font-size:16px;line-height:1;">◈</span>
+          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Janma Kundli · Birth Chart</p>
         </div>
         <div style="padding:16px;background:#fafafa;">${chartSvg}</div>
-      </div>
+      </div>`)}
 
-      <!-- PLANETS -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
-          <span style="color:white;font-size:16px;">✦</span>
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Graha Sthiti · Planet Positions</p>
-        </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-              <th style="padding:9px 14px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Planet</th>
-              <th style="padding:9px 14px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Sign (Rashi)</th>
-              <th style="padding:9px 14px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Degree</th>
-              <th style="padding:9px 14px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">House</th>
-              <th style="padding:9px 14px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Status</th>
-            </tr>
-          </thead>
-          <tbody>${planetRows}</tbody>
-        </table>
-      </div>
+      ${buildGrahaSthitiTableHtml(chart)}
 
-      ${divisionalSection}
-
-      ${dashaSection}
-
-      <!-- FOOTER -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #e2e8f0;">
-        <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa · Ashtakoot Parashari System</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 28px;border-top:1px solid #e2e8f0;">
+        <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa</p>
         <p style="font-size:10px;color:#94a3b8;">${new Date().toLocaleString("en-IN")}</p>
       </div>
     </div>
   </div>
-</body>
-</html>`;
 
-  openAndPrint(html);
+  ${divisionalSection}
+
+  ${dashaSection}`;
+
+  const html = reportHtmlDocument(`Janma Kundli – ${m.birth_place}`, body);
+  await downloadPdfFromHtml(html, `Janma-Kundli-${safeName}.pdf`);
 }
 
 // ── Match (Kundli Milan) Report ───────────────────────────────────────────────
@@ -526,6 +647,7 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
     `<span style="font-size:18px;color:${i <= stars ? "#fbbf24" : "#e2e8f0"};">★</span>`
   ).join("");
 
+  const kootTd = "padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;";
   const kootRows = data.koots.map(k => {
     const kPct = k.score / k.max_score;
     const barW = Math.round(kPct * 100);
@@ -534,34 +656,73 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
     const scoreCol = kPct >= 1 ? "#065f46" : kPct >= 0.5 ? "#78350f" : "#7f1d1d";
     return `
       <tr>
-        <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;">
-          <p style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px;">${k.name}</p>
-          <p style="font-size:10px;color:#94a3b8;">${k.description.split(".")[0]}</p>
-        </td>
-        <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;">
-          <span style="background:${scoreBg};color:${scoreCol};font-size:13px;font-weight:800;padding:3px 10px;border-radius:12px;">${k.score}/${k.max_score}</span>
-        </td>
-        <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;width:30%;">
-          <div style="height:7px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
-            <div style="height:100%;width:${barW}%;background:${barColor};border-radius:4px;"></div>
+        <td style="${kootTd}">
+          <div class="koot-cell-inner">
+            <div>
+              <p style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px;line-height:1.2;">${k.name}</p>
+              <p style="font-size:10px;color:#94a3b8;line-height:1.2;">${k.description.split(".")[0]}</p>
+            </div>
           </div>
         </td>
-        <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:center;">
-          <span style="background:#eef2ff;color:#3730a3;font-size:10px;font-weight:600;padding:3px 8px;border-radius:8px;">${k.boy_value}</span>
+        <td style="${kootTd}text-align:center;">
+          ${reportBadge(`${k.score}/${k.max_score}`, `background:${scoreBg};color:${scoreCol};`, "md")}
         </td>
-        <td style="padding:11px 16px;border-bottom:1px solid #f1f5f9;text-align:center;">
-          <span style="background:#fff1f2;color:#9f1239;font-size:10px;font-weight:600;padding:3px 8px;border-radius:8px;">${k.girl_value}</span>
+        <td style="${kootTd}">
+          <div class="koot-cell-inner">
+            <div style="width:100%;height:7px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
+              <div style="height:100%;width:${barW}%;background:${barColor};border-radius:4px;"></div>
+            </div>
+          </div>
+        </td>
+        <td style="${kootTd}text-align:center;">
+          ${reportBadge(k.boy_value, "background:#eef2ff;color:#3730a3;", "sm", "pill-sm")}
+        </td>
+        <td style="${kootTd}text-align:center;">
+          ${reportBadge(k.girl_value, "background:#fff1f2;color:#9f1239;", "sm", "pill-sm")}
         </td>
       </tr>
     `;
   }).join("");
+
+  function buildAshtakootChunkHtml(): string {
+    return `
+    <div class="report-pdf-chunk">
+      <div style="border-radius:14px;border:1px solid #e2e8f0;">
+        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;">
+          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Ashtakoot Guna Matching</p>
+          ${reportBadge(`${data.total_score}/36 · ${data.grade}`, `background:${gradeBg};color:${gradeColor};font-size:12px;`, "md")}
+        </div>
+        <table class="report-koot-valign" style="width:100%;border-collapse:collapse;table-layout:fixed;">
+          <thead>
+            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+              <th style="${kootTd}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:24%;">Koot</th>
+              <th style="${kootTd}text-align:center;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:12%;">Score</th>
+              <th style="${kootTd}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:18%;">Progress</th>
+              <th style="${kootTd}text-align:center;font-size:9px;color:#3730a3;font-weight:700;text-transform:uppercase;width:23%;">${data.boy_name || "Groom"}</th>
+              <th style="${kootTd}text-align:center;font-size:9px;color:#9f1239;font-weight:700;text-transform:uppercase;width:23%;">${data.girl_name || "Bride"}</th>
+            </tr>
+          </thead>
+          <tbody>${kootRows}</tbody>
+          <tfoot>
+            <tr style="background:linear-gradient(90deg,#eef2ff,#fdf2f8);border-top:2px solid #e2e8f0;">
+              <td style="${kootTd}font-size:13px;font-weight:800;color:#1e1b4b;">Total</td>
+              <td style="${kootTd}text-align:center;">
+                ${reportBadge(`${data.total_score}/36`, `background:${gradeBg};color:${gradeColor};`, "lg")}
+              </td>
+              <td colspan="3" style="${kootTd}text-align:right;font-size:12px;color:#64748b;font-style:italic;">${data.recommendation}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
+  }
 
   const req = matchReq ?? loadStoredMatchRequest() ?? matchRequestFromResult(data);
   const boyName = data.boy_name || "Groom";
   const girlName = data.girl_name || "Bride";
 
   let chartsSection = "";
-  let sadsatkutSection = "";
+  let sadsatkutMangalSection = "";
   try {
     const boyMoon = toMoonChart(data.boy_chart);
     const girlMoon = toMoonChart(data.girl_chart);
@@ -569,54 +730,34 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
       calculateVarga(vargaRequestForPerson(data.boy_chart, req.boy, 9)),
       calculateVarga(vargaRequestForPerson(data.girl_chart, req.girl, 9)),
     ]);
-    chartsSection = `
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        ${sectionHeader("Charts — Birth, Moon & D9")}
-        ${boyGirlChartRowHtml("Birth Chart", boyName, data.boy_chart, girlName, data.girl_chart)}
-        ${boyGirlChartRowHtml("Moon Chart", boyName, boyMoon, girlName, girlMoon)}
-        ${boyGirlChartRowHtml("D9 Chart (Navamsa)", boyName, boyD9, girlName, girlD9)}
-      </div>`;
+    chartsSection = matchChartsAndFooterPageHtml(
+      boyName,
+      girlName,
+      data.boy_chart,
+      data.girl_chart,
+      boyMoon,
+      girlMoon,
+      boyD9,
+      girlD9,
+    );
     if (data.sadsatkut) {
-      sadsatkutSection = buildSadsatkutHtml(data.sadsatkut);
+      sadsatkutMangalSection = buildSadsatkutMangalPageHtml(data.sadsatkut, data);
+    } else {
+      sadsatkutMangalSection = `<div class="report-pdf-chunk">${buildMangalDoshaHtml(data)}</div>`;
     }
   } catch (e) {
     alert(e instanceof Error ? e.message : "Failed to generate match report data");
     return;
   }
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <title>Kundli Milan – ${data.boy_name} & ${data.girl_name}</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f1f5f9;color:#0f172a;min-height:100vh}
-    @page{size:A4;margin:10mm}
-    @media print{.no-print{display:none!important};body{background:#fff};.page-card{box-shadow:none;border-radius:0}}
-  </style>
-</head>
-<body>
-  <!-- Print bar -->
-  <div class="no-print" style="background:linear-gradient(90deg,#4c0519,#881337,#1e1b4b);padding:12px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
-    <button onclick="window.print()" style="background:#e11d48;color:white;border:none;padding:10px 22px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;" onmouseover="this.style.background='#be123c'" onmouseout="this.style.background='#e11d48'">
-      ⬇&nbsp; Download / Print PDF
-    </button>
-    <span style="color:rgba(255,255,255,0.55);font-size:11px;">Choose "Save as PDF" in the print dialog</span>
-  </div>
-
-  <div class="page-card" style="max-width:820px;margin:24px auto;background:white;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1);">
-
-    <!-- HERO HEADER -->
-    <div style="background:linear-gradient(135deg,#0f0c2e 0%,#1e1b4b 30%,#4c0519 70%,#7f1d1d 100%);padding:36px 40px;color:white;position:relative;overflow:hidden;">
-      <!-- decorative circles -->
-      <div style="position:absolute;top:-60px;left:-60px;width:200px;height:200px;background:rgba(99,102,241,0.15);border-radius:50%;"></div>
-      <div style="position:absolute;bottom:-80px;right:-40px;width:240px;height:240px;background:rgba(225,29,72,0.12);border-radius:50%;"></div>
-
-      <div style="position:relative;z-index:1;">
-        <p style="font-size:9px;letter-spacing:4px;text-transform:uppercase;opacity:0.5;margin-bottom:8px;text-align:center;">Astrogyan · Vedic Astrology Report</p>
-        <h1 style="font-size:28px;font-weight:900;letter-spacing:-0.5px;text-align:center;margin-bottom:6px;">Kundli Milan</h1>
-        <p style="font-size:12px;opacity:0.6;text-align:center;margin-bottom:32px;">Ashtakoot Guna Compatibility Report · ${today}</p>
+  const pdfName = `Kundli-Milan-${(data.boy_name || "Boy").replace(/[^\w\s-]/g, "")}-${(data.girl_name || "Girl").replace(/[^\w\s-]/g, "")}`.replace(/\s+/g, "-");
+  const body = `
+  <div class="report-pdf-chunk">
+    <div style="border-radius:20px;border:1px solid #e2e8f0;margin-bottom:18px;">
+    <div style="background:#1e1b4b;padding:28px 32px;color:white;">
+        <p style="font-size:9px;letter-spacing:4px;text-transform:uppercase;opacity:0.75;margin-bottom:8px;text-align:center;">Astrogyan · Vedic Astrology Report</p>
+        <h1 style="font-size:26px;font-weight:900;letter-spacing:-0.5px;text-align:center;margin-bottom:6px;color:#fff;">Kundli Milan</h1>
+        <p style="font-size:12px;opacity:0.8;text-align:center;margin-bottom:24px;color:#e2e8f0;">Ashtakoot Guna Compatibility Report · ${today}</p>
 
         <!-- Three columns -->
         <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;max-width:580px;margin:0 auto;">
@@ -640,7 +781,7 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
               <text x="74" y="89" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="12" font-family="system-ui">/ 36</text>
             </svg>
             <div style="display:flex;gap:2px;">${starsHtml}</div>
-            <span style="background:${gradeBg};color:${gradeColor};font-size:11px;font-weight:800;padding:4px 14px;border-radius:20px;">${data.grade}</span>
+            ${reportBadge(data.grade, `background:${gradeBg};color:${gradeColor};font-size:11px;`, "sm", "pill")}
           </div>
 
           <!-- Girl -->
@@ -658,113 +799,53 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
           <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:${gaugeColor};border-radius:3px;"></div>
           </div>
-          <p style="text-align:center;font-size:10px;color:rgba(255,255,255,0.35);margin-top:6px;">${pct}% Compatibility · "${data.recommendation}"</p>
+          <p style="text-align:center;font-size:10px;color:rgba(255,255,255,0.65);margin-top:6px;">${pct}% Compatibility · "${data.recommendation}"</p>
         </div>
-      </div>
+    </div>
     </div>
 
-    <div style="padding:24px 28px;display:flex;flex-direction:column;gap:22px;">
-
-      <!-- BIRTH DETAILS COMPARISON -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;">
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Birth Details Comparison</p>
-        </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;width:25%;">Detail</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#3730a3;font-weight:700;text-transform:uppercase;letter-spacing:1px;width:37.5%;">${data.boy_name || "Groom"}</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#9f1239;font-weight:700;text-transform:uppercase;letter-spacing:1px;width:37.5%;">${data.girl_name || "Bride"}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${[
-              ["Date of Birth", data.boy_chart.meta.birth_date, data.girl_chart.meta.birth_date],
-              ["Time of Birth", data.boy_chart.meta.birth_time, data.girl_chart.meta.birth_time],
-              ["Birth Place", data.boy_chart.meta.birth_place, data.girl_chart.meta.birth_place],
-              ["Moon Sign", data.boy_moon_sign, data.girl_moon_sign],
-              ["Nakshatra", data.boy_nakshatra, data.girl_nakshatra],
-              ["Nak. Lord", data.boy_nakshatra_lord, data.girl_nakshatra_lord],
-              ["Mangal Dosha", data.boy_mangal_dosha ? "⚠ Present" : "✓ Absent", data.girl_mangal_dosha ? "⚠ Present" : "✓ Absent"],
-            ].map(([l, bv, gv], i) => `
-              <tr style="background:${i % 2 === 0 ? "#fff" : "#f8fafc"};">
-                <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b;font-weight:600;">${l}</td>
-                <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#1e1b4b;">${bv}</td>
-                <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#881337;">${gv}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
+    <div style="border-radius:14px;border:1px solid #e2e8f0;">
+      <div style="background:#1e1b4b;padding:13px 20px;">
+        <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Birth Details Comparison</p>
       </div>
-
-      <!-- ASHTAKOOT TABLE -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;justify-content:space-between;">
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Ashtakoot Guna Matching</p>
-          <span style="background:${gradeBg};color:${gradeColor};font-size:12px;font-weight:800;padding:3px 12px;border-radius:12px;">${data.total_score}/36 · ${data.grade}</span>
-        </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Koot</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Score</th>
-              <th style="padding:9px 16px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;width:25%;">Progress</th>
-              <th style="padding:9px 16px;text-align:center;font-size:9px;color:#3730a3;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${data.boy_name||"Groom"}</th>
-              <th style="padding:9px 16px;text-align:center;font-size:9px;color:#9f1239;font-weight:700;text-transform:uppercase;letter-spacing:1px;">${data.girl_name||"Bride"}</th>
-            </tr>
-          </thead>
-          <tbody>${kootRows}</tbody>
-          <tfoot>
-            <tr style="background:linear-gradient(90deg,#eef2ff,#fdf2f8);border-top:2px solid #e2e8f0;">
-              <td style="padding:12px 16px;font-size:13px;font-weight:800;color:#1e1b4b;">Total</td>
-              <td style="padding:12px 16px;"><span style="background:${gradeBg};color:${gradeColor};font-size:16px;font-weight:900;padding:4px 12px;border-radius:12px;">${data.total_score}/36</span></td>
-              <td colspan="3" style="padding:12px 16px;text-align:right;font-size:12px;color:#64748b;font-style:italic;">${data.recommendation}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      ${sadsatkutSection}
-
-      <!-- MANGAL DOSHA -->
-      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;">
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;">Mangal Dosha (Kuja Dosha)</p>
-        </div>
-        <div style="padding:16px 20px;display:flex;gap:14px;">
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
+            <th style="padding:9px 16px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:25%;">Detail</th>
+            <th style="padding:9px 16px;text-align:left;font-size:9px;color:#3730a3;font-weight:700;text-transform:uppercase;width:37.5%;">${data.boy_name || "Groom"}</th>
+            <th style="padding:9px 16px;text-align:left;font-size:9px;color:#9f1239;font-weight:700;text-transform:uppercase;width:37.5%;">${data.girl_name || "Bride"}</th>
+          </tr>
+        </thead>
+        <tbody>
           ${[
-            { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
-            { name: data.girl_name || "Bride", has: data.girl_mangal_dosha },
-          ].map(({ name, has }) => `
-            <div style="flex:1;border-radius:10px;padding:12px 16px;background:${has ? "#fef2f2" : "#f0fdf4"};border:1px solid ${has ? "#fecaca" : "#bbf7d0"};display:flex;align-items:center;gap:10px;">
-              <span style="font-size:20px;">${has ? "⚠" : "✓"}</span>
-              <div>
-                <p style="font-size:12px;font-weight:700;color:#0f172a;">${name}</p>
-                <p style="font-size:11px;color:${has ? "#dc2626" : "#16a34a"};font-weight:600;">${has ? "Mangal Dosha Present" : "No Mangal Dosha"}</p>
-              </div>
-            </div>
+            ["Date of Birth", data.boy_chart.meta.birth_date, data.girl_chart.meta.birth_date],
+            ["Time of Birth", data.boy_chart.meta.birth_time, data.girl_chart.meta.birth_time],
+            ["Birth Place", data.boy_chart.meta.birth_place, data.girl_chart.meta.birth_place],
+            ["Moon Sign", data.boy_moon_sign, data.girl_moon_sign],
+            ["Nakshatra", data.boy_nakshatra, data.girl_nakshatra],
+            ["Nak. Lord", data.boy_nakshatra_lord, data.girl_nakshatra_lord],
+            ["Mangal Dosha", data.boy_mangal_dosha ? "Present" : "Absent", data.girl_mangal_dosha ? "Present" : "Absent"],
+          ].map(([l, bv, gv], i) => `
+            <tr style="background:${i % 2 === 0 ? "#fff" : "#f8fafc"};">
+              <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#64748b;font-weight:600;vertical-align:middle;">${l}</td>
+              <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#1e1b4b;vertical-align:middle;">${bv}</td>
+              <td style="padding:9px 16px;border-bottom:1px solid #f1f5f9;font-size:12px;font-weight:600;color:#881337;vertical-align:middle;">${gv}</td>
+            </tr>
           `).join("")}
-        </div>
-        ${data.mangal_dosha_cancelled ? `
-          <div style="margin:0 20px 16px;border-radius:10px;padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;display:flex;align-items:center;gap:8px;">
-            <span style="color:#16a34a;font-size:14px;">✓</span>
-            <p style="font-size:11px;color:#15803d;font-weight:600;">Dosha cancelled — both partners have Mangal Dosha.</p>
-          </div>
-        ` : ""}
-      </div>
-
-      ${chartsSection}
-
-      <!-- FOOTER -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid #e2e8f0;">
-        <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa · Ashtakoot Parashari System</p>
-        <p style="font-size:10px;color:#94a3b8;">${new Date().toLocaleString("en-IN")}</p>
-      </div>
+        </tbody>
+      </table>
     </div>
   </div>
-</body>
-</html>`;
 
-  openAndPrint(html);
+  ${buildAshtakootChunkHtml()}
+
+  ${sadsatkutMangalSection}
+
+  ${chartsSection}`;
+
+  const html = reportHtmlDocument(
+    `Kundli Milan – ${data.boy_name} & ${data.girl_name}`,
+    body,
+  );
+  await downloadPdfFromHtml(html, `${pdfName}.pdf`);
 }

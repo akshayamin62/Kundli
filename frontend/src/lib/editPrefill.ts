@@ -66,8 +66,9 @@ export function loadStoredMatchRequest(): MatchRequest | null {
     const raw = sessionStorage.getItem(MATCH_REQ_SESSION_KEY);
     if (raw) return JSON.parse(raw) as MatchRequest;
   } catch {
-    return null;
+    /* ignore */
   }
+  return null;
 }
 
 export function saveMatchRequest(req: MatchRequest) {
