@@ -55,10 +55,10 @@ export default function HomePage() {
         {tab === "kundali" && (
           <div className="max-w-lg mx-auto">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-50 rounded-2xl mb-4">
+              {/* <div className="inline-flex items-center justify-center w-14 h-14 bg-indigo-50 rounded-2xl mb-4">
                 <span className="text-3xl">🪐</span>
-              </div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Janma Kundali</h1>
+              </div> */}
+              <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">🪐 Janma Kundali</h1>
               <p className="text-gray-500 text-base">
                 Birth chart with all 60 D-charts, Vimshottari Dasha &amp; Planets transits
               </p>
@@ -77,10 +77,10 @@ export default function HomePage() {
         {tab === "milan" && (
           <div>
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-rose-50 rounded-2xl mb-4">
+              {/* <div className="inline-flex items-center justify-center w-14 h-14 bg-rose-50 rounded-2xl mb-4">
                 <span className="text-3xl">💞</span>
-              </div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Kundli Milan</h1>
+              </div> */}
+              <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">💞Kundli Milan</h1>
               <p className="text-gray-500 text-base">
                 Ashtakoot Guna Matching — 36-point Vedic compatibility analysis
               </p>
