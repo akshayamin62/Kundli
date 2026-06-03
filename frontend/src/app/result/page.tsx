@@ -735,19 +735,19 @@ export default function ResultPage() {
             className="w-full max-w-3xl bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-3 border-b border-gray-200 bg-indigo-50 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-gray-200 bg-indigo-50 flex items-center justify-between gap-2">
               <div>
                 {modalVargaN === "moon" ? (
                   <>
-                    <p className="text-sm font-bold text-indigo-900">Moon Chart</p>
-                    <p className="text-xs text-gray-500 italic">Chandra Kundli — Moon sign as Lagna</p>
+                    <p className="text-lg font-bold text-indigo-900 leading-tight">Moon Chart</p>
+                    <p className="text-sm text-gray-900 italic mt-1">Chandra Kundli — Moon sign as Lagna</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-bold text-indigo-900">
+                    <p className="text-lg font-bold text-indigo-900 leading-tight">
                       D{modalVargaN} – {VARGA_INFO[modalVargaN as number]?.name ?? ""}
                     </p>
-                    <p className="text-xs text-gray-500 italic">
+                    <p className="text-sm text-gray-900 italic mt-1">
                       {VARGA_INFO[modalVargaN as number]?.area ?? ""}
                     </p>
                   </>

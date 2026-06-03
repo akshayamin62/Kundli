@@ -116,7 +116,7 @@ export default function AppNavbar({
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-base font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-base font-semibold text-red-500 hover:text-red-500 hover:bg-red-50 transition-all"
           >
             Logout
           </button>

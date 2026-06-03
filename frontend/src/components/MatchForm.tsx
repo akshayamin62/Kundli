@@ -125,12 +125,12 @@ function PersonPanel({
 
   const ring = accent === "boy"
     ? "focus:border-astrogyan-boy focus:ring-astrogyan-boy/20"
-    : "focus:border-astrogyan-girl focus:ring-astrogyan-girl/20";
-  const header = accent === "boy" ? "bg-astrogyan-boy" : "bg-astrogyan-girl";
+    : "focus:border-rose-400 focus:ring-rose-100";
+  const header = accent === "boy" ? "bg-astrogyan-boy" : "bg-rose-600";
   const accentText = accent === "boy"
     ? "text-astrogyan-boy hover:text-astrogyan-boy-dark"
-    : "text-astrogyan-girl hover:text-astrogyan-girl-dark";
-  const suggestionHover = accent === "boy" ? "hover:bg-astrogyan-boy/10" : "hover:bg-astrogyan-girl/10";
+    : "text-rose-600 hover:text-rose-800";
+  const suggestionHover = accent === "boy" ? "hover:bg-astrogyan-boy/10" : "hover:bg-rose-50";
   const inputCls = `bg-white border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 ${ring} w-full`;
 
   const row = (lbl: string, node: React.ReactNode) => (
@@ -348,7 +348,7 @@ export default function MatchForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <PersonPanel label="♂ Boy / Vark"  accent="boy"  value={boy}  onChange={setBoy}  />
+        <PersonPanel label="♂ Boy / Var"  accent="boy"  value={boy}  onChange={setBoy}  />
         <PersonPanel label="♀ Girl / Kanya" accent="girl" value={girl} onChange={setGirl} />
       </div>
 
@@ -361,7 +361,7 @@ export default function MatchForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-gradient-to-r from-astrogyan-boy to-astrogyan-girl hover:from-astrogyan-boy-dark hover:to-astrogyan-girl-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all tracking-wide text-base shadow-lg"
+        className="w-full bg-gradient-to-r from-astrogyan-boy to-rose-600 hover:from-astrogyan-boy-dark hover:to-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all tracking-wide text-base shadow-lg"
       >
         {loading ? "Saving…" : submitLabel}
       </button>

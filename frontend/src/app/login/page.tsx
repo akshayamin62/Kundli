@@ -165,7 +165,7 @@ export default function LoginPage() {
           {step === "request" ? (
             <form onSubmit={handleRequestOTP} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-astrogyan-boy mb-2">
+                <label htmlFor="email" className="block text-sm font-semibold mb-2">
                   Email Address
                 </label>
                 <input
@@ -184,7 +184,7 @@ export default function LoginPage() {
                 {accountWarning ? (
                   <p
                     role="alert"
-                    className="mt-2 text-sm font-medium text-astrogyan-girl bg-astrogyan-girl/10 border border-astrogyan-girl/30 rounded-xl px-3 py-2"
+                    className="mt-2 text-sm font-medium text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2"
                   >
                     {accountWarning}
                   </p>
@@ -192,12 +192,12 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-astrogyan-boy mb-2">
+                <label className="block text-sm font-semibold mb-2">
                   Solve to verify
                 </label>
                 {captchaQuestion ? (
-                  <div className="bg-astrogyan-boy/5 border-2 border-astrogyan-boy/20 rounded-xl p-4 mb-3 text-center">
-                    <span className="text-2xl font-bold text-astrogyan-boy font-mono">{captchaQuestion}</span>
+                  <div className="bg-gray-200 border-2 border-gray-400 rounded-xl p-4 mb-3 text-center">
+                    <span className="text-2xl font-bold  font-mono">{captchaQuestion}</span>
                   </div>
                 ) : null}
                 {captchaQuestion && (
@@ -217,9 +217,23 @@ export default function LoginPage() {
                       fetchCaptcha();
                       toast.success("Captcha regenerated!");
                     }}
-                    className="mt-3 w-full py-2 border-2 border-astrogyan-boy text-astrogyan-boy font-semibold rounded-xl hover:bg-astrogyan-boy/10"
+                    className="mt-3 w-full py-2 border-2 border-purple-600 text-purple-600 font-semibold rounded-xl hover:bg-purple-600/10 flex items-center justify-center gap-2"
                   >
-                    New Question
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+
+                    <span>New Question</span>
                   </button>
                 )}
               </div>
@@ -235,10 +249,10 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleVerifyOTP} className="space-y-6">
               <div className="text-center mb-2">
-                <h3 className="text-2xl font-bold text-astrogyan-boy mb-2">Enter OTP</h3>
+                <h3 className="text-2xl font-bold  mb-2">Enter OTP</h3>
                 <p className="text-gray-600 text-sm">
                   Code sent to{" "}
-                  <span className="font-semibold text-astrogyan-boy">{email}</span>
+                  <span className="font-semibold ">{email}</span>
                 </p>
               </div>
 
@@ -251,7 +265,7 @@ export default function LoginPage() {
                 pattern="[0-9]{6}"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="block w-full px-4 py-3 border-2 border-astrogyan-boy/40 rounded-xl text-center text-2xl font-bold tracking-widest text-astrogyan-boy focus:ring-2 focus:ring-astrogyan-boy/30 focus:border-astrogyan-boy"
+                className="block w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-center text-2xl font-bold tracking-widest text-gray-900 focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
                 placeholder="000000"
               />
 

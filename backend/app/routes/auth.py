@@ -83,7 +83,7 @@ def login(body: LoginRequest):
             status_code=404,
             content={
                 "success": False,
-                "message": "No account found for this email. Please contact your administrator.",
+                "message": "No account found for this email.",
             },
         )
 
@@ -206,7 +206,7 @@ def resend_otp(body: ResendOtpRequest):
             status_code=404,
             content={
                 "success": False,
-                "message": "No account found for this email. Please contact your administrator.",
+                "message": "No account found for this email.",
             },
         )
 
