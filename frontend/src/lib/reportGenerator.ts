@@ -460,33 +460,58 @@ function buildSadsatkutHtml(sk: NonNullable<MatchResponse["sadsatkut"]>): string
     </div>`;
 }
 
+function mangalDoshaIconSvg(has: boolean): string {
+  if (has) {
+    return `<svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <path fill="#ef4444" d="M12 2L1 21h22L12 2zm0 4.5L19.2 19H4.8L12 6.5z"/>
+      <rect x="11" y="10" width="2" height="5" rx="0.5" fill="#ef4444"/>
+      <circle cx="12" cy="17" r="1.1" fill="#ef4444"/>
+    </svg>`;
+  }
+  return `<svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+    <circle cx="12" cy="12" r="10" fill="none" stroke="#10b981" stroke-width="2"/>
+    <path fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M8 12.5l2.5 2.5L16 9"/>
+  </svg>`;
+}
+
+function mangalDoshaPersonCard(name: string, has: boolean): string {
+  const bg = has ? "#fef2f2" : "#f0fdf4";
+  const border = has ? "#fecaca" : "#bbf7d0";
+  const iconBg = has ? "#fee2e2" : "#d1fae5";
+  const statusCol = has ? "#dc2626" : "#16a34a";
+  const status = has ? "Mangal Dosha Present" : "No Mangal Dosha";
+  return `
+    <div style="flex:1;border-radius:12px;padding:14px 16px;background:${bg};border:1px solid ${border};display:flex;align-items:center;gap:12px;min-width:0;">
+      <div style="width:36px;height:36px;min-width:36px;border-radius:10px;background:${iconBg};display:flex;align-items:center;justify-content:center;line-height:0;">
+        ${mangalDoshaIconSvg(has)}
+      </div>
+      <div style="min-width:0;">
+        <p style="font-size:12px;font-weight:700;color:#0f172a;line-height:1.25;margin:0;">${name}</p>
+        <p style="font-size:11px;color:${statusCol};font-weight:600;line-height:1.25;margin:4px 0 0 0;">${status}</p>
+      </div>
+    </div>`;
+}
+
 function buildMangalDoshaHtml(data: MatchResponse): string {
   return `
     <div style="border-radius:14px;border:1px solid #e2e8f0;">
-      ${sectionHeader("Mangal Dosha (Kuja Dosha)")}
-      <div style="padding:16px 20px;display:flex;gap:14px;">
-        ${[
-          { name: data.boy_name || "Groom", has: data.boy_mangal_dosha },
-          { name: data.girl_name || "Bride", has: data.girl_mangal_dosha },
-        ]
-          .map(
-            ({ name, has }) => `
-            <div style="flex:1;border-radius:10px;padding:12px 16px;background:${has ? "#fef2f2" : "#f0fdf4"};border:1px solid ${has ? "#fecaca" : "#bbf7d0"};display:flex;align-items:center;gap:10px;">
-              <span style="font-size:20px;">${has ? "!" : "OK"}</span>
-              <div>
-                <p style="font-size:12px;font-weight:700;color:#0f172a;">${name}</p>
-                <p style="font-size:11px;color:${has ? "#dc2626" : "#16a34a"};font-weight:600;">${has ? "Mangal Dosha Present" : "No Mangal Dosha"}</p>
-              </div>
-            </div>`,
-          )
-          .join("")}
+      ${sectionHeader("Mangal Dosha")}
+      <div style="padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        ${mangalDoshaPersonCard(data.boy_name || "Groom", data.boy_mangal_dosha)}
+        ${mangalDoshaPersonCard(data.girl_name || "Bride", data.girl_mangal_dosha)}
       </div>
       ${
         data.mangal_dosha_cancelled
           ? `
-          <div style="margin:0 20px 16px;border-radius:10px;padding:10px 16px;background:#f0fdf4;border:1px solid #bbf7d0;">
-            <p style="font-size:11px;color:#15803d;font-weight:600;">Dosha cancelled — both partners have Mangal Dosha.</p>
+          <div style="margin:0 20px 16px;border-radius:12px;padding:10px 16px;background:#ecfdf5;border:1px solid #bbf7d0;display:flex;align-items:center;gap:10px;">
+            <span style="width:8px;height:8px;min-width:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+            <p style="font-size:11px;color:#15803d;font-weight:600;margin:0;">Dosha cancelled — both partners have Mangal Dosha.</p>
           </div>`
+          : ""
+      }
+      ${
+        data.mangal_dosha_note
+          ? `<p style="font-size:10px;color:#94a3b8;margin:0 16px 14px;padding:0 4px;line-height:1.4;">${data.mangal_dosha_note}</p>`
           : ""
       }
     </div>`;
