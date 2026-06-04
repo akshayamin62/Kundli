@@ -9,13 +9,13 @@ import PlanetsRashiTransit from "@/components/PlanetsRashiTransit";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
-import { type Lang } from "@/lib/translations";
+import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
+import { getMoonJanmaFromChart, toMoonChart } from "@/lib/chartTransforms";
 import { downloadKundliReport } from "@/lib/reportGenerator";
 import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
 import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
-import { toMoonChart } from "@/lib/chartTransforms";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -91,6 +91,21 @@ function vargaTitle(n: number): string {
 
 const QUICK_VARGAS = [9, 10, 3, 7, 12, 16, 20, 24, 30, 40, 45, 60];
 
+const JANMA_LABELS: Record<Lang, { rasi: string; nak: string }> = {
+  en: { rasi: "Janma Rasi", nak: "Janma Nakshatra" },
+  hi: { rasi: "जन्म राशि", nak: "जन्म नक्षत्र" },
+  gu: { rasi: "જન્મ રાશિ", nak: "જન્મ નક્ષત્ર" },
+};
+
+function tSign(n: string, l: Lang) {
+  const i = SIGN_NAMES.en.indexOf(n);
+  return i >= 0 ? SIGN_NAMES[l][i] : n;
+}
+function tNak(n: string, l: Lang) {
+  const i = NAKSHATRA_NAMES.en.indexOf(n);
+  return i >= 0 ? NAKSHATRA_NAMES[l][i] : n;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function padZ(n: number) { return String(n).padStart(2, "0"); }
 
@@ -109,11 +124,12 @@ function nowIST() {
 interface PanelProps {
   title: string;
   accent?: "indigo" | "teal" | "purple";
+  headerMeta?: React.ReactNode;
   headerRight?: React.ReactNode;
   loading?: boolean;
   children: React.ReactNode;
 }
-function ChartPanel({ title, accent = "indigo", headerRight, loading, children }: PanelProps) {
+function ChartPanel({ title, accent = "indigo", headerMeta, headerRight, loading, children }: PanelProps) {
   const hdrBg =
     accent === "teal"   ? "bg-teal-50 border-teal-100"   :
     accent === "purple" ? "bg-purple-50 border-purple-100" :
@@ -124,8 +140,11 @@ function ChartPanel({ title, accent = "indigo", headerRight, loading, children }
                           "text-indigo-900";
   return (
     <div className="flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden h-full">
-      <div className={`${hdrBg} border-b px-3 py-1.5 flex items-center justify-between shrink-0`}>
-        <span className={`text-xs font-bold ${titleColor} truncate min-w-0 flex-1 pr-2`}>{title}</span>
+      <div className={`${hdrBg} border-b px-3 py-1.5 flex items-center justify-between gap-2 shrink-0`}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 flex-wrap">
+          <span className={`text-xs font-bold ${titleColor} shrink-0`}>{title}</span>
+          {headerMeta}
+        </div>
         {headerRight}
       </div>
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -215,6 +234,11 @@ export default function ResultPage() {
   const [chart, setChart]             = useState<ChartResponse | null>(null);
   const [req, setReq]                 = useState<ChartRequest | null>(null);
   const [lang, setLang]               = useState<Lang>("en");
+
+  const moonJanma = useMemo(
+    () => (chart ? getMoonJanmaFromChart(chart) : null),
+    [chart],
+  );
 
   type MainTab = "kundali" | "grahsil" | "allvargas";
   const [mainTab, setMainTab]         = useState<MainTab>("kundali");
@@ -649,7 +673,24 @@ export default function ResultPage() {
 
           {/* D1 Lagna Kundli — top ~55% */}
           <div className="min-h-0" style={{ flex: "0 0 55%" }}>
-            <ChartPanel title="Lagna Kundli (D1)" accent="indigo">
+            <ChartPanel
+              title="Lagna Kundli (D1)"
+              accent="indigo"
+              headerMeta={
+                moonJanma ? (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] sm:text-xs text-indigo-800/90">
+                    <span>
+                      <span className="font-semibold text-indigo-700">{JANMA_LABELS[lang].rasi}:</span>{" "}
+                      {tSign(moonJanma.moon_sign, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{JANMA_LABELS[lang].nak}:</span>{" "}
+                      {tNak(moonJanma.nakshatra, lang)}
+                    </span>
+                  </div>
+                ) : null
+              }
+            >
               <ChartWheel chart={chart} lang={lang} />
             </ChartPanel>
           </div>

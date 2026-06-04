@@ -1,5 +1,40 @@
 import { ChartResponse, ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition } from "@/types/chart";
 
+const NAKSHATRA_NAMES_EN = [
+  "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+  "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni",
+  "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha",
+  "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana",
+  "Dhanishtha", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
+];
+
+const NAK_LORDS_EN = [
+  "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+  "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+  "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
+];
+
+export interface MoonJanmaInfo {
+  moon_sign: string;
+  nakshatra: string;
+  nakshatra_lord: string;
+}
+
+/** Janma Rasi & Janma Nakshatra from natal Moon (same rules as Kundli Milan). */
+export function getMoonJanmaFromChart(chart: ChartResponse): MoonJanmaInfo | null {
+  const moon = chart.planets.find((p) => p.name === "Moon");
+  if (!moon) return null;
+
+  const moon_sign = moon.sign;
+  const nak_idx = Math.floor((moon.longitude * 27) / 360) % 27;
+
+  return {
+    moon_sign,
+    nakshatra: NAKSHATRA_NAMES_EN[nak_idx] ?? "",
+    nakshatra_lord: NAK_LORDS_EN[nak_idx] ?? "",
+  };
+}
+
 const ZODIAC_SIGNS = [
   "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
   "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
