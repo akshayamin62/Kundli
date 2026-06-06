@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.data import pitru_dosha_data as ref
+from app.services.varga import ZODIAC_SIGNS, varga_sign_index
 
 SIGN_LORDS = {
     "Aries": "Mars",
@@ -81,6 +82,7 @@ AXIS_HOUSE_COMBO_BY_HOUSE: dict[frozenset[int], dict[int, str]] = {
 }
 
 NODE_9TH_SIGN_COMBO = "Rahu/Ketu affecting 9th"
+SUN_WEAK_VARGA_COMBO = "Sun weak in D-9/D-12 despite Leo placement"
 
 
 def _ordinal(n: int) -> str:
@@ -121,6 +123,26 @@ def _same_sign(a: dict, b: dict) -> bool:
 
 def _house_of(p: dict) -> int:
     return int(p.get("house") or 0)
+
+
+def _varga_sign(longitude: float, n: int) -> str:
+    return ZODIAC_SIGNS[varga_sign_index(longitude, n)]
+
+
+def _sun_weak_in_varga(by: dict[str, dict], n: int) -> tuple[bool, str | None]:
+    """Sun debilitated or with Saturn/Rahu/Ketu in same sign in D-N."""
+    sun = by.get("Sun")
+    if not sun or sun.get("longitude") is None:
+        return False, None
+    sun_sign = _varga_sign(float(sun["longitude"]), n)
+    if sun_sign == DEBILITATION["Sun"]:
+        return True, sun_sign
+    for pname in ("Saturn", "Rahu", "Ketu"):
+        other = by.get(pname)
+        if other and other.get("longitude") is not None:
+            if _varga_sign(float(other["longitude"]), n) == sun_sign:
+                return True, sun_sign
+    return False, None
 
 
 def _afflicted(planet: dict, by: dict[str, dict]) -> bool:
@@ -319,6 +341,20 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         detail = f"Sun with Saturn in {sun['sign']} (house {h})"
         push_sign("Sun + Saturn", [sun["sign"]], detail)
         push_house(_house_combo_in_house("Sun + Saturn", h), h, sun["sign"], detail)
+
+    # ── Sign-wise: Sun in Leo (D1) but weak in D-9 and/or D-12 ───────────
+    if sun and sun.get("sign") == "Leo":
+        weak_parts: list[str] = []
+        for n, label in ((9, "D-9"), (12, "D-12")):
+            weak, vsign = _sun_weak_in_varga(by, n)
+            if weak and vsign:
+                weak_parts.append(f"{label} ({vsign})")
+        if weak_parts:
+            push_sign(
+                SUN_WEAK_VARGA_COMBO,
+                ["Leo"],
+                f"Sun in Leo (D1), weak in {', '.join(weak_parts)}",
+            )
 
     # ── House-wise: Rahu / Ketu in sensitive houses (no sign lookup) ───────
     if rahu:
