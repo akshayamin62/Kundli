@@ -1,4 +1,4 @@
-import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull } from "@/types/chart";
+import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull, PitruDoshaResponse } from "@/types/chart";
 import { authHeaders, clearAuth } from "@/lib/authStorage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -27,6 +27,18 @@ async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
     throw new Error("Session expired. Please log in again.");
   }
   return res;
+}
+
+export async function calculatePitruDosha(chart: ChartResponse): Promise<PitruDoshaResponse> {
+  const res = await apiFetch(`${API_URL}/api/chart/pitru-dosha`, {
+    method: "POST",
+    body: JSON.stringify(chart),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(parseApiError(err, res.status));
+  }
+  return res.json();
 }
 
 export async function calculateChart(req: ChartRequest): Promise<ChartResponse> {

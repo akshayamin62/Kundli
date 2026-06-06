@@ -8,7 +8,9 @@ from app.models.schemas import (
     ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition,
     DashaRequest, DashaResponse, DashaPeriod,
     TransitRequest, TransitResponse, TransitEntry,
+    PitruDoshaResponse, PitruDoshaSignFinding, PitruDoshaHouseFinding,
 )
+from app.services.pitru_dosha import calculate_pitru_dosha
 from app.services.chart_builder import build_chart
 from app.services.geocoding import GeocodingError
 from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varga_deg_in_sign
@@ -303,3 +305,22 @@ def calculate_transit(req: TransitRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transit calculation error: {str(e)}")
+
+
+@router.post("/chart/pitru-dosha", response_model=PitruDoshaResponse, tags=["Chart"])
+def pitru_dosha(chart: ChartResponse):
+    """
+    Pitru Dosha from natal chart (Sign Wise + House Wise combos).
+  """
+    try:
+        raw = calculate_pitru_dosha(chart.model_dump())
+        return PitruDoshaResponse(
+            janma_rashi=raw.get("janma_rashi"),
+            present=raw["present"],
+            confirmation_count=raw["confirmation_count"],
+            sign_findings=[PitruDoshaSignFinding(**f) for f in raw["sign_findings"]],
+            house_findings=[PitruDoshaHouseFinding(**f) for f in raw["house_findings"]],
+            disclaimer=raw["disclaimer"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pitru Dosha analysis error: {str(e)}")

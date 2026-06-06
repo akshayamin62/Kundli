@@ -100,6 +100,42 @@ class ChartResponse(BaseModel):
     history_id: Optional[str] = None
 
 
+class PitruDoshaSignFinding(BaseModel):
+    combination: str
+    sign: str
+    detail: str
+    rahu_sign: Optional[str] = None
+    ketu_sign: Optional[str] = None
+    sign_wise_impact: Optional[str] = None
+    sign_wise_severity: Optional[str] = None
+    nature_theme: Optional[str] = None
+    stronger_houses: Optional[str] = None
+
+
+class PitruDoshaHouseFinding(BaseModel):
+    combination: str
+    sign: str
+    house: int
+    house_label: str
+    detail: str
+    rahu_sign: Optional[str] = None
+    ketu_sign: Optional[str] = None
+    rahu_house: Optional[int] = None
+    ketu_house: Optional[int] = None
+    house_wise_impact: Optional[str] = None
+    house_wise_severity: Optional[str] = None
+    health_focus: Optional[str] = None
+
+
+class PitruDoshaResponse(BaseModel):
+    janma_rashi: Optional[str] = None
+    present: bool
+    confirmation_count: int
+    sign_findings: list[PitruDoshaSignFinding]
+    house_findings: list[PitruDoshaHouseFinding]
+    disclaimer: str
+
+
 class VargaRequest(ChartRequest):
     n: int = 9  # which D-chart (1–60)
 

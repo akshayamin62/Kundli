@@ -7,6 +7,7 @@ import HouseTable from "@/components/HouseTable";
 import DashantariDashaTable from "@/components/DashantariDashaTable";
 import PlanetsRashiTransit from "@/components/PlanetsRashiTransit";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
+import PitruDoshaPanel from "@/components/PitruDoshaPanel";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
@@ -240,7 +241,7 @@ export default function ResultPage() {
     [chart],
   );
 
-  type MainTab = "kundali" | "grahsil" | "allvargas";
+  type MainTab = "kundali" | "grahsil" | "allvargas" | "pitru";
   const [mainTab, setMainTab]         = useState<MainTab>("kundali");
 
   type Tab = "planets" | "dasha" | "transit";
@@ -557,6 +558,7 @@ export default function ResultPage() {
               { id: "kundali" as MainTab, labels: { en: "Kundali", hi: "कुंडली", gu: "કુંડળી" } },
               { id: "grahsil" as MainTab, labels: { en: "Grahasheel Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
               { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
+              { id: "pitru" as MainTab, labels: { en: "Pitru Dosha", hi: "पितृ दोष", gu: "પિતૃ દોષ" } },
             ]).map(({ id, labels }) => (
               <button
                 key={id}
@@ -582,6 +584,13 @@ export default function ResultPage() {
         {mainTab === "grahsil" && (
           <div className="flex-1 min-h-0 overflow-auto">
             <GrahshilChakraTable lang={lang} />
+          </div>
+        )}
+
+        {/* ── Pitru Dosha tab ── */}
+        {mainTab === "pitru" && chart && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <PitruDoshaPanel chart={chart} lang={lang} />
           </div>
         )}
 

@@ -63,6 +63,42 @@ export interface ChartResponse {
   history_id?: string | null;
 }
 
+export interface PitruDoshaSignFinding {
+  combination: string;
+  sign: string;
+  detail: string;
+  rahu_sign?: string | null;
+  ketu_sign?: string | null;
+  sign_wise_impact?: string | null;
+  sign_wise_severity?: string | null;
+  nature_theme?: string | null;
+  stronger_houses?: string | null;
+}
+
+export interface PitruDoshaHouseFinding {
+  combination: string;
+  sign: string;
+  house: number;
+  house_label: string;
+  detail: string;
+  rahu_sign?: string | null;
+  ketu_sign?: string | null;
+  rahu_house?: number | null;
+  ketu_house?: number | null;
+  house_wise_impact?: string | null;
+  house_wise_severity?: string | null;
+  health_focus?: string | null;
+}
+
+export interface PitruDoshaResponse {
+  janma_rashi?: string | null;
+  present: boolean;
+  confirmation_count: number;
+  sign_findings: PitruDoshaSignFinding[];
+  house_findings: PitruDoshaHouseFinding[];
+  disclaimer: string;
+}
+
 export interface ChartRequest {
   name?: string;
   save_history?: boolean;
