@@ -1,4 +1,4 @@
-import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull, PitruDoshaResponse, KaalSarpaResponse } from "@/types/chart";
+import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull, PitruDoshaResponse, KaalSarpaResponse, ChandalDoshaResponse } from "@/types/chart";
 import { authHeaders, clearAuth } from "@/lib/authStorage";
 import { normalizeChartRequest, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
@@ -44,6 +44,18 @@ export async function calculatePitruDosha(chart: ChartResponse): Promise<PitruDo
 
 export async function calculateKaalSarpa(chart: ChartResponse): Promise<KaalSarpaResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/kaal-sarpa`, {
+    method: "POST",
+    body: JSON.stringify(chart),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(parseApiError(err, res.status));
+  }
+  return res.json();
+}
+
+export async function calculateChandalDosha(chart: ChartResponse): Promise<ChandalDoshaResponse> {
+  const res = await apiFetch(`${API_URL}/api/chart/chandal-dosha`, {
     method: "POST",
     body: JSON.stringify(chart),
   });

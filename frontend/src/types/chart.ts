@@ -168,6 +168,68 @@ export interface KaalSarpaResponse {
   disclaimer: string;
 }
 
+// ── Chandal Dosha (Guru Chandal Yoga) ────────────────────────────────────────
+
+export interface ChandalDoshaPlanetInfo {
+  sign: string;
+  house: number;
+  longitude: number;
+  dignity?: string | null;
+  functional_role?: string | null;
+  combust?: boolean | null;
+  retrograde?: boolean | null;
+}
+
+export interface ChandalDoshaNodeInfo {
+  name: string;
+  sign: string;
+  house: number;
+  longitude: number;
+}
+
+export interface ChandalDoshaTypeInfo {
+  house: number;
+  name: string;
+  name_hi?: string | null;
+  name_gu?: string | null;
+  sanskrit_theme: string;
+  house_category: string;
+}
+
+export interface ChandalDoshaMitigation {
+  factor: string;
+  matched: boolean;
+  detail: string;
+  weight: string;
+  severity_reduction: string;
+  raja_yogas?: RajaYogaFinding[] | null;
+  mahapurusha_yogas?: MahapurushaFinding[] | null;
+}
+
+export interface ChandalDoshaResponse {
+  present: boolean;
+  variant?: string | null;
+  variant_label?: string | null;
+  variant_label_hi?: string | null;
+  variant_label_gu?: string | null;
+  variant_impact?: string | null;
+  variant_positive?: string | null;
+  jupiter?: ChandalDoshaPlanetInfo | null;
+  node?: ChandalDoshaNodeInfo | null;
+  conjunction_orb_degrees?: number | null;
+  conjunction_strength?: string | null;
+  type?: ChandalDoshaTypeInfo | null;
+  base_severity?: string | null;
+  effective_severity?: string | null;
+  impact_area?: string | null;
+  impact_types?: string | null;
+  positive_note?: string | null;
+  conventional_remedies?: string | null;
+  modern_remedies?: string | null;
+  mitigating_factors?: ChandalDoshaMitigation[] | null;
+  disclaimer: string;
+}
+
 export interface ChartRequest {
   name?: string;
   save_history?: boolean;

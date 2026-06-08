@@ -11,9 +11,12 @@ from app.models.schemas import (
     PitruDoshaResponse, PitruDoshaSignFinding, PitruDoshaHouseFinding,
     KaalSarpaResponse, KaalSarpaTypeInfo, KaalSarpaNodeInfo,
     KaalSarpaMitigation, RajaYogaFinding, MahapurushaFinding,
+    ChandalDoshaResponse, ChandalDoshaTypeInfo, ChandalDoshaPlanetInfo,
+    ChandalDoshaNodeInfo, ChandalDoshaMitigation,
 )
 from app.services.pitru_dosha import calculate_pitru_dosha
 from app.services.kaal_sarpa import calculate_kaal_sarpa
+from app.services.chandal_dosha import calculate_chandal_dosha
 from app.services.chart_builder import build_chart
 from app.services.geocoding import GeocodingError
 from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varga_deg_in_sign
@@ -385,3 +388,69 @@ def kaal_sarpa(chart: ChartResponse):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Kaal Sarpa analysis error: {str(e)}")
+
+
+def _build_chandal_mitigations(raw_factors: list | None) -> list[ChandalDoshaMitigation] | None:
+    if not raw_factors:
+        return None
+    out: list[ChandalDoshaMitigation] = []
+    for f in raw_factors:
+        raja = f.get("raja_yogas")
+        mp = f.get("mahapurusha_yogas")
+        out.append(
+            ChandalDoshaMitigation(
+                factor=f["factor"],
+                matched=f["matched"],
+                detail=f["detail"],
+                weight=f["weight"],
+                severity_reduction=f["severity_reduction"],
+                raja_yogas=[RajaYogaFinding(**y) for y in raja] if raja else None,
+                mahapurusha_yogas=[MahapurushaFinding(**y) for y in mp] if mp else None,
+            )
+        )
+    return out
+
+
+@router.post("/chart/chandal-dosha", response_model=ChandalDoshaResponse, tags=["Chart"])
+def chandal_dosha(chart: ChartResponse):
+    """Guru Chandal (Chandal Dosha) from natal D1 — Jupiter conjunct Rahu or Ketu."""
+    try:
+        raw = calculate_chandal_dosha(chart.model_dump())
+        if not raw["present"]:
+            return ChandalDoshaResponse(present=False, disclaimer=raw["disclaimer"])
+
+        t = raw["type"]
+        j = raw["jupiter"]
+        n = raw["node"]
+        return ChandalDoshaResponse(
+            present=True,
+            variant=raw.get("variant"),
+            variant_label=raw.get("variant_label"),
+            variant_label_hi=raw.get("variant_label_hi"),
+            variant_label_gu=raw.get("variant_label_gu"),
+            variant_impact=raw.get("variant_impact"),
+            variant_positive=raw.get("variant_positive"),
+            jupiter=ChandalDoshaPlanetInfo(**j) if j else None,
+            node=ChandalDoshaNodeInfo(**n) if n else None,
+            conjunction_orb_degrees=raw.get("conjunction_orb_degrees"),
+            conjunction_strength=raw.get("conjunction_strength"),
+            type=ChandalDoshaTypeInfo(
+                house=t["house"],
+                name=t["name"],
+                name_hi=t.get("name_hi"),
+                name_gu=t.get("name_gu"),
+                sanskrit_theme=t["sanskrit_theme"],
+                house_category=t["house_category"],
+            ),
+            base_severity=raw.get("base_severity"),
+            effective_severity=raw.get("effective_severity"),
+            impact_area=raw.get("impact_area"),
+            impact_types=raw.get("impact_types"),
+            positive_note=raw.get("positive_note"),
+            conventional_remedies=raw.get("conventional_remedies"),
+            modern_remedies=raw.get("modern_remedies"),
+            mitigating_factors=_build_chandal_mitigations(raw.get("mitigating_factors")),
+            disclaimer=raw["disclaimer"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chandal Dosha analysis error: {str(e)}")

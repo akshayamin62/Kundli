@@ -205,6 +205,68 @@ class KaalSarpaResponse(BaseModel):
     disclaimer: str
 
 
+# ── Chandal Dosha (Guru Chandal Yoga) ────────────────────────────────────────
+
+class ChandalDoshaPlanetInfo(BaseModel):
+    sign: str
+    house: int
+    longitude: float
+    dignity: Optional[str] = None
+    functional_role: Optional[str] = None
+    combust: Optional[bool] = None
+    retrograde: Optional[bool] = None
+
+
+class ChandalDoshaNodeInfo(BaseModel):
+    name: str
+    sign: str
+    house: int
+    longitude: float
+
+
+class ChandalDoshaTypeInfo(BaseModel):
+    house: int
+    name: str
+    name_hi: Optional[str] = None
+    name_gu: Optional[str] = None
+    sanskrit_theme: str
+    house_category: str
+
+
+class ChandalDoshaMitigation(BaseModel):
+    factor: str
+    matched: bool
+    detail: str
+    weight: str
+    severity_reduction: str
+    raja_yogas: Optional[list[RajaYogaFinding]] = None
+    mahapurusha_yogas: Optional[list[MahapurushaFinding]] = None
+
+
+class ChandalDoshaResponse(BaseModel):
+    present: bool
+    variant: Optional[str] = None
+    variant_label: Optional[str] = None
+    variant_label_hi: Optional[str] = None
+    variant_label_gu: Optional[str] = None
+    variant_impact: Optional[str] = None
+    variant_positive: Optional[str] = None
+    jupiter: Optional[ChandalDoshaPlanetInfo] = None
+    node: Optional[ChandalDoshaNodeInfo] = None
+    conjunction_orb_degrees: Optional[float] = None
+    conjunction_strength: Optional[str] = None
+    type: Optional[ChandalDoshaTypeInfo] = None
+    base_severity: Optional[str] = None
+    effective_severity: Optional[str] = None
+    impact_area: Optional[str] = None
+    impact_types: Optional[str] = None
+    positive_note: Optional[str] = None
+    conventional_remedies: Optional[str] = None
+    modern_remedies: Optional[str] = None
+    mitigating_factors: Optional[list[ChandalDoshaMitigation]] = None
+    disclaimer: str
+
+
 class VargaRequest(ChartRequest):
     n: int = 9  # which D-chart (1–60)
 
