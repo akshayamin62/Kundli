@@ -18,6 +18,7 @@ import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
 import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
+import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -286,7 +287,7 @@ export default function ResultPage() {
     const rawR = sessionStorage.getItem("astroReq");
     if (raw && rawR) {
       setChart(JSON.parse(raw));
-      setReq(JSON.parse(rawR));
+      setReq(normalizeChartRequest(JSON.parse(rawR) as ChartRequest));
     } else {
       router.replace("/");
     }

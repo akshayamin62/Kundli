@@ -6,6 +6,7 @@ import {
   MatchRequest,
 } from "@/types/chart";
 import { calculateVargaBulk, calculateDasha, calculateVarga } from "@/services/api";
+import { formatHouseSystemLabel, formatZodiacLabel, normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import { toMoonChart } from "@/lib/chartTransforms";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
@@ -530,6 +531,7 @@ function buildSadsatkutMangalPageHtml(
 
 // ── Kundali Report ────────────────────────────────────────────────────────────
 export async function downloadKundliReport(chart: ChartResponse, req: ChartRequest) {
+  const safeReq = normalizeChartRequest(req);
   const m = chart.meta;
   const today = new Date().toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
@@ -543,8 +545,8 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
     const moonChart = toMoonChart(chart);
     const ns = Array.from({ length: 59 }, (_, i) => i + 2);
     const [vargaBulk, dasha] = await Promise.all([
-      calculateVargaBulk({ ...req, save_history: false }, ns),
-      calculateDasha({ ...req, years_ahead: 120, save_history: false }),
+      calculateVargaBulk({ ...safeReq, save_history: false }, ns),
+      calculateDasha({ ...safeReq, years_ahead: 120, save_history: false }),
     ]);
     const gridItems: { label: string; chart: ChartResponse }[] = [
       { label: "Moon Chart", chart: moonChart },
@@ -585,7 +587,7 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
           ["Birth Place", m.birth_place],
           ["Coordinates", `${m.latitude.toFixed(3)}°, ${m.longitude.toFixed(3)}°`],
           ["Timezone", `${m.timezone} (${m.utc_offset})`],
-          ["System", `${m.house_system} · ${m.zodiac}`],
+          ["System", `${formatHouseSystemLabel(m.house_system)} · ${formatZodiacLabel(m.zodiac)}`],
         ].map(([l, v]) => `
           <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 14px;backdrop-filter:blur(4px);">
             <p style="font-size:8px;text-transform:uppercase;letter-spacing:1.5px;opacity:0.55;margin-bottom:4px;">${l}</p>

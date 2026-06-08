@@ -181,8 +181,8 @@ def build_chart(req: ChartRequest) -> ChartResponse:
         utc_offset=utc_offset,
         utc_datetime=utc_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
         julian_day=round(jd, 6),
-        house_system=HOUSE_SYSTEM_LABELS.get(req.house_system, req.house_system),
-        zodiac=ZODIAC_LABELS.get(req.zodiac, req.zodiac),
+        house_system=req.house_system,
+        zodiac=req.zodiac,
     )
 
     return ChartResponse(meta=meta, angles=angles, houses=house_list, planets=planet_list)

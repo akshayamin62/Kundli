@@ -9,6 +9,7 @@ import BirthForm from "@/components/BirthForm";
 import MatchForm from "@/components/MatchForm";
 import { saveMatchRequest } from "@/lib/editPrefill";
 import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
+import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import AppNavbar from "@/components/AppNavbar";
 import { formatBirthPlaceDisplay } from "@/lib/birthPlaceDisplay";
 
@@ -213,10 +214,10 @@ export default function HistoryPage() {
     try {
       const full = await fetchHistoryItem(item.id);
       if (item.type === "kundali" && full.input) {
-        const req: ChartRequest = {
+        const req = normalizeChartRequest({
           ...(full.input as ChartRequest),
           save_history: false,
-        };
+        });
         const chart = await calculateChart(req);
         sessionStorage.setItem("astroChart", JSON.stringify(chart));
         sessionStorage.setItem(

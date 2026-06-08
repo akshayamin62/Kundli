@@ -1,4 +1,5 @@
 import { ChartRequest, MatchPersonRequest, MatchRequest, MatchResponse } from "@/types/chart";
+import { normalizeHouseSystem, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
 const TAB_KEY = "jk_active_tab";
 const BIRTH_FORM_KEY = "jk_birth_form";
@@ -18,8 +19,8 @@ function personFromChart(meta: {
     birth_date: meta.birth_date,
     birth_time: meta.birth_time,
     birth_place: meta.birth_place,
-    house_system: meta.house_system ?? "whole_sign",
-    zodiac: meta.zodiac ?? "sidereal",
+    house_system: normalizeHouseSystem(meta.house_system),
+    zodiac: normalizeZodiac(meta.zodiac),
   };
 }
 

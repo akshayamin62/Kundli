@@ -1,5 +1,6 @@
 import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull, PitruDoshaResponse, KaalSarpaResponse } from "@/types/chart";
 import { authHeaders, clearAuth } from "@/lib/authStorage";
+import { normalizeChartRequest, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -56,7 +57,7 @@ export async function calculateKaalSarpa(chart: ChartResponse): Promise<KaalSarp
 export async function calculateChart(req: ChartRequest): Promise<ChartResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/calculate`, {
     method: "POST",
-    body: JSON.stringify(req),
+    body: JSON.stringify(normalizeChartRequest(req)),
   });
 
   if (!res.ok) {
@@ -70,7 +71,7 @@ export async function calculateChart(req: ChartRequest): Promise<ChartResponse> 
 export async function calculateVarga(req: VargaRequest): Promise<ChartResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/varga`, {
     method: "POST",
-    body: JSON.stringify(req),
+    body: JSON.stringify(normalizeChartRequest(req)),
   });
 
   if (!res.ok) {
@@ -84,7 +85,7 @@ export async function calculateVarga(req: VargaRequest): Promise<ChartResponse> 
 export async function calculateVargaBulk(req: ChartRequest, ns: number[]): Promise<Record<number, ChartResponse>> {
   const res = await apiFetch(`${API_URL}/api/chart/varga-bulk`, {
     method: "POST",
-    body: JSON.stringify({ ...req, ns }),
+    body: JSON.stringify({ ...normalizeChartRequest(req), ns }),
   });
 
   if (!res.ok) {
@@ -101,7 +102,7 @@ export async function calculateVargaBulk(req: ChartRequest, ns: number[]): Promi
 export async function calculateDasha(req: DashaRequest): Promise<DashaResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/dasha`, {
     method: "POST",
-    body: JSON.stringify(req),
+    body: JSON.stringify(normalizeChartRequest(req)),
   });
 
   if (!res.ok) {
@@ -115,7 +116,7 @@ export async function calculateDasha(req: DashaRequest): Promise<DashaResponse> 
 export async function calculateTransit(req: TransitRequest): Promise<TransitResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/transit`, {
     method: "POST",
-    body: JSON.stringify(req),
+    body: JSON.stringify({ ...req, zodiac: normalizeZodiac(req.zodiac) }),
   });
 
   if (!res.ok) {

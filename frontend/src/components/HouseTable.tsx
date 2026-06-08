@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { ChartResponse } from "@/types/chart";
+import { formatHouseSystemLabel, formatZodiacLabel } from "@/lib/chartRequestNormalize";
 import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_NAMES, SIGN_LORDS as SIGN_LORDS_I18N, NAKSHATRA_NAMES, NAKSHATRA_LORDS as NAKSHATRA_LORDS_I18N, AVASTHA_NAMES, UI, translateSign } from "@/lib/translations";
 
 interface Props {
@@ -210,7 +211,7 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
         <div>🕐 Timezone: {chart.meta.timezone} ({chart.meta.utc_offset})</div>
         <div>⏱ UTC: {chart.meta.utc_datetime}</div>
         <div>📅 Julian Day: {chart.meta.julian_day}</div>
-        <div>🏠 System: {chart.meta.house_system} | Zodiac: {chart.meta.zodiac}</div>
+        <div>🏠 System: {formatHouseSystemLabel(chart.meta.house_system)} | Zodiac: {formatZodiacLabel(chart.meta.zodiac)}</div>
       </div>
     </div>
   );

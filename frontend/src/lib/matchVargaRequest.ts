@@ -1,4 +1,5 @@
 import { ChartResponse, MatchPersonRequest, VargaRequest } from "@/types/chart";
+import { normalizeHouseSystem, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
 /** Build varga API payload from chart meta + stored person (coords when place empty). */
 export function vargaRequestForPerson(
@@ -18,8 +19,8 @@ export function vargaRequestForPerson(
     birth_place: place || `${lat.toFixed(4)}, ${lon.toFixed(4)}`,
     birth_lat: lat,
     birth_lon: lon,
-    house_system: person.house_system ?? meta.house_system,
-    zodiac: person.zodiac ?? meta.zodiac,
+    house_system: normalizeHouseSystem(person.house_system ?? meta.house_system),
+    zodiac: normalizeZodiac(person.zodiac ?? meta.zodiac),
     save_history: false,
     n,
   };
