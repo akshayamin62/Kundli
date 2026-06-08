@@ -77,7 +77,7 @@ export function formatZodiacLabel(value: string | undefined | null): string {
 }
 
 /** Ensure API payload uses canonical ids (not display labels from chart meta). */
-export function normalizeChartRequest<T extends Partial<ChartRequest>>(req: T): T & ChartRequest {
+export function normalizeChartRequest(req: Partial<ChartRequest>): ChartRequest {
   return {
     name: req.name ?? "",
     birth_date: req.birth_date ?? "",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChartResponse,
   PitruDoshaHouseFinding,
@@ -9,78 +9,128 @@ import {
 } from "@/types/chart";
 import { calculatePitruDosha } from "@/services/api";
 import { type Lang, SIGN_NAMES } from "@/lib/translations";
+import {
+  AbsentReport,
+  DetailsPanel,
+  Disclaimer,
+  DoshaError,
+  DoshaLoading,
+  DoshaPanelShell,
+  FindingCard,
+  OverviewPanel,
+  type OverviewStat,
+  PageBar,
+  SectionDivider,
+  SegmentTabs,
+  SeverityBadge,
+} from "@/components/dosha/DoshaUI";
 
 const LABELS: Record<Lang, Record<string, string>> = {
   en: {
-    title: "Pitru Dosha Analysis",
-    signWiseHeading: "Sign-wise combinations",
-    houseWiseHeading: "House-wise combinations",
+    title: "Pitru Dosha",
+    overview: "Overview",
+    signWiseHeading: "Sign-wise findings",
+    houseWiseHeading: "House-wise findings",
     signWiseImpact: "Impact",
     houseWiseImpact: "Impact",
-    natureTheme: "Nature / Theme",
+    natureTheme: "Nature & theme",
     healthFocus: "Health focus",
     sign: "Sign",
     rahu: "Rahu",
     ketu: "Ketu",
     house: "House",
-    strongerHouses: "Stronger houses / axis",
+    strongerHouses: "Stronger houses",
     conventionalRemedies: "Conventional remedies",
     modernRemedies: "Modern remedies",
     severity: "Severity",
-    loading: "Analyzing chart…",
+    loading: "Analyzing…",
     error: "Could not load Pitru Dosha analysis.",
-    noFindings: "No Pitru Dosha combinations matched this chart.",
-    noSignFindings: "No sign-wise combinations for this chart.",
-    noHouseFindings: "No house-wise combinations for this chart.",
-    janmaRashi: "Janma Rashi (Moon)",
+    noSignFindings: "No sign-wise combinations.",
+    noHouseFindings: "No house-wise combinations.",
+    janmaRashi: "Janma Rashi",
+    total: "Total",
+    signCount: "Sign-wise",
+    houseCount: "House-wise",
+    present: "Found",
+    notPresent: "Not found",
+    absentTitle: "No Pitru Dosha indications",
+    absentBody: "No sign-wise or house-wise combinations match this chart.",
+    allTab: "All",
+    signTab: "Sign",
+    houseTab: "House",
+    details: "Detailed findings",
   },
   hi: {
-    title: "पितृ दोष विश्लेषण",
-    signWiseHeading: "राशि अनुसार संयोजन",
-    houseWiseHeading: "भाव अनुसार संयोजन",
+    title: "पितृ दोष",
+    overview: "सारांश",
+    signWiseHeading: "राशि अनुसार",
+    houseWiseHeading: "भाव अनुसार",
     signWiseImpact: "प्रभाव",
     houseWiseImpact: "प्रभाव",
     natureTheme: "प्रकृति / विषय",
-    healthFocus: "स्वास्थ्य केंद्र",
+    healthFocus: "स्वास्थ्य",
     sign: "राशि",
     rahu: "राहु",
     ketu: "केतु",
     house: "भाव",
-    strongerHouses: "प्रबल भाव / अक्ष",
+    strongerHouses: "प्रबल भाव",
     conventionalRemedies: "पारंपरिक उपाय",
     modernRemedies: "आधुनिक उपाय",
     severity: "गंभीरता",
     loading: "विश्लेषण…",
     error: "पितृ दोष लोड नहीं हो सका।",
-    noFindings: "इस कुंडली में कोई संयोजन नहीं मिला।",
-    noSignFindings: "इस कुंडली में राशि अनुसार कोई संयोजन नहीं।",
-    noHouseFindings: "इस कुंडली में भाव अनुसार कोई संयोजन नहीं।",
-    janmaRashi: "जन्म राशि (चंद्र)",
+    noSignFindings: "कोई राशि संयोजन नहीं।",
+    noHouseFindings: "कोई भाव संयोजन नहीं।",
+    janmaRashi: "जन्म राशि",
+    total: "कुल",
+    signCount: "राशि",
+    houseCount: "भाव",
+    present: "मिला",
+    notPresent: "नहीं मिला",
+    absentTitle: "पितृ दोष नहीं",
+    absentBody: "कोई संयोजन मेल नहीं खाता।",
+    allTab: "सभी",
+    signTab: "राशि",
+    houseTab: "भाव",
+    details: "विस्तृत निष्कर्ष",
   },
   gu: {
-    title: "પિતૃ દોષ વિશ્લેષણ",
-    signWiseHeading: "રાશિ પ્રમાણે સંયોજન",
-    houseWiseHeading: "ભાવ પ્રમાણે સંયોજન",
+    title: "પિતૃ દોષ",
+    overview: "સારાંશ",
+    signWiseHeading: "રાશિ પ્રમાણે",
+    houseWiseHeading: "ભાવ પ્રમાણે",
     signWiseImpact: "અસર",
     houseWiseImpact: "અસર",
     natureTheme: "સ્વભાવ / વિષય",
-    healthFocus: "આરોગ્ય કેન્દ્ર",
+    healthFocus: "આરોગ્ય",
     sign: "રાશિ",
     rahu: "રાહુ",
     ketu: "કેતુ",
     house: "ભાવ",
-    strongerHouses: "પ્રબળ ભાવ / અક્ષ",
+    strongerHouses: "પ્રબળ ભાવ",
     conventionalRemedies: "પરંપરાગત ઉપાય",
     modernRemedies: "આધુનિક ઉપાય",
     severity: "તીવ્રતા",
     loading: "વિશ્લેષણ…",
     error: "પિતૃ દોષ લોડ થયો નહીં.",
-    noFindings: "આ કુંડળીમાં કોઈ સંયોજન મળ્યું નથી.",
-    noSignFindings: "આ કુંડળીમાં રાશિ પ્રમાણે કોઈ સંયોજન નથી.",
-    noHouseFindings: "આ કુંડળીમાં ભાવ પ્રમાણે કોઈ સંયોજન નથી.",
-    janmaRashi: "જન્મ રાશિ (ચંદ્ર)",
+    noSignFindings: "કોઈ રાશિ સંયોજન નથી.",
+    noHouseFindings: "કોઈ ભાવ સંયોજન નથી.",
+    janmaRashi: "જન્મ રાશિ",
+    total: "કુલ",
+    signCount: "રાશિ",
+    houseCount: "ભાવ",
+    present: "મળ્યું",
+    notPresent: "નથી મળ્યું",
+    absentTitle: "પિતૃ દોષ નથી",
+    absentBody: "કોઈ સંયોજન મેળ ખાતું નથી.",
+    allTab: "બધા",
+    signTab: "રાશિ",
+    houseTab: "ભાવ",
+    details: "વિગતવાર નિષ્કર્ષ",
   },
 };
+
+type ViewTab = "all" | "sign" | "house";
 
 function tSign(name: string, lang: Lang): string {
   const i = SIGN_NAMES.en.indexOf(name);
@@ -93,165 +143,39 @@ function ordinalHouse(n: number): string {
   return `${n}${suffix}`;
 }
 
-/** Distinct badge colors per severity label (Dosha / House matrix). */
-function severityBadgeClass(severity: string): string {
-  const s = severity.toLowerCase().trim();
-  if (s.includes("very high")) {
-    return "bg-red-600 text-white border-red-700 shadow-sm";
-  }
-  if (s.includes("medium to high") || s.includes("medium-high")) {
-    return "bg-amber-500 text-amber-950 border-amber-600 shadow-sm";
-  }
-  if (s.includes("high")) {
-    return "bg-orange-500 text-white border-orange-600 shadow-sm";
-  }
-  if (s.includes("medium")) {
-    return "bg-yellow-400 text-yellow-950 border-yellow-500 shadow-sm";
-  }
-  if (s.includes("low")) {
-    return "bg-slate-400 text-white border-slate-500 shadow-sm";
-  }
-  return "bg-gray-500 text-white border-gray-600 shadow-sm";
+function buildSignFields(f: PitruDoshaSignFinding, t: Record<string, string>) {
+  const fields: { label: string; value: string }[] = [];
+  if (f.sign_wise_impact) fields.push({ label: t.signWiseImpact, value: f.sign_wise_impact });
+  if (f.nature_theme) fields.push({ label: t.natureTheme, value: f.nature_theme });
+  if (f.stronger_houses) fields.push({ label: t.strongerHouses, value: f.stronger_houses });
+  if (f.conventional_remedies)
+    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies });
+  if (f.modern_remedies) fields.push({ label: t.modernRemedies, value: f.modern_remedies });
+  return fields;
 }
 
-function SeverityPill({ severity }: { severity: string }) {
-  return (
-    <span
-      className={`shrink-0 text-[10px] font-bold leading-none px-2.5 py-1.5 rounded-full border whitespace-nowrap ${severityBadgeClass(severity)}`}
-    >
-      {severity}
-    </span>
-  );
+function buildHouseFields(f: PitruDoshaHouseFinding, t: Record<string, string>) {
+  const fields: { label: string; value: string }[] = [];
+  if (f.house_wise_impact) fields.push({ label: t.houseWiseImpact, value: f.house_wise_impact });
+  if (f.health_focus) fields.push({ label: t.healthFocus, value: f.health_focus });
+  if (f.conventional_remedies)
+    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies });
+  if (f.modern_remedies) fields.push({ label: t.modernRemedies, value: f.modern_remedies });
+  return fields;
 }
 
-function SignWiseCard({ f, lang, t }: { f: PitruDoshaSignFinding; lang: Lang; t: Record<string, string> }) {
-  return (
-    <article className="group flex flex-col h-full rounded-2xl border border-violet-200/80 bg-white shadow-sm hover:shadow-lg hover:border-violet-300 transition-all duration-200 overflow-hidden">
-      <div className="bg-gradient-to-br from-violet-600 to-indigo-700 px-4 py-4 text-white">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-sm leading-snug flex-1 min-w-0">{f.combination}</h3>
-          {f.sign_wise_severity && <SeverityPill severity={f.sign_wise_severity} />}
-        </div>
-        <p className="text-violet-100 text-xs mt-1.5">
-          {f.rahu_sign && f.ketu_sign ? (
-            <>
-              {t.rahu}: {tSign(f.rahu_sign, lang)} · {t.ketu}: {tSign(f.ketu_sign, lang)}
-            </>
-          ) : (
-            <>
-              {t.sign}: {tSign(f.sign, lang)}
-            </>
-          )}
-        </p>
-      </div>
-      <div className="flex-1 p-4 space-y-3 text-sm">
-        {f.sign_wise_impact && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 mb-1">{t.signWiseImpact}</p>
-            <p className="text-gray-800 leading-relaxed">{f.sign_wise_impact}</p>
-          </div>
-        )}
-        {f.nature_theme && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 mb-1">{t.natureTheme}</p>
-            <p className="text-gray-700 leading-relaxed">{f.nature_theme}</p>
-          </div>
-        )}
-        {f.stronger_houses && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">{t.strongerHouses}</p>
-            <p className="text-gray-600 text-xs">{f.stronger_houses}</p>
-          </div>
-        )}
-        {f.conventional_remedies && (
-          <div className="pt-2 border-t border-amber-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">{t.conventionalRemedies}</p>
-            <p className="text-gray-700 text-xs leading-relaxed">{f.conventional_remedies}</p>
-          </div>
-        )}
-        {f.modern_remedies && (
-          <div className="pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-1">{t.modernRemedies}</p>
-            <p className="text-gray-700 text-xs leading-relaxed">{f.modern_remedies}</p>
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function HouseWiseCard({ f, lang, t }: { f: PitruDoshaHouseFinding; lang: Lang; t: Record<string, string> }) {
-  return (
-    <article className="group flex flex-col h-full rounded-2xl border border-teal-200/80 bg-white shadow-sm hover:shadow-lg hover:border-teal-300 transition-all duration-200 overflow-hidden">
-      <div className="bg-gradient-to-br from-teal-600 to-emerald-700 px-4 py-4 text-white">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-sm leading-snug flex-1 min-w-0">{f.combination}</h3>
-          {f.house_wise_severity && <SeverityPill severity={f.house_wise_severity} />}
-        </div>
-        <p className="text-teal-100 text-xs mt-1.5">
-          {f.rahu_house != null && f.ketu_house != null && f.rahu_sign && f.ketu_sign ? (
-            <>
-              {t.rahu}: {ordinalHouse(f.rahu_house)} ({tSign(f.rahu_sign, lang)}) · {t.ketu}:{" "}
-              {ordinalHouse(f.ketu_house)} ({tSign(f.ketu_sign, lang)})
-            </>
-          ) : (
-            <>
-              {t.house}: {f.house_label} · {t.sign}: {tSign(f.sign, lang)}
-            </>
-          )}
-        </p>
-      </div>
-      <div className="flex-1 p-4 space-y-3 text-sm">
-        {f.house_wise_impact && (
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">{t.houseWiseImpact}</p>
-            <p className="text-gray-800 leading-relaxed">{f.house_wise_impact}</p>
-          </div>
-        )}
-        {f.health_focus && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">{t.healthFocus}</p>
-            <p className="text-gray-700 leading-relaxed">{f.health_focus}</p>
-          </div>
-        )}
-        {f.conventional_remedies && (
-          <div className="pt-2 border-t border-amber-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">{t.conventionalRemedies}</p>
-            <p className="text-gray-700 text-xs leading-relaxed">{f.conventional_remedies}</p>
-          </div>
-        )}
-        {f.modern_remedies && (
-          <div className="pt-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-1">{t.modernRemedies}</p>
-            <p className="text-gray-700 text-xs leading-relaxed">{f.modern_remedies}</p>
-          </div>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function CardGrid({
-  items,
-  render,
-  emptyText,
-}: {
-  items: PitruDoshaSignFinding[] | PitruDoshaHouseFinding[];
-  render: (f: PitruDoshaSignFinding | PitruDoshaHouseFinding, i: number) => JSX.Element;
-  emptyText: string;
-}) {
-  if (items.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-        {emptyText}
-      </p>
-    );
+function signMeta(f: PitruDoshaSignFinding, lang: Lang, t: Record<string, string>): string {
+  if (f.rahu_sign && f.ketu_sign) {
+    return `${t.rahu}: ${tSign(f.rahu_sign, lang)} · ${t.ketu}: ${tSign(f.ketu_sign, lang)}`;
   }
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((f, i) => render(f, i))}
-    </div>
-  );
+  return `${t.sign}: ${tSign(f.sign, lang)}`;
+}
+
+function houseMeta(f: PitruDoshaHouseFinding, lang: Lang, t: Record<string, string>): string {
+  if (f.rahu_house != null && f.ketu_house != null && f.rahu_sign && f.ketu_sign) {
+    return `${t.rahu}: ${ordinalHouse(f.rahu_house)} (${tSign(f.rahu_sign, lang)}) · ${t.ketu}: ${ordinalHouse(f.ketu_house)} (${tSign(f.ketu_sign, lang)})`;
+  }
+  return `${t.house}: ${f.house_label} · ${t.sign}: ${tSign(f.sign, lang)}`;
 }
 
 interface Props {
@@ -264,6 +188,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
   const [data, setData] = useState<PitruDoshaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewTab, setViewTab] = useState<ViewTab>("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -284,83 +209,132 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
     };
   }, [chart, t.error]);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
-        <svg className="animate-spin h-6 w-6 mr-2 text-indigo-500" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
-        {t.loading}
-      </div>
-    );
-  }
+  const signFindings = data?.sign_findings ?? [];
+  const houseFindings = data?.house_findings ?? [];
+  const totalCount = signFindings.length + houseFindings.length;
 
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
-      </div>
-    );
-  }
+  const highestSeverity = useMemo(() => {
+    const severities = [
+      ...signFindings.map((f) => f.sign_wise_severity),
+      ...houseFindings.map((f) => f.house_wise_severity),
+    ].filter(Boolean) as string[];
+    const order = ["very high", "high", "medium to high", "medium", "low"];
+    for (const level of order) {
+      const found = severities.find((s) => s.toLowerCase().includes(level));
+      if (found) return found;
+    }
+    return severities[0] ?? null;
+  }, [signFindings, houseFindings]);
 
+  if (loading) return <DoshaLoading theme="pitru" message={t.loading} />;
+  if (error) return <DoshaError message={error} />;
   if (!data) return null;
 
-  const signFindings = data.sign_findings;
-  const houseFindings = data.house_findings;
-  const nothing = signFindings.length === 0 && houseFindings.length === 0;
+  const showSign = viewTab === "all" || viewTab === "sign";
+  const showHouse = viewTab === "all" || viewTab === "house";
+
+  const overviewStats: OverviewStat[] = [
+    ...(data.janma_rashi
+      ? [{ label: t.janmaRashi, value: tSign(data.janma_rashi, lang) }]
+      : []),
+    { label: t.total, value: totalCount },
+    { label: t.signCount, value: signFindings.length },
+    { label: t.houseCount, value: houseFindings.length },
+    ...(highestSeverity
+      ? [{ label: t.severity, value: <SeverityBadge severity={highestSeverity} /> }]
+      : []),
+  ];
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto px-4 py-5 space-y-8">
-      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-gray-200 pb-4">
-        <h2 className="text-xl font-bold text-indigo-950">{t.title}</h2>
-        {data.janma_rashi && (
-          <p className="text-sm text-gray-700 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5">
-            <span className="font-semibold text-indigo-800">{t.janmaRashi}:</span>{" "}
-            {tSign(data.janma_rashi, lang)}
-          </p>
-        )}
-      </header>
+    <DoshaPanelShell theme="pitru">
+      <PageBar
+        theme="pitru"
+        title={t.title}
+        present={data.present}
+        presentLabel={t.present}
+        absentLabel={t.notPresent}
+      />
 
-      {nothing ? (
-        <p className="text-center text-gray-500 py-12">{t.noFindings}</p>
+      {totalCount === 0 ? (
+        <AbsentReport title={t.absentTitle} body={t.absentBody} />
       ) : (
         <>
-          <section className="space-y-4">
-            <h3 className="text-base font-bold text-violet-900 flex items-center gap-2">
-              <span className="w-1 h-5 rounded-full bg-violet-600" />
-              {t.signWiseHeading}
-              <span className="text-xs font-normal text-gray-500">({signFindings.length})</span>
-            </h3>
-            <CardGrid
-              items={signFindings}
-              emptyText={t.noSignFindings}
-              render={(f, i) => (
-                <SignWiseCard key={`sign-${f.combination}-${f.sign}-${i}`} f={f} lang={lang} t={t} />
-              )}
-            />
-          </section>
+          <OverviewPanel theme="pitru" title={t.overview} stats={overviewStats} />
 
-          <section className="space-y-4">
-            <h3 className="text-base font-bold text-teal-900 flex items-center gap-2">
-              <span className="w-1 h-5 rounded-full bg-teal-600" />
-              {t.houseWiseHeading}
-              <span className="text-xs font-normal text-gray-500">({houseFindings.length})</span>
-            </h3>
-            <CardGrid
-              items={houseFindings}
-              emptyText={t.noHouseFindings}
-              render={(f, i) => (
-                <HouseWiseCard key={`house-${f.combination}-${f.house}-${i}`} f={f} lang={lang} t={t} />
-              )}
-            />
-          </section>
+          <SectionDivider theme="pitru" label={t.details} />
+
+          <DetailsPanel theme="pitru">
+            <div className="mb-2">
+              <SegmentTabs
+                theme="pitru"
+                active={viewTab}
+                onChange={setViewTab}
+                tabs={[
+                  { id: "all", label: t.allTab, count: totalCount },
+                  { id: "sign", label: t.signTab, count: signFindings.length },
+                  { id: "house", label: t.houseTab, count: houseFindings.length },
+                ]}
+              />
+            </div>
+
+            {showSign && (
+              <div className={showHouse && viewTab === "all" ? "mb-3" : ""}>
+                {viewTab === "all" && (
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800 mb-2">
+                    {t.signWiseHeading}
+                  </p>
+                )}
+                {signFindings.length === 0 ? (
+                  <p className="text-xs text-gray-500">{t.noSignFindings}</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                    {signFindings.map((f, i) => (
+                      <FindingCard
+                        key={`sign-${f.combination}-${f.sign}-${i}`}
+                        theme="pitru"
+                        index={i + 1}
+                        title={f.combination}
+                        meta={signMeta(f, lang, t)}
+                        severity={f.sign_wise_severity}
+                        fields={buildSignFields(f, t)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showHouse && (
+              <div>
+                {viewTab === "all" && (
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800 mb-2">
+                    {t.houseWiseHeading}
+                  </p>
+                )}
+                {houseFindings.length === 0 ? (
+                  <p className="text-xs text-gray-500">{t.noHouseFindings}</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+                    {houseFindings.map((f, i) => (
+                      <FindingCard
+                        key={`house-${f.combination}-${f.house}-${i}`}
+                        theme="pitru"
+                        index={i + 1}
+                        title={f.combination}
+                        meta={houseMeta(f, lang, t)}
+                        severity={f.house_wise_severity}
+                        fields={buildHouseFields(f, t)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </DetailsPanel>
         </>
       )}
 
-      {data.disclaimer && (
-        <p className="text-xs text-gray-400 text-center pb-2">{data.disclaimer}</p>
-      )}
-    </div>
+      {data.disclaimer && <Disclaimer text={data.disclaimer} />}
+    </DoshaPanelShell>
   );
 }

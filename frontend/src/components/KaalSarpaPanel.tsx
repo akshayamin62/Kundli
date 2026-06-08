@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   ChartResponse,
   KaalSarpaMitigation,
@@ -10,104 +10,139 @@ import {
 } from "@/types/chart";
 import { calculateKaalSarpa } from "@/services/api";
 import { type Lang, SIGN_NAMES } from "@/lib/translations";
+import {
+  AbsentReport,
+  DetailsPanel,
+  Disclaimer,
+  DoshaError,
+  DoshaLoading,
+  DoshaPanelShell,
+  FactGrid,
+  FactRow,
+  MitigationList,
+  NoticeBanner,
+  OverviewPanel,
+  type OverviewStat,
+  PageBar,
+  ReadableText,
+  SectionDivider,
+  SeverityBadge,
+  SplitLayout,
+  TagList,
+  TextBlock,
+} from "@/components/dosha/DoshaUI";
 
 const LABELS: Record<Lang, Record<string, string>> = {
   en: {
-    title: "Kaal Sarpa Analysis",
+    title: "Kaal Sarpa Yoga",
+    overview: "Overview",
+    chartFacts: "Chart positions",
+    impact: "Life impact",
+    remedies: "Remedies",
+    mitigations: "Mitigating factors",
     present: "Present",
-    notPresent: "Not Present",
+    notPresent: "Not present",
     type: "Type",
-    rahu: "Rahu (Head)",
-    ketu: "Ketu (Tail)",
+    rahu: "Rahu",
+    ketu: "Ketu",
     orientation: "Serpent arc",
-    planetsInside: "Grahas inside the serpent",
-    baseSeverity: "Base",
+    planetsInside: "Planets inside",
+    baseSeverity: "Base severity",
     effectiveSeverity: "After mitigations",
     impactArea: "Impact area",
-    impactTypes: "Impact types",
-    conventionalRemedies: "Conventional remedies",
-    modernRemedies: "Modern remedies",
-    positiveNote: "Positive perspective",
-    mitigations: "Mitigating factors",
+    impactTypes: "Influence areas",
+    conventionalRemedies: "Conventional",
+    modernRemedies: "Modern",
+    positiveNote: "Positive view",
     matched: "Matched",
     notMatched: "Not matched",
-    rajaYogas: "Raja Yogas in chart",
-    mahapurusha: "Mahapurusha Yogas in chart",
+    rajaYogas: "Raja Yogas",
+    mahapurusha: "Mahapurusha",
     afflicted: "afflicted",
-    loading: "Analyzing chart…",
+    loading: "Analyzing…",
     error: "Could not load Kaal Sarpa analysis.",
-    absentTitle: "Kaal Sarpa is not present",
-    absentBody:
-      "Not all seven grahas lie on one side of the Rahu–Ketu axis in this chart.",
-    mitigatedNote:
-      "Kaal Sarpa is present, but strong chart combinations may significantly reduce its effects.",
-    rahuToKetu: "Rahu → Ketu arc",
-    ketuToRahu: "Ketu → Rahu arc",
-    infoOnly: "Informational",
+    absentTitle: "Kaal Sarpa not present",
+    absentBody: "Not all seven grahas lie on one side of the Rahu–Ketu axis.",
+    mitigatedNote: "Present, but strong chart factors may reduce its effects.",
+    rahuToKetu: "Rahu → Ketu",
+    ketuToRahu: "Ketu → Rahu",
+    infoOnly: "Info",
+    lifeDomains: "Life domains",
+    analysis: "Detailed analysis",
   },
   hi: {
-    title: "काल सर्प विश्लेषण",
+    title: "काल सर्प योग",
+    overview: "सारांश",
+    chartFacts: "कुंडली स्थिति",
+    impact: "जीवन प्रभाव",
+    remedies: "उपाय",
+    mitigations: "शमन कारक",
     present: "उपस्थित",
     notPresent: "अनुपस्थित",
     type: "प्रकार",
-    rahu: "राहु (सर्प मुख)",
-    ketu: "केतु (पूँछ)",
+    rahu: "राहु",
+    ketu: "केतु",
     orientation: "सर्प चाप",
-    planetsInside: "सर्प के भीतर ग्रह",
-    baseSeverity: "आधार",
+    planetsInside: "सर्प के भीतर",
+    baseSeverity: "आधार गंभीरता",
     effectiveSeverity: "शमन के बाद",
     impactArea: "प्रभाव क्षेत्र",
-    impactTypes: "प्रभाव प्रकार",
-    conventionalRemedies: "पारंपरिक उपाय",
-    modernRemedies: "आधुनिक उपाय",
-    positiveNote: "सकारात्मक दृष्टि",
-    mitigations: "शमन कारक",
-    matched: "मेल खाता",
-    notMatched: "मेल नहीं",
-    rajaYogas: "कुंडली में राज योग",
-    mahapurusha: "कुंडली में महापुरुष योग",
+    impactTypes: "प्रभाव क्षेत्र",
+    conventionalRemedies: "पारंपरिक",
+    modernRemedies: "आधुनिक",
+    positiveNote: "सकारात्मक",
+    matched: "मेल",
+    notMatched: "नहीं",
+    rajaYogas: "राज योग",
+    mahapurusha: "महापुरुष",
     afflicted: "अशुभ",
     loading: "विश्लेषण…",
     error: "काल सर्प लोड नहीं हो सका।",
-    absentTitle: "काल सर्प उपस्थित नहीं",
-    absentBody: "इस कुंडली में सभी सात ग्रह राहु–केतु अक्ष के एक ओर नहीं हैं।",
-    mitigatedNote:
-      "काल सर्प उपस्थित है, परंतु प्रबल योग इसके प्रभाव को कम कर सकते हैं।",
-    rahuToKetu: "राहु → केतु चाप",
-    ketuToRahu: "केतु → राहु चाप",
-    infoOnly: "सूचनात्मक",
+    absentTitle: "काल सर्प नहीं",
+    absentBody: "सभी ग्रह राहु–केतु अक्ष के एक ओर नहीं हैं।",
+    mitigatedNote: "उपस्थित है, परंतु प्रबल योग प्रभाव कम कर सकते हैं।",
+    rahuToKetu: "राहु → केतु",
+    ketuToRahu: "केतु → राहु",
+    infoOnly: "जानकारी",
+    lifeDomains: "जीवन क्षेत्र",
+    analysis: "विस्तृत विश्लेषण",
   },
   gu: {
-    title: "કાલ સર્પ વિશ્લેષણ",
-    present: "હાજર",
-    notPresent: "અનુપસ્થિત",
-    type: "પ્રકાર",
-    rahu: "રાહુ (મુખ)",
-    ketu: "કેતુ (પૂછ)",
-    orientation: "સર્પ ચાપ",
-    planetsInside: "સર્પની અંદર ગ્રહો",
-    baseSeverity: "મૂળ",
-    effectiveSeverity: "શમન પછી",
-    impactArea: "પ્રભાવ ક્ષેત્ર",
-    impactTypes: "પ્રભાવ પ્રકાર",
-    conventionalRemedies: "પરંપરાગત ઉપાય",
-    modernRemedies: "આધુનિક ઉપાય",
-    positiveNote: "સકારાત્મક દૃષ્ટિ",
+    title: "કાલ સર્પ યોગ",
+    overview: "સારાંશ",
+    chartFacts: "કુંડળી સ્થિતિ",
+    impact: "જીવન અસર",
+    remedies: "ઉપાય",
     mitigations: "શમન કારકો",
-    matched: "મેળ ખાય",
-    notMatched: "મેળ નથી",
-    rajaYogas: "કુંડળીમાં રાજ યોગ",
-    mahapurusha: "કુંડળીમાં મહાપુરુષ યોગ",
+    present: "હાજર",
+    notPresent: "નથી",
+    type: "પ્રકાર",
+    rahu: "રાહુ",
+    ketu: "કેતુ",
+    orientation: "સર્પ ચાપ",
+    planetsInside: "સર્પની અંદર",
+    baseSeverity: "મૂળ તીવ્રતા",
+    effectiveSeverity: "શમન પછી",
+    impactArea: "અસર ક્ષેત્ર",
+    impactTypes: "પ્રભાવ ક્ષેત્રો",
+    conventionalRemedies: "પરંપરાગત",
+    modernRemedies: "આધુનિક",
+    positiveNote: "સકારાત્મક",
+    matched: "મેળ",
+    notMatched: "નથી",
+    rajaYogas: "રાજ યોગ",
+    mahapurusha: "મહાપુરુષ",
     afflicted: "અશુભ",
     loading: "વિશ્લેષણ…",
     error: "કાલ સર્પ લોડ થયો નહીં.",
-    absentTitle: "કાલ સર્પ હાજર નથી",
-    absentBody: "આ કુંડળીમાં બધા સાત ગ્રહ રાહુ–કેતુ અક્ષની એક બાજુએ નથી.",
-    mitigatedNote:
-      "કાલ સર્પ હાજર છે, પરંતુ મજબૂત યોગો અસર ઘટાડી શકે છે.",
-    rahuToKetu: "રાહુ → કેતુ ચાપ",
-    ketuToRahu: "કેતુ → રાહુ ચાપ",
+    absentTitle: "કાલ સર્પ નથી",
+    absentBody: "બધા ગ્રહ રાહુ–કેતુ અક્ષની એક બાજુએ નથી.",
+    mitigatedNote: "હાજર છે, પરંતુ મજબૂત યોગો અસર ઘટાડી શકે છે.",
+    rahuToKetu: "રાહુ → કેતુ",
+    ketuToRahu: "કેતુ → રાહુ",
     infoOnly: "માહિતી",
+    lifeDomains: "જીવન ક્ષેત્રો",
+    analysis: "વિગતવાર વિશ્લેષણ",
   },
 };
 
@@ -122,152 +157,55 @@ function ordinalHouse(n: number): string {
   return `${n}${suffix}`;
 }
 
-function severityBadgeClass(severity: string): string {
-  const s = severity.toLowerCase().trim();
-  if (s.includes("strongly mitigated") || s.includes("mitigated")) {
-    return "bg-emerald-600 text-white border-emerald-700";
-  }
-  if (s.includes("very high")) return "bg-red-600 text-white border-red-700";
-  if (s.includes("high")) return "bg-orange-500 text-white border-orange-600";
-  if (s.includes("moderate")) return "bg-amber-500 text-amber-950 border-amber-600";
-  return "bg-gray-500 text-white border-gray-600";
-}
-
-function SeverityPill({ severity }: { severity: string }) {
-  return (
-    <span
-      className={`shrink-0 text-[10px] font-bold leading-none px-2.5 py-1.5 rounded-full border ${severityBadgeClass(severity)}`}
-    >
-      {severity}
-    </span>
-  );
-}
-
-function SectionCard({
-  title,
-  children,
-  accent = "rose",
+function YogaExtras({
+  factorKey,
+  factors,
+  t,
 }: {
-  title: string;
-  children: ReactNode;
-  accent?: "rose" | "emerald" | "amber" | "indigo" | "sky";
+  factorKey: string;
+  factors: KaalSarpaMitigation[];
+  t: Record<string, string>;
 }) {
-  const borders: Record<string, string> = {
-    rose: "border-rose-200",
-    emerald: "border-emerald-200",
-    amber: "border-amber-200",
-    indigo: "border-indigo-200",
-    sky: "border-sky-200",
-  };
-  const titles: Record<string, string> = {
-    rose: "text-rose-800",
-    emerald: "text-emerald-800",
-    amber: "text-amber-900",
-    indigo: "text-indigo-800",
-    sky: "text-sky-800",
-  };
-  return (
-    <div className={`rounded-2xl border bg-white p-4 shadow-sm ${borders[accent]}`}>
-      <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${titles[accent]}`}>
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function RajaYogaList({ items, t }: { items: RajaYogaFinding[]; t: Record<string, string> }) {
-  if (!items.length) return null;
-  return (
-    <div className="mt-3 space-y-2">
-      <p className="text-[10px] font-bold uppercase text-indigo-600">{t.rajaYogas}</p>
-      <ul className="space-y-1.5">
-        {items.map((y, i) => (
-          <li
-            key={i}
-            className={`text-xs rounded-lg px-2.5 py-2 border ${
-              y.afflicted
-                ? "bg-red-50 border-red-100 text-red-900"
-                : "bg-indigo-50 border-indigo-100 text-indigo-950"
-            }`}
-          >
-            <span className="font-semibold">{y.yoga_name}</span>
-            <span className="text-gray-600"> — {y.lords.join(" + ")}</span>
-            <span className="text-gray-500 text-[10px] ml-1">({y.connection})</span>
-            {y.afflicted && (
-              <span className="ml-1 text-[10px] font-bold text-red-600 uppercase">[{t.afflicted}]</span>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function MahapurushaList({ items, t }: { items: MahapurushaFinding[]; t: Record<string, string> }) {
-  if (!items.length) return null;
-  return (
-    <div className="mt-3 space-y-2">
-      <p className="text-[10px] font-bold uppercase text-violet-600">{t.mahapurusha}</p>
-      <ul className="space-y-1.5">
-        {items.map((m, i) => (
-          <li
-            key={i}
-            className={`text-xs rounded-lg px-2.5 py-2 border ${
-              m.afflicted || m.strength === "weak"
-                ? "bg-gray-50 border-gray-200 text-gray-700"
-                : "bg-violet-50 border-violet-100 text-violet-950"
-            }`}
-          >
-            <span className="font-semibold">{m.yoga}</span>
-            <span className="text-gray-600">
-              {" "}
-              — {m.planet} in {m.sign} (house {m.house})
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function MitigationCard({ f, t }: { f: KaalSarpaMitigation; t: Record<string, string> }) {
-  const isInfo = f.factor === "D-9 Kaal Sarpa note";
-  const showYogaDetails =
-    f.factor === "Strong Raja Yogas" || f.factor === "Multiple Mahapurusha Yogas";
+  const f = factors.find((x) => x.factor === factorKey);
+  if (!f) return null;
+  const showYogas =
+    factorKey === "Strong Raja Yogas" || factorKey === "Multiple Mahapurusha Yogas";
 
   return (
-    <article
-      className={`rounded-2xl border p-4 h-full flex flex-col ${
-        isInfo
-          ? "border-sky-200 bg-gradient-to-br from-sky-50 to-white"
-          : f.matched
-            ? "border-emerald-300 bg-gradient-to-br from-emerald-50 to-white shadow-sm"
-            : "border-gray-200 bg-gray-50/60"
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="font-semibold text-sm text-gray-900 leading-snug">{f.factor}</h4>
-        <span
-          className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            isInfo
-              ? "bg-sky-200 text-sky-900"
-              : f.matched
-                ? "bg-emerald-600 text-white"
-                : "bg-gray-300 text-gray-700"
-          }`}
-        >
-          {isInfo ? t.infoOnly : f.matched ? t.matched : t.notMatched}
-        </span>
-      </div>
-      <p className="text-xs text-gray-600 leading-relaxed flex-1">{f.detail}</p>
-      {showYogaDetails && f.raja_yogas && f.raja_yogas.length > 0 && (
-        <RajaYogaList items={f.raja_yogas} t={t} />
+    <div className="mt-2 space-y-2">
+      {showYogas && f.raja_yogas && f.raja_yogas.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.rajaYogas}</p>
+          <ul className="space-y-1">
+            {f.raja_yogas.map((y: RajaYogaFinding, i: number) => (
+              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-indigo-200">
+                <span className="font-medium">{y.yoga_name}</span>
+                <span className="text-gray-500"> — {y.lords.join(" + ")}</span>
+                {y.afflicted && (
+                  <span className="text-red-600 text-[10px] ml-1">[{t.afflicted}]</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-      {showYogaDetails && f.mahapurusha_yogas && f.mahapurusha_yogas.length > 0 && (
-        <MahapurushaList items={f.mahapurusha_yogas} t={t} />
+      {showYogas && f.mahapurusha_yogas && f.mahapurusha_yogas.length > 0 && (
+        <div>
+          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.mahapurusha}</p>
+          <ul className="space-y-1">
+            {f.mahapurusha_yogas.map((m: MahapurushaFinding, i: number) => (
+              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-violet-200">
+                <span className="font-medium">{m.yoga}</span>
+                <span className="text-gray-500">
+                  {" "}
+                  — {m.planet}, {m.sign}, H{m.house}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-    </article>
+    </div>
   );
 }
 
@@ -301,26 +239,8 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
     };
   }, [chart, t.error]);
 
-  if (loading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center text-gray-500 gap-3">
-        <svg className="animate-spin h-8 w-8 text-rose-500" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
-        <p className="text-sm font-medium">{t.loading}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>
-      </div>
-    );
-  }
-
+  if (loading) return <DoshaLoading theme="kaalsarpa" message={t.loading} />;
+  if (error) return <DoshaError message={error} />;
   if (!data) return null;
 
   const typeName =
@@ -337,200 +257,155 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
         ? t.ketuToRahu
         : data.orientation;
 
-  const matchedCount = data.mitigating_factors?.filter((f) => f.matched).length ?? 0;
   const isMitigated =
     data.present &&
-    matchedCount > 0 &&
+    (data.mitigating_factors?.filter((f) => f.matched).length ?? 0) > 0 &&
     data.base_severity !== data.effective_severity;
 
+  const mitigationItems =
+    data.mitigating_factors?.map((f) => ({
+      key: f.factor,
+      factor: f.factor,
+      matched: f.matched,
+      detail: f.detail,
+      isInfo: f.factor === "D-9 Kaal Sarpa note",
+    })) ?? [];
+
+  const overviewStats: OverviewStat[] = [
+    { label: t.type, value: typeName ?? "—", wide: true },
+    ...(data.base_severity
+      ? [{ label: t.baseSeverity, value: <SeverityBadge severity={data.base_severity} /> }]
+      : []),
+    ...(data.effective_severity && data.effective_severity !== data.base_severity
+      ? [{ label: t.effectiveSeverity, value: <SeverityBadge severity={data.effective_severity} /> }]
+      : []),
+    ...(data.life_domains?.length
+      ? [
+          {
+            label: t.lifeDomains,
+            value: <TagList theme="kaalsarpa" items={data.life_domains} />,
+            wide: true,
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <div className="flex-1 min-h-0 overflow-auto">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{t.title}</h2>
-          </div>
-          <span
-            className={`text-sm font-bold px-4 py-1.5 rounded-full border ${
-              data.present
-                ? "bg-rose-100 text-rose-800 border-rose-300"
-                : "bg-emerald-100 text-emerald-800 border-emerald-300"
-            }`}
-          >
-            {data.present ? t.present : t.notPresent}
-          </span>
-        </header>
+    <DoshaPanelShell theme="kaalsarpa">
+      <PageBar
+        theme="kaalsarpa"
+        title={t.title}
+        present={data.present}
+        presentLabel={t.present}
+        absentLabel={t.notPresent}
+      />
 
-        {!data.present ? (
-          <div className="text-center py-20 px-6 bg-gradient-to-b from-emerald-50 to-white rounded-3xl border border-emerald-200 shadow-sm">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 text-3xl mb-4">
-              ✓
-            </div>
-            <h3 className="text-xl font-bold text-emerald-900">{t.absentTitle}</h3>
-            <p className="text-sm text-emerald-800 mt-2 max-w-md mx-auto leading-relaxed">{t.absentBody}</p>
-          </div>
-        ) : (
-          <>
-            {isMitigated && (
-              <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <span className="text-emerald-600 text-lg leading-none mt-0.5">↓</span>
-                <p className="text-sm text-emerald-900 leading-relaxed">{t.mitigatedNote}</p>
-              </div>
-            )}
+      {!data.present ? (
+        <AbsentReport title={t.absentTitle} body={t.absentBody} />
+      ) : (
+        <>
+          {isMitigated && <NoticeBanner>{t.mitigatedNote}</NoticeBanner>}
 
-            {/* Hero */}
-            <article className="rounded-3xl overflow-hidden border border-rose-200 shadow-md bg-white">
-              <div className="bg-gradient-to-r from-rose-800 via-red-900 to-rose-950 px-6 py-6 text-white relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                  <svg viewBox="0 0 400 80" className="w-full h-full" preserveAspectRatio="none">
-                    <path
-                      d="M0,40 Q100,10 200,40 T400,40"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </div>
-                <div className="relative flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-rose-300 text-xs font-bold uppercase tracking-widest">{t.type}</p>
-                    <h3 className="text-2xl font-bold mt-1">{typeName}</h3>
-                    <p className="text-rose-200 text-sm mt-1">
-                      {data.type?.sanskrit} · Rahu {ordinalHouse(data.type?.house ?? 0)}
-                    </p>
-                    {data.life_domains && data.life_domains.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {data.life_domains.map((d) => (
-                          <span
-                            key={d}
-                            className="text-[10px] font-semibold uppercase tracking-wide bg-white/15 px-2 py-0.5 rounded-full"
-                          >
-                            {d}
-                          </span>
-                        ))}
-                      </div>
+          <OverviewPanel theme="kaalsarpa" title={t.overview} stats={overviewStats} />
+
+          <SectionDivider theme="kaalsarpa" label={t.analysis} />
+
+          <SplitLayout
+            left={
+              <>
+                <DetailsPanel theme="kaalsarpa" title={t.chartFacts}>
+                  <FactGrid cols={2}>
+                    {data.rahu && (
+                      <FactRow
+                        label={t.rahu}
+                        value={`${ordinalHouse(data.rahu.house)} · ${tSign(data.rahu.sign, lang)}`}
+                      />
                     )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {data.base_severity && (
-                      <div className="text-center">
-                        <p className="text-[10px] text-rose-300 mb-1">{t.baseSeverity}</p>
-                        <SeverityPill severity={data.base_severity} />
-                      </div>
+                    {data.ketu && (
+                      <FactRow
+                        label={t.ketu}
+                        value={`${ordinalHouse(data.ketu.house)} · ${tSign(data.ketu.sign, lang)}`}
+                      />
                     )}
-                    {data.effective_severity && data.effective_severity !== data.base_severity && (
-                      <>
-                        <span className="text-rose-400 text-lg">→</span>
-                        <div className="text-center">
-                          <p className="text-[10px] text-rose-300 mb-1">{t.effectiveSeverity}</p>
-                          <SeverityPill severity={data.effective_severity} />
-                        </div>
-                      </>
+                    {orientationLabel && (
+                      <FactRow label={t.orientation} value={orientationLabel} fullWidth />
                     )}
-                  </div>
-                </div>
-              </div>
+                    {data.planets_inside && data.planets_inside.length > 0 && (
+                      <FactRow
+                        label={t.planetsInside}
+                        value={<TagList theme="kaalsarpa" items={data.planets_inside} />}
+                        fullWidth
+                      />
+                    )}
+                    {data.type?.sanskrit && (
+                      <FactRow label="Sanskrit" value={data.type.sanskrit} fullWidth />
+                    )}
+                  </FactGrid>
+                </DetailsPanel>
 
-              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {data.rahu && (
-                  <div className="rounded-xl bg-rose-50 border border-rose-100 p-3">
-                    <p className="text-[10px] font-bold uppercase text-rose-600">{t.rahu}</p>
-                    <p className="font-bold text-gray-900 mt-1">{ordinalHouse(data.rahu.house)}</p>
-                    <p className="text-sm text-gray-600">{tSign(data.rahu.sign, lang)}</p>
-                  </div>
+                {mitigationItems.length > 0 && (
+                  <DetailsPanel theme="kaalsarpa" title={t.mitigations}>
+                    <MitigationList
+                      items={mitigationItems}
+                      matchedLabel={t.matched}
+                      notMatchedLabel={t.notMatched}
+                      infoOnlyLabel={t.infoOnly}
+                    >
+                      {(key) => (
+                        <YogaExtras
+                          factorKey={key}
+                          factors={data.mitigating_factors ?? []}
+                          t={t}
+                        />
+                      )}
+                    </MitigationList>
+                  </DetailsPanel>
                 )}
-                {data.ketu && (
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-[10px] font-bold uppercase text-slate-600">{t.ketu}</p>
-                    <p className="font-bold text-gray-900 mt-1">{ordinalHouse(data.ketu.house)}</p>
-                    <p className="text-sm text-gray-600">{tSign(data.ketu.sign, lang)}</p>
-                  </div>
+              </>
+            }
+            right={
+              <>
+                {(data.impact_area || data.impact_types || data.positive_note) && (
+                  <DetailsPanel theme="kaalsarpa" title={t.impact}>
+                    {data.impact_area && (
+                      <TextBlock label={t.impactArea}>
+                        <ReadableText text={data.impact_area} />
+                      </TextBlock>
+                    )}
+                    {data.impact_types && (
+                      <TextBlock label={t.impactTypes}>
+                        <ReadableText text={data.impact_types} />
+                      </TextBlock>
+                    )}
+                    {data.positive_note && (
+                      <TextBlock label={t.positiveNote} last>
+                        <ReadableText text={data.positive_note} />
+                      </TextBlock>
+                    )}
+                  </DetailsPanel>
                 )}
-                {orientationLabel && (
-                  <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 sm:col-span-2 lg:col-span-2">
-                    <p className="text-[10px] font-bold uppercase text-gray-500">{t.orientation}</p>
-                    <p className="font-semibold text-gray-800 mt-1">{orientationLabel}</p>
-                  </div>
+
+                {(data.conventional_remedies || data.modern_remedies) && (
+                  <DetailsPanel theme="kaalsarpa" title={t.remedies}>
+                    {data.conventional_remedies && (
+                      <TextBlock label={t.conventionalRemedies}>
+                        <ReadableText text={data.conventional_remedies} />
+                      </TextBlock>
+                    )}
+                    {data.modern_remedies && (
+                      <TextBlock label={t.modernRemedies} last>
+                        <ReadableText text={data.modern_remedies} />
+                      </TextBlock>
+                    )}
+                  </DetailsPanel>
                 )}
-              </div>
+              </>
+            }
+          />
+        </>
+      )}
 
-              {data.planets_inside && data.planets_inside.length > 0 && (
-                <div className="px-5 pb-5">
-                  <p className="text-[10px] font-bold uppercase text-gray-500 mb-2">{t.planetsInside}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.planets_inside.map((p) => (
-                      <span
-                        key={p}
-                        className="text-xs font-semibold bg-gradient-to-r from-rose-100 to-orange-100 text-rose-950 px-3 py-1.5 rounded-full border border-rose-200"
-                      >
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </article>
-
-            {/* Impact */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.impact_area && (
-                <SectionCard title={t.impactArea} accent="rose">
-                  <p className="text-sm text-gray-800 leading-relaxed font-medium">{data.impact_area}</p>
-                </SectionCard>
-              )}
-              {data.impact_types && (
-                <SectionCard title={t.impactTypes} accent="indigo">
-                  <p className="text-sm text-gray-700 leading-relaxed">{data.impact_types}</p>
-                </SectionCard>
-              )}
-            </div>
-
-            {data.positive_note && (
-              <SectionCard title={t.positiveNote} accent="emerald">
-                <p className="text-sm text-emerald-900 leading-relaxed">{data.positive_note}</p>
-              </SectionCard>
-            )}
-
-            {/* Remedies */}
-            {(data.conventional_remedies || data.modern_remedies) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.conventional_remedies && (
-                  <SectionCard title={t.conventionalRemedies} accent="amber">
-                    <p className="text-sm text-amber-950 leading-relaxed">{data.conventional_remedies}</p>
-                  </SectionCard>
-                )}
-                {data.modern_remedies && (
-                  <SectionCard title={t.modernRemedies} accent="sky">
-                    <p className="text-sm text-sky-950 leading-relaxed">{data.modern_remedies}</p>
-                  </SectionCard>
-                )}
-              </div>
-            )}
-
-            {/* Mitigations */}
-            {data.mitigating_factors && data.mitigating_factors.length > 0 && (
-              <section>
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                  <span className="w-1.5 h-6 rounded-full bg-emerald-500" />
-                  {t.mitigations}
-                  <span className="text-sm font-normal text-gray-500">
-                    ({matchedCount} {t.matched.toLowerCase()})
-                  </span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {data.mitigating_factors.map((f) => (
-                    <MitigationCard key={f.factor} f={f} t={t} />
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-
-        {data.disclaimer && (
-          <p className="text-xs text-gray-400 text-center pb-4 leading-relaxed">{data.disclaimer}</p>
-        )}
-      </div>
-    </div>
+      {data.disclaimer && <Disclaimer text={data.disclaimer} />}
+    </DoshaPanelShell>
   );
 }
