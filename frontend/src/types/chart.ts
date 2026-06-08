@@ -73,6 +73,8 @@ export interface PitruDoshaSignFinding {
   sign_wise_severity?: string | null;
   nature_theme?: string | null;
   stronger_houses?: string | null;
+  conventional_remedies?: string | null;
+  modern_remedies?: string | null;
 }
 
 export interface PitruDoshaHouseFinding {
@@ -88,6 +90,8 @@ export interface PitruDoshaHouseFinding {
   house_wise_impact?: string | null;
   house_wise_severity?: string | null;
   health_focus?: string | null;
+  conventional_remedies?: string | null;
+  modern_remedies?: string | null;
 }
 
 export interface PitruDoshaResponse {
@@ -96,6 +100,71 @@ export interface PitruDoshaResponse {
   confirmation_count: number;
   sign_findings: PitruDoshaSignFinding[];
   house_findings: PitruDoshaHouseFinding[];
+  disclaimer: string;
+}
+
+// ── Kaal Sarpa Yoga ──────────────────────────────────────────────────────────
+
+export interface KaalSarpaTypeInfo {
+  house: number;
+  name: string;
+  name_hi?: string | null;
+  name_gu?: string | null;
+  sanskrit: string;
+}
+
+export interface KaalSarpaNodeInfo {
+  sign: string;
+  house: number;
+  longitude: number;
+}
+
+export interface RajaYogaFinding {
+  yoga_name: string;
+  kendra_house: number;
+  trikona_house: number;
+  lords: string[];
+  connection: string;
+  afflicted: boolean;
+  strength: string;
+}
+
+export interface MahapurushaFinding {
+  yoga: string;
+  planet: string;
+  house: number;
+  sign: string;
+  dignity: string;
+  afflicted: boolean;
+  strength: string;
+}
+
+export interface KaalSarpaMitigation {
+  factor: string;
+  matched: boolean;
+  detail: string;
+  weight: string;
+  severity_reduction: string;
+  raja_yogas?: RajaYogaFinding[] | null;
+  mahapurusha_yogas?: MahapurushaFinding[] | null;
+}
+
+export interface KaalSarpaResponse {
+  present: boolean;
+  type?: KaalSarpaTypeInfo | null;
+  orientation?: string | null;
+  rahu?: KaalSarpaNodeInfo | null;
+  ketu?: KaalSarpaNodeInfo | null;
+  planets_inside?: string[] | null;
+  base_severity?: string | null;
+  effective_severity?: string | null;
+  impact_area?: string | null;
+  impact_types?: string | null;
+  life_domains?: string[] | null;
+  conventional_remedies?: string | null;
+  modern_remedies?: string | null;
+  positive_note?: string | null;
+  mitigating_factors?: KaalSarpaMitigation[] | null;
   disclaimer: string;
 }
 

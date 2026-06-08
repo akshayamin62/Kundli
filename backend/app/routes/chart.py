@@ -9,8 +9,11 @@ from app.models.schemas import (
     DashaRequest, DashaResponse, DashaPeriod,
     TransitRequest, TransitResponse, TransitEntry,
     PitruDoshaResponse, PitruDoshaSignFinding, PitruDoshaHouseFinding,
+    KaalSarpaResponse, KaalSarpaTypeInfo, KaalSarpaNodeInfo,
+    KaalSarpaMitigation, RajaYogaFinding, MahapurushaFinding,
 )
 from app.services.pitru_dosha import calculate_pitru_dosha
+from app.services.kaal_sarpa import calculate_kaal_sarpa
 from app.services.chart_builder import build_chart
 from app.services.geocoding import GeocodingError
 from app.services.varga import varga_sign_index, ZODIAC_SIGNS, VARGA_NAMES, varga_deg_in_sign
@@ -324,3 +327,61 @@ def pitru_dosha(chart: ChartResponse):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pitru Dosha analysis error: {str(e)}")
+
+
+def _build_kaal_sarpa_mitigations(raw_factors: list | None) -> list[KaalSarpaMitigation] | None:
+    if not raw_factors:
+        return None
+    out: list[KaalSarpaMitigation] = []
+    for f in raw_factors:
+        raja = f.get("raja_yogas")
+        mp = f.get("mahapurusha_yogas")
+        out.append(
+            KaalSarpaMitigation(
+                factor=f["factor"],
+                matched=f["matched"],
+                detail=f["detail"],
+                weight=f["weight"],
+                severity_reduction=f["severity_reduction"],
+                raja_yogas=[RajaYogaFinding(**y) for y in raja] if raja else None,
+                mahapurusha_yogas=[MahapurushaFinding(**y) for y in mp] if mp else None,
+            )
+        )
+    return out
+
+
+@router.post("/chart/kaal-sarpa", response_model=KaalSarpaResponse, tags=["Chart"])
+def kaal_sarpa(chart: ChartResponse):
+    """Kaal Sarpa Yoga from natal D1 chart with mitigating factors."""
+    try:
+        raw = calculate_kaal_sarpa(chart.model_dump())
+        if not raw["present"]:
+            return KaalSarpaResponse(present=False, type=None, disclaimer=raw["disclaimer"])
+
+        t = raw["type"]
+        return KaalSarpaResponse(
+            present=True,
+            type=KaalSarpaTypeInfo(
+                house=t["house"],
+                name=t["name"],
+                name_hi=t.get("name_hi"),
+                name_gu=t.get("name_gu"),
+                sanskrit=t["sanskrit"],
+            ),
+            orientation=raw.get("orientation"),
+            rahu=KaalSarpaNodeInfo(**raw["rahu"]) if raw.get("rahu") else None,
+            ketu=KaalSarpaNodeInfo(**raw["ketu"]) if raw.get("ketu") else None,
+            planets_inside=raw.get("planets_inside"),
+            base_severity=raw.get("base_severity"),
+            effective_severity=raw.get("effective_severity"),
+            impact_area=raw.get("impact_area"),
+            impact_types=raw.get("impact_types"),
+            life_domains=raw.get("life_domains"),
+            conventional_remedies=raw.get("conventional_remedies"),
+            modern_remedies=raw.get("modern_remedies"),
+            positive_note=raw.get("positive_note"),
+            mitigating_factors=_build_kaal_sarpa_mitigations(raw.get("mitigating_factors")),
+            disclaimer=raw["disclaimer"],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Kaal Sarpa analysis error: {str(e)}")

@@ -110,6 +110,8 @@ class PitruDoshaSignFinding(BaseModel):
     sign_wise_severity: Optional[str] = None
     nature_theme: Optional[str] = None
     stronger_houses: Optional[str] = None
+    conventional_remedies: Optional[str] = None
+    modern_remedies: Optional[str] = None
 
 
 class PitruDoshaHouseFinding(BaseModel):
@@ -125,6 +127,8 @@ class PitruDoshaHouseFinding(BaseModel):
     house_wise_impact: Optional[str] = None
     house_wise_severity: Optional[str] = None
     health_focus: Optional[str] = None
+    conventional_remedies: Optional[str] = None
+    modern_remedies: Optional[str] = None
 
 
 class PitruDoshaResponse(BaseModel):
@@ -133,6 +137,71 @@ class PitruDoshaResponse(BaseModel):
     confirmation_count: int
     sign_findings: list[PitruDoshaSignFinding]
     house_findings: list[PitruDoshaHouseFinding]
+    disclaimer: str
+
+
+# ── Kaal Sarpa Yoga ──────────────────────────────────────────────────────────
+
+class KaalSarpaTypeInfo(BaseModel):
+    house: int
+    name: str
+    name_hi: Optional[str] = None
+    name_gu: Optional[str] = None
+    sanskrit: str
+
+
+class KaalSarpaNodeInfo(BaseModel):
+    sign: str
+    house: int
+    longitude: float
+
+
+class RajaYogaFinding(BaseModel):
+    yoga_name: str
+    kendra_house: int
+    trikona_house: int
+    lords: list[str]
+    connection: str
+    afflicted: bool
+    strength: str
+
+
+class MahapurushaFinding(BaseModel):
+    yoga: str
+    planet: str
+    house: int
+    sign: str
+    dignity: str
+    afflicted: bool
+    strength: str
+
+
+class KaalSarpaMitigation(BaseModel):
+    factor: str
+    matched: bool
+    detail: str
+    weight: str
+    severity_reduction: str
+    raja_yogas: Optional[list[RajaYogaFinding]] = None
+    mahapurusha_yogas: Optional[list[MahapurushaFinding]] = None
+
+
+class KaalSarpaResponse(BaseModel):
+    present: bool
+    type: Optional[KaalSarpaTypeInfo] = None
+    orientation: Optional[str] = None
+    rahu: Optional[KaalSarpaNodeInfo] = None
+    ketu: Optional[KaalSarpaNodeInfo] = None
+    planets_inside: Optional[list[str]] = None
+    base_severity: Optional[str] = None
+    effective_severity: Optional[str] = None
+    impact_area: Optional[str] = None
+    impact_types: Optional[str] = None
+    life_domains: Optional[list[str]] = None
+    conventional_remedies: Optional[str] = None
+    modern_remedies: Optional[str] = None
+    positive_note: Optional[str] = None
+    mitigating_factors: Optional[list[KaalSarpaMitigation]] = None
     disclaimer: str
 
 

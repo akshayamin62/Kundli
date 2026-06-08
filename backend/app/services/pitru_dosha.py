@@ -185,6 +185,8 @@ def _build_sign_finding(combination: str, sign: str, detail: str) -> dict | None
         "sign_wise_severity": sr.get("severity") or None,
         "nature_theme": sr["nature_theme"],
         "stronger_houses": sr["stronger_houses"],
+        "conventional_remedies": sr.get("conventional_remedies"),
+        "modern_remedies": sr.get("modern_remedies"),
     }
 
 
@@ -263,6 +265,8 @@ def _build_house_finding(
         "house_wise_impact": hr["specific_impact"],
         "house_wise_severity": hr.get("severity") or None,
         "health_focus": hr["health_focus"],
+        "conventional_remedies": hr.get("conventional_remedies"),
+        "modern_remedies": hr.get("modern_remedies"),
     }
 
 

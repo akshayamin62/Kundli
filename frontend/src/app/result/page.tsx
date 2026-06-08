@@ -8,6 +8,7 @@ import DashantariDashaTable from "@/components/DashantariDashaTable";
 import PlanetsRashiTransit from "@/components/PlanetsRashiTransit";
 import GrahshilChakraTable from "@/components/GrahshilChakraTable";
 import PitruDoshaPanel from "@/components/PitruDoshaPanel";
+import KaalSarpaPanel from "@/components/KaalSarpaPanel";
 import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
@@ -241,7 +242,7 @@ export default function ResultPage() {
     [chart],
   );
 
-  type MainTab = "kundali" | "grahsil" | "allvargas" | "pitru";
+  type MainTab = "kundali" | "grahsil" | "allvargas" | "pitru" | "kaalsarpa";
   const [mainTab, setMainTab]         = useState<MainTab>("kundali");
 
   type Tab = "planets" | "dasha" | "transit";
@@ -559,6 +560,7 @@ export default function ResultPage() {
               { id: "grahsil" as MainTab, labels: { en: "Grahasheel Chakra", hi: "ग्रहशील चक्र", gu: "ગ્રહશીલ ચક્ર" } },
               { id: "allvargas" as MainTab, labels: { en: "All D-Charts", hi: "सर्व वर्ग", gu: "સર્વ વર્ગ" } },
               { id: "pitru" as MainTab, labels: { en: "Pitru Dosha", hi: "पितृ दोष", gu: "પિતૃ દોષ" } },
+              { id: "kaalsarpa" as MainTab, labels: { en: "Kaal Sarpa", hi: "काल सर्प", gu: "કાલ સર્પ" } },
             ]).map(({ id, labels }) => (
               <button
                 key={id}
@@ -591,6 +593,12 @@ export default function ResultPage() {
         {mainTab === "pitru" && chart && (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <PitruDoshaPanel chart={chart} lang={lang} />
+          </div>
+        )}
+
+        {mainTab === "kaalsarpa" && chart && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <KaalSarpaPanel chart={chart} lang={lang} />
           </div>
         )}
 

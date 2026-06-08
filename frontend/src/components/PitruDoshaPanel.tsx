@@ -24,6 +24,8 @@ const LABELS: Record<Lang, Record<string, string>> = {
     ketu: "Ketu",
     house: "House",
     strongerHouses: "Stronger houses / axis",
+    conventionalRemedies: "Conventional remedies",
+    modernRemedies: "Modern remedies",
     severity: "Severity",
     loading: "Analyzing chart…",
     error: "Could not load Pitru Dosha analysis.",
@@ -45,6 +47,8 @@ const LABELS: Record<Lang, Record<string, string>> = {
     ketu: "केतु",
     house: "भाव",
     strongerHouses: "प्रबल भाव / अक्ष",
+    conventionalRemedies: "पारंपरिक उपाय",
+    modernRemedies: "आधुनिक उपाय",
     severity: "गंभीरता",
     loading: "विश्लेषण…",
     error: "पितृ दोष लोड नहीं हो सका।",
@@ -66,6 +70,8 @@ const LABELS: Record<Lang, Record<string, string>> = {
     ketu: "કેતુ",
     house: "ભાવ",
     strongerHouses: "પ્રબળ ભાવ / અક્ષ",
+    conventionalRemedies: "પરંપરાગત ઉપાય",
+    modernRemedies: "આધુનિક ઉપાય",
     severity: "તીવ્રતા",
     loading: "વિશ્લેષણ…",
     error: "પિતૃ દોષ લોડ થયો નહીં.",
@@ -157,6 +163,18 @@ function SignWiseCard({ f, lang, t }: { f: PitruDoshaSignFinding; lang: Lang; t:
             <p className="text-gray-600 text-xs">{f.stronger_houses}</p>
           </div>
         )}
+        {f.conventional_remedies && (
+          <div className="pt-2 border-t border-amber-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">{t.conventionalRemedies}</p>
+            <p className="text-gray-700 text-xs leading-relaxed">{f.conventional_remedies}</p>
+          </div>
+        )}
+        {f.modern_remedies && (
+          <div className="pt-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-1">{t.modernRemedies}</p>
+            <p className="text-gray-700 text-xs leading-relaxed">{f.modern_remedies}</p>
+          </div>
+        )}
       </div>
     </article>
   );
@@ -194,6 +212,18 @@ function HouseWiseCard({ f, lang, t }: { f: PitruDoshaHouseFinding; lang: Lang; 
           <div className="pt-2 border-t border-gray-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700 mb-1">{t.healthFocus}</p>
             <p className="text-gray-700 leading-relaxed">{f.health_focus}</p>
+          </div>
+        )}
+        {f.conventional_remedies && (
+          <div className="pt-2 border-t border-amber-100">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-1">{t.conventionalRemedies}</p>
+            <p className="text-gray-700 text-xs leading-relaxed">{f.conventional_remedies}</p>
+          </div>
+        )}
+        {f.modern_remedies && (
+          <div className="pt-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700 mb-1">{t.modernRemedies}</p>
+            <p className="text-gray-700 text-xs leading-relaxed">{f.modern_remedies}</p>
           </div>
         )}
       </div>
