@@ -114,7 +114,10 @@ export async function calculateVargaBulk(req: ChartRequest, ns: number[]): Promi
 export async function calculateDasha(req: DashaRequest): Promise<DashaResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/dasha`, {
     method: "POST",
-    body: JSON.stringify(normalizeChartRequest(req)),
+    body: JSON.stringify({
+      ...normalizeChartRequest(req),
+      years_ahead: req.years_ahead ?? 120,
+    }),
   });
 
   if (!res.ok) {

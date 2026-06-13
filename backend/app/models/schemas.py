@@ -278,7 +278,7 @@ class VargaBulkRequest(ChartRequest):
 # ── Vimshottari Dasha ────────────────────────────────────────────────────────
 
 class DashaRequest(ChartRequest):
-    years_ahead: int = 30
+    years_ahead: int = 120
 
 
 class DashaPeriod(BaseModel):

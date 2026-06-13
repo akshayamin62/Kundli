@@ -3,6 +3,7 @@
 import { ChartResponse } from "@/types/chart";
 import { formatHouseSystemLabel, formatZodiacLabel } from "@/lib/chartRequestNormalize";
 import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_NAMES, SIGN_LORDS as SIGN_LORDS_I18N, NAKSHATRA_NAMES, NAKSHATRA_LORDS as NAKSHATRA_LORDS_I18N, AVASTHA_NAMES, UI, translateSign } from "@/lib/translations";
+import { sortPlanetsForTable } from "@/lib/planetOrder";
 
 interface Props {
   chart: ChartResponse;
@@ -130,9 +131,9 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
       position: formatLongitude(ascLon), retro: null,
       avasthaIdx: -1, house: 1, color: "#6d28d9",
     },
-    ...chart.planets
-      .filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name))
-      .map((p) => {
+    ...sortPlanetsForTable(
+      chart.planets.filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name)),
+    ).map((p) => {
         const nak = getNakshatra(p.longitude);
         return {
           key: p.name, symbol: p.symbol,

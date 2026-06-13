@@ -68,7 +68,7 @@ def _add_days(d: date, days: float) -> date:
 def calculate_vimshottari(
     moon_longitude: float,
     birth_date: date,
-    years_ahead: int = 30,
+    years_ahead: int = 120,
 ) -> Dict[str, Any]:
     """
     Calculate Vimshottari Dasha periods from birth.

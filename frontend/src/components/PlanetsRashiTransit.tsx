@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { TransitEntry, TransitRequest } from "@/types/chart";
 import { calculateTransit } from "@/services/api";
 import { type Lang, SIGN_NAMES, PLANET_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
@@ -114,9 +114,12 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
   const [fetched, setFetched] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+  const activeRowRef = useRef<HTMLTableRowElement | null>(null);
+  const hasScrolled = useRef(false);
 
   const doFetch = useCallback(async () => {
     if (endYear < startYear) return;
+    hasScrolled.current = false;
     setLoading(true);
     setError(null);
     try {
@@ -130,6 +133,19 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
       setLoading(false);
     }
   }, [planet, startYear, endYear, zodiac]);
+
+  const activeIdx = transits.findIndex(
+    (t) => t.entry_date <= today && today <= t.exit_date,
+  );
+
+  useEffect(() => {
+    if (!fetched || loading || activeIdx < 0 || hasScrolled.current) return;
+    hasScrolled.current = true;
+    const timer = setTimeout(() => {
+      activeRowRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [fetched, loading, activeIdx, transits]);
 
   const headers: Record<Lang, string[]> = {
     en: ["Planet", "Sign", "Nakshatra", "Entry (IST)", "Exit (IST)", "Duration"],
@@ -238,13 +254,14 @@ export default function PlanetsRashiTransit({ zodiac, lang = "en" }: Props) {
             </thead>
             <tbody>
               {transits.map((t, i) => {
-                const isActive = t.entry_date <= today && today <= t.exit_date;
+                const isActive = i === activeIdx;
                 const isPast = t.exit_date < today;
                 const days = daysDiff(t.entry_date, t.exit_date);
 
                 return (
                   <tr
                     key={i}
+                    ref={isActive ? activeRowRef : undefined}
                     className={`border-b border-gray-100 transition-colors ${
                       isActive
                         ? "bg-yellow-50 ring-1 ring-inset ring-yellow-300"

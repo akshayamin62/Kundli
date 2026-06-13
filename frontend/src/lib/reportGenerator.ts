@@ -11,6 +11,7 @@ import { toMoonChart } from "@/lib/chartTransforms";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
+import { sortPlanetsForTable } from "@/lib/planetOrder";
 import {
   chunkArray,
   downloadPdfFromHtml,
@@ -311,7 +312,9 @@ function matchChartsAndFooterPageHtml(
 }
 
 function buildPlanetTableRows(chart: ChartResponse): string {
-  return chart.planets
+  return sortPlanetsForTable(
+    chart.planets.filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name)),
+  )
     .map((p, idx) => {
       const retro = p.retrograde;
       return `

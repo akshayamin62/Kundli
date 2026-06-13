@@ -292,8 +292,8 @@ npm run build
 cd ..
 
 # Restart both services
-pm2 restart astrology-backend
-pm2 restart astrology-frontend
+pm2 restart kundli-backend
+pm2 restart kundli-frontend
 ```
 
 ---

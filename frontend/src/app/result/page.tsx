@@ -249,6 +249,19 @@ export default function ResultPage() {
 
   type Tab = "planets" | "dasha" | "transit";
   const [activeTab, setActiveTab]     = useState<Tab>("planets");
+  const [dashaMounted, setDashaMounted] = useState(false);
+  const [transitMounted, setTransitMounted] = useState(false);
+  const [pitruMounted, setPitruMounted] = useState(false);
+  const [kaalsarpaMounted, setKaalsarpaMounted] = useState(false);
+  const [chandalMounted, setChandalMounted] = useState(false);
+
+  const dashaReqKey = useMemo(
+    () =>
+      req
+        ? `${req.birth_date}|${req.birth_time}|${req.birth_place}|${req.house_system}|${req.zodiac}`
+        : "",
+    [req],
+  );
 
   const TAB_LABELS: Record<Lang, Record<Tab, string>> = {
     en: { planets: "a) Planets", dasha: "b) Vimshottari Dasha", transit: "c) Rashi Transit" },
@@ -281,6 +294,17 @@ export default function ResultPage() {
   const [resolvingEdit, setResolvingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "dasha") setDashaMounted(true);
+    if (activeTab === "transit") setTransitMounted(true);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (mainTab === "pitru") setPitruMounted(true);
+    if (mainTab === "kaalsarpa") setKaalsarpaMounted(true);
+    if (mainTab === "chandal") setChandalMounted(true);
+  }, [mainTab]);
 
   // ── Load from sessionStorage ───────────────────────────────────────────────
   useEffect(() => {
@@ -593,21 +617,21 @@ export default function ResultPage() {
         )}
 
         {/* ── Pitru Dosha tab ── */}
-        {mainTab === "pitru" && chart && (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <PitruDoshaPanel chart={chart} lang={lang} />
+        {pitruMounted && chart && (
+          <div className={`flex-1 min-h-0 flex flex-col overflow-hidden ${mainTab !== "pitru" ? "hidden" : ""}`}>
+            <PitruDoshaPanel key={dashaReqKey} chart={chart} lang={lang} />
           </div>
         )}
 
-        {mainTab === "kaalsarpa" && chart && (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <KaalSarpaPanel chart={chart} lang={lang} />
+        {kaalsarpaMounted && chart && (
+          <div className={`flex-1 min-h-0 flex flex-col overflow-hidden ${mainTab !== "kaalsarpa" ? "hidden" : ""}`}>
+            <KaalSarpaPanel key={dashaReqKey} chart={chart} lang={lang} />
           </div>
         )}
 
-        {mainTab === "chandal" && chart && (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <ChandalDoshaPanel chart={chart} lang={lang} />
+        {chandalMounted && chart && (
+          <div className={`flex-1 min-h-0 flex flex-col overflow-hidden ${mainTab !== "chandal" ? "hidden" : ""}`}>
+            <ChandalDoshaPanel key={dashaReqKey} chart={chart} lang={lang} />
           </div>
         )}
 
@@ -691,10 +715,9 @@ export default function ResultPage() {
           </div>
         )}
 
-        {/* ── Kundali tab ── */}
-        {mainTab === "kundali" && (<>
-
-        {/* ── Left column: D1 chart + 3-tab bottom ── */}
+        {/* ── Kundali tab (stay mounted when hidden so dasha/transit data persists) ── */}
+        {chart && (
+        <div className={`flex gap-2 flex-1 min-h-0 overflow-hidden ${mainTab !== "kundali" ? "hidden" : ""}`}>
         <div className="flex flex-col gap-2 min-h-0 overflow-hidden" style={{ width: "55%" }}>
 
           {/* D1 Lagna Kundli — top ~55% */}
@@ -748,11 +771,15 @@ export default function ResultPage() {
                   <HouseTable chart={chart} lang={lang} />
                 </div>
               )}
-              {activeTab === "dasha" && req && (
-                <DashantariDashaTable req={req} lang={lang} />
+              {dashaMounted && req && (
+                <div className={activeTab === "dasha" ? "h-full" : "hidden"}>
+                  <DashantariDashaTable key={dashaReqKey} req={req} lang={lang} />
+                </div>
               )}
-              {activeTab === "transit" && req && (
-                <PlanetsRashiTransit zodiac={req.zodiac} lang={lang} />
+              {transitMounted && req && (
+                <div className={activeTab === "transit" ? "h-full" : "hidden"}>
+                  <PlanetsRashiTransit key={dashaReqKey} zodiac={req.zodiac} lang={lang} />
+                </div>
               )}
             </div>
           </div>
@@ -786,7 +813,7 @@ export default function ResultPage() {
           </div>
         </div>
 
-        </>)}
+        </div>)}
       </div>
 
       {/* ── D-Chart Modal ── */}
