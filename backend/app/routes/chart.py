@@ -261,7 +261,12 @@ def calculate_dasha(req: DashaRequest):
             raise HTTPException(status_code=500, detail="Moon position not found in chart")
 
         parts = req.birth_date.split("-")
-        birth_dt = date_type(int(parts[0]), int(parts[1]), int(parts[2]))
+        time_parts = req.birth_time.split(":")
+        birth_dt = datetime(
+            int(parts[0]), int(parts[1]), int(parts[2]),
+            int(time_parts[0]), int(time_parts[1]),
+            int(time_parts[2]) if len(time_parts) >= 3 else 0,
+        )
 
         result = calculate_vimshottari(moon.longitude, birth_dt, req.years_ahead)
         return DashaResponse(

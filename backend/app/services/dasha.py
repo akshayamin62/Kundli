@@ -9,13 +9,17 @@ Cycle order:  Ketu(7) → Venus(20) → Sun(6) → Moon(10) → Mars(7) →
               Rahu(18) → Jupiter(16) → Saturn(19) → Mercury(17) = 120 years
 
 Sub-dasha (antardasha) and sub-sub-dasha (pratyantardasha) are calculated
-proportionally within each parent period.
+proportionally within each parent period using the standard (lord_years / 120)
+ratio at each level.
+
+Reference: standard Vimshottari procedure (Moon nakshatra → balance at birth
+→ proportional bhukti/antara); Julian year = 365.25 days.
 """
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from typing import List, Dict, Any
+from datetime import date, datetime, timedelta
+from typing import List, Dict, Any, Union
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -35,7 +39,6 @@ TOTAL_YEARS: int = 120
 DAYS_PER_YEAR: float = 365.25
 
 # Nakshatra lord: 0-indexed (Ashwini=0 … Revati=26)
-# Pattern repeats every 9: Ketu, Venus, Sun, Moon, Mars, Rahu, Jupiter, Saturn, Mercury
 NAKSHATRA_LORDS: List[str] = [
     "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
     "Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury",
@@ -50,15 +53,43 @@ NAKSHATRA_NAMES: List[str] = [
     "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
 ]
 
-NAK_SIZE: float = 360.0 / 27  # ~13.333°
+NAK_SIZE: float = 360.0 / 27  # 13°20′
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _add_days(d: date, days: float) -> date:
-    return d + timedelta(days=round(days))
+def _as_datetime(birth: Union[date, datetime]) -> datetime:
+    if isinstance(birth, datetime):
+        return birth
+    return datetime(birth.year, birth.month, birth.day)
+
+
+def _add_days(dt: datetime, days: float) -> datetime:
+    """Add fractional days without per-step rounding drift."""
+    return dt + timedelta(seconds=days * 86400.0)
+
+
+def _nakshatra_index(moon_longitude: float) -> tuple[int, float]:
+    """
+    Return (nakshatra index 0–26, fraction elapsed within that nakshatra).
+
+    At an exact nakshatra boundary the position belongs to the *next* nakshatra
+    (standard convention).
+    """
+    lon = moon_longitude % 360.0
+
+    # Shift by a tiny epsilon so exact 13°20′ boundaries map to the next nakshatra.
+    idx = int((lon + 1e-8) / NAK_SIZE)
+    if idx >= 27:
+        idx = 0
+
+    pos_in_nak = lon - idx * NAK_SIZE
+    if pos_in_nak < 0:
+        pos_in_nak = 0.0
+    fraction = pos_in_nak / NAK_SIZE
+    return idx, fraction
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +98,7 @@ def _add_days(d: date, days: float) -> date:
 
 def calculate_vimshottari(
     moon_longitude: float,
-    birth_date: date,
+    birth_moment: Union[date, datetime],
     years_ahead: int = 120,
 ) -> Dict[str, Any]:
     """
@@ -77,41 +108,35 @@ def calculate_vimshottari(
       - nakshatra_name: Moon's birth nakshatra (English)
       - nakshatra_lord: dasha lord for that nakshatra
       - periods: list of Pratyantardasha (PD) rows with md, ad, pd,
-                 start_date, end_date (ISO strings)
+                 start_date, end_date (ISO date strings)
 
-    The list starts from birth and extends ``years_ahead`` years.
-
-    Correct algorithm:
-      1. Compute elapsed days in the first (current) Mahadasha at birth.
-      2. Walk through the normal (unscaled) AD/PD sequence; skip periods
-         that have already elapsed before birth.
-      3. The first row is the *remaining* portion of the PD active at birth.
-      4. All subsequent rows use the full unscaled durations.
-
-    This avoids the wrong approach of rescaling all ADs/PDs to the remaining
-    first-MD duration, which produces incorrect antardasha dates.
+    Algorithm (standard Vimshottari):
+      1. Moon sidereal longitude → birth nakshatra and its lord (MD at birth).
+      2. Fraction elapsed within nakshatra × MD years = elapsed at birth.
+      3. Walk MD → AD → PD sequence; skip sub-periods already elapsed.
+      4. First emitted row is the remaining portion of the PD active at birth.
+      5. Continue through subsequent full cycles until ``years_ahead`` is reached.
     """
-    nak_idx = int(moon_longitude / NAK_SIZE) % 27
-    fraction_in_nak = (moon_longitude % NAK_SIZE) / NAK_SIZE
+    nak_idx, fraction_in_nak = _nakshatra_index(moon_longitude)
 
     starting_lord = NAKSHATRA_LORDS[nak_idx]
     start_order_idx = DASHA_ORDER.index(starting_lord)
 
-    max_date = date(min(birth_date.year + years_ahead, 9999), 12, 31)
+    birth_dt = _as_datetime(birth_moment)
+    max_dt = _add_days(birth_dt, years_ahead * DAYS_PER_YEAR)
 
-    # Days already elapsed in the current (first) Mahadasha at the moment of birth
     first_md_full_days = DASHA_YEARS[starting_lord] * DAYS_PER_YEAR
     elapsed_in_md = fraction_in_nak * first_md_full_days
 
     periods: List[Dict[str, str]] = []
-    cursor = birth_date   # always equals birth_date for remaining portions
+    cursor = birth_dt
 
-    for md_i in range(9):
+    md_i = 0
+    while cursor < max_dt:
         md_idx = (start_order_idx + md_i) % 9
         md_planet = DASHA_ORDER[md_idx]
         md_full_days = DASHA_YEARS[md_planet] * DAYS_PER_YEAR
 
-        # For md_i == 0 we skip elapsed days; for later MDs nothing is skipped
         skip_md = elapsed_in_md if md_i == 0 else 0.0
 
         for ad_i in range(9):
@@ -120,12 +145,11 @@ def calculate_vimshottari(
             ad_full_days = md_full_days * DASHA_YEARS[ad_planet] / TOTAL_YEARS
 
             if skip_md >= ad_full_days:
-                # Entire AD has already elapsed before birth
                 skip_md -= ad_full_days
                 continue
 
             skip_ad = skip_md
-            skip_md = 0.0   # only the first unskipped AD can have a skip offset
+            skip_md = 0.0
 
             for pd_i in range(9):
                 pd_idx = (ad_idx + pd_i) % 9
@@ -133,18 +157,16 @@ def calculate_vimshottari(
                 pd_full_days = ad_full_days * DASHA_YEARS[pd_planet] / TOTAL_YEARS
 
                 if skip_ad >= pd_full_days:
-                    # Entire PD has already elapsed before birth
                     skip_ad -= pd_full_days
                     continue
 
-                # Remaining duration of this PD (possibly partial for the first one)
                 remaining_days = pd_full_days - skip_ad
                 skip_ad = 0.0
 
                 pd_start = cursor
                 pd_end = _add_days(cursor, remaining_days)
 
-                if pd_start > max_date:
+                if pd_start >= max_dt:
                     return {
                         "nakshatra_name": NAKSHATRA_NAMES[nak_idx],
                         "nakshatra_lord": starting_lord,
@@ -155,11 +177,13 @@ def calculate_vimshottari(
                     "md": md_planet,
                     "ad": ad_planet,
                     "pd": pd_planet,
-                    "start_date": pd_start.isoformat(),
-                    "end_date": pd_end.isoformat(),
+                    "start_date": pd_start.date().isoformat(),
+                    "end_date": pd_end.date().isoformat(),
                 })
 
                 cursor = pd_end
+
+        md_i += 1
 
     return {
         "nakshatra_name": NAKSHATRA_NAMES[nak_idx],
