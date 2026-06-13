@@ -2,6 +2,7 @@
 
 import { ChartResponse } from "@/types/chart";
 import { formatHouseSystemLabel, formatZodiacLabel } from "@/lib/chartRequestNormalize";
+import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
 import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_NAMES, SIGN_LORDS as SIGN_LORDS_I18N, NAKSHATRA_NAMES, NAKSHATRA_LORDS as NAKSHATRA_LORDS_I18N, AVASTHA_NAMES, UI, translateSign } from "@/lib/translations";
 import { sortPlanetsForTable } from "@/lib/planetOrder";
 
@@ -209,7 +210,11 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-500 space-y-1">
         <div>📍 {chart.meta.birth_place}</div>
         <div>🌐 Lat: {chart.meta.latitude}° | Lon: {chart.meta.longitude}°</div>
-        <div>🕐 Timezone: {chart.meta.timezone} ({chart.meta.utc_offset})</div>
+        <div>🕐 Timezone: {formatTimezoneDisplay(chart.meta.timezone, {
+          utcOffset: chart.meta.utc_offset,
+          latitude: chart.meta.latitude,
+          longitude: chart.meta.longitude,
+        })} ({chart.meta.utc_offset})</div>
         <div>⏱ UTC: {chart.meta.utc_datetime}</div>
         <div>📅 Julian Day: {chart.meta.julian_day}</div>
         <div>🏠 System: {formatHouseSystemLabel(chart.meta.house_system)} | Zodiac: {formatZodiacLabel(chart.meta.zodiac)}</div>

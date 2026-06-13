@@ -16,3 +16,110 @@ body {
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
+
+@keyframes dosha-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dosha-shimmer {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.dosha-fade-up {
+  animation: dosha-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dosha-fade-up-1 {
+  animation-delay: 0.06s;
+}
+.dosha-fade-up-2 {
+  animation-delay: 0.12s;
+}
+.dosha-fade-up-3 {
+  animation-delay: 0.18s;
+}
+.dosha-fade-up-4 {
+  animation-delay: 0.24s;
+}
+.dosha-fade-up-5 {
+  animation-delay: 0.3s;
+}
+
+/* Gentle ambient shimmer for hero light accents */
+.dosha-hero-shimmer {
+  animation: dosha-shimmer 7s ease-in-out infinite;
+}
+
+/* Premium thin scrollbar for dosha panels */
+.dosha-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dosha-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dosha-scroll::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.25);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.dosha-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.4);
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dosha-fade-up,
+  .dosha-hero-shimmer {
+    animation: none;
+  }
+}
+
+/* ── AuraAxis dosha assessment design ───────────────────────────────────── */
+.dosha-glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(7, 2, 53, 0.04);
+}
+
+.dosha-ethereal-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(171, 143, 254, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+  z-index: 0;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.dosha-scroll,
+.dosha-font-display,
+.dosha-font-body {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.dosha-scroll {
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  line-height: 1;
+  user-select: none;
+}

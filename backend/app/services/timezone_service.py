@@ -13,10 +13,15 @@ class TimezoneError(Exception):
     pass
 
 
+def _is_india(lat: float, lon: float) -> bool:
+    """Approximate bounding box for India (includes Navsari, Gujarat, etc.)."""
+    return 6.0 <= lat <= 37.5 and 68.0 <= lon <= 97.5
+
+
 def _find_timezone_name(lat: float, lon: float) -> str:
     """
     Find IANA timezone name from lat/lon using timezonefinder (lightweight, offline).
-    Falls back to a longitude-based estimate if timezonefinder is not available.
+    Falls back to regional defaults, then a longitude-based estimate.
     """
     try:
         from timezonefinder import TimezoneFinder  # optional but recommended
@@ -26,6 +31,9 @@ def _find_timezone_name(lat: float, lon: float) -> str:
             return tz_name
     except ImportError:
         pass
+
+    if _is_india(lat, lon):
+        return "Asia/Kolkata"
 
     # Fallback: estimate from longitude (rough, ±30 min accuracy)
     offset_hours = round(lon / 15)

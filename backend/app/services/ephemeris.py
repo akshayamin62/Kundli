@@ -209,11 +209,9 @@ def _mean_longitude(jd: float) -> list[dict]:
     mars_L = _norm(355.43 + 19140.299 * T)
     jup_L = _norm(34.35 + 3034.906 * T)
     sat_L = _norm(50.08 + 1222.114 * T)
-    ura_L = _norm(314.20 + 428.480 * T)
-    nep_L = _norm(304.35 + 218.460 * T)
-    plu_L = _norm(238.96 + 144.960 * T)
     node_L = _mean_node_longitude(jd)
 
+    # Keep in sync with PLANET_META (Sun … North Node only).
     raw_lons = [
         sun_lon,
         moon_lon,
@@ -222,9 +220,6 @@ def _mean_longitude(jd: float) -> list[dict]:
         mars_L,
         jup_L,
         sat_L,
-        ura_L,
-        nep_L,
-        plu_L,
         node_L,
     ]
 
@@ -236,9 +231,6 @@ def _mean_longitude(jd: float) -> list[dict]:
         0.524,
         0.083,
         0.033,
-        0.012,
-        0.006,
-        0.004,
         -0.053,
     ]
 

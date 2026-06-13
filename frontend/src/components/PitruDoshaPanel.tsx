@@ -11,18 +11,19 @@ import { calculatePitruDosha } from "@/services/api";
 import { type Lang, SIGN_NAMES } from "@/lib/translations";
 import {
   AbsentReport,
-  DetailsPanel,
+  AnalysisToggleButton,
   Disclaimer,
   DoshaError,
   DoshaLoading,
   DoshaPanelShell,
   FindingCard,
+  FindingsSection,
   OverviewPanel,
   type OverviewStat,
   PageBar,
-  SectionDivider,
   SegmentTabs,
-  SeverityBadge,
+  SubsectionLabel,
+  type FindingField,
 } from "@/components/dosha/DoshaUI";
 
 const LABELS: Record<Lang, Record<string, string>> = {
@@ -143,24 +144,29 @@ function ordinalHouse(n: number): string {
   return `${n}${suffix}`;
 }
 
-function buildSignFields(f: PitruDoshaSignFinding, t: Record<string, string>) {
-  const fields: { label: string; value: string }[] = [];
-  if (f.sign_wise_impact) fields.push({ label: t.signWiseImpact, value: f.sign_wise_impact });
-  if (f.nature_theme) fields.push({ label: t.natureTheme, value: f.nature_theme });
-  if (f.stronger_houses) fields.push({ label: t.strongerHouses, value: f.stronger_houses });
+function buildSignFields(f: PitruDoshaSignFinding, t: Record<string, string>): FindingField[] {
+  const fields: FindingField[] = [];
+  if (f.sign_wise_impact)
+    fields.push({ label: t.signWiseImpact, value: f.sign_wise_impact, kind: "effect" });
+  if (f.nature_theme) fields.push({ label: t.natureTheme, value: f.nature_theme, kind: "effect" });
+  if (f.stronger_houses)
+    fields.push({ label: t.strongerHouses, value: f.stronger_houses, kind: "effect" });
   if (f.conventional_remedies)
-    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies });
-  if (f.modern_remedies) fields.push({ label: t.modernRemedies, value: f.modern_remedies });
+    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies, kind: "remedy" });
+  if (f.modern_remedies)
+    fields.push({ label: t.modernRemedies, value: f.modern_remedies, kind: "remedy" });
   return fields;
 }
 
-function buildHouseFields(f: PitruDoshaHouseFinding, t: Record<string, string>) {
-  const fields: { label: string; value: string }[] = [];
-  if (f.house_wise_impact) fields.push({ label: t.houseWiseImpact, value: f.house_wise_impact });
-  if (f.health_focus) fields.push({ label: t.healthFocus, value: f.health_focus });
+function buildHouseFields(f: PitruDoshaHouseFinding, t: Record<string, string>): FindingField[] {
+  const fields: FindingField[] = [];
+  if (f.house_wise_impact)
+    fields.push({ label: t.houseWiseImpact, value: f.house_wise_impact, kind: "effect" });
+  if (f.health_focus) fields.push({ label: t.healthFocus, value: f.health_focus, kind: "effect" });
   if (f.conventional_remedies)
-    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies });
-  if (f.modern_remedies) fields.push({ label: t.modernRemedies, value: f.modern_remedies });
+    fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies, kind: "remedy" });
+  if (f.modern_remedies)
+    fields.push({ label: t.modernRemedies, value: f.modern_remedies, kind: "remedy" });
   return fields;
 }
 
@@ -189,6 +195,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>("all");
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,10 +247,11 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
     { label: t.total, value: totalCount },
     { label: t.signCount, value: signFindings.length },
     { label: t.houseCount, value: houseFindings.length },
-    ...(highestSeverity
-      ? [{ label: t.severity, value: <SeverityBadge severity={highestSeverity} /> }]
-      : []),
   ];
+
+  const severityItems = highestSeverity
+    ? [{ label: t.severity, severity: highestSeverity }]
+    : [];
 
   return (
     <DoshaPanelShell theme="pitru">
@@ -259,12 +267,23 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
         <AbsentReport title={t.absentTitle} body={t.absentBody} />
       ) : (
         <>
-          <OverviewPanel theme="pitru" title={t.overview} stats={overviewStats} />
+          <OverviewPanel
+            theme="pitru"
+            title={t.overview}
+            stats={overviewStats}
+            severityItems={severityItems}
+          />
 
-          <SectionDivider theme="pitru" label={t.details} />
+          <AnalysisToggleButton
+            theme="pitru"
+            label={t.details}
+            expanded={showDetails}
+            onToggle={() => setShowDetails((v) => !v)}
+          />
 
-          <DetailsPanel theme="pitru">
-            <div className="mb-2">
+          {showDetails && (
+          <div className="space-y-5 dosha-fade-up dosha-fade-up-3 min-w-0">
+            <div className="dosha-glass-card rounded-2xl p-3 md:p-4 min-w-0">
               <SegmentTabs
                 theme="pitru"
                 active={viewTab}
@@ -277,60 +296,53 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
               />
             </div>
 
-            {showSign && (
-              <div className={showHouse && viewTab === "all" ? "mb-3" : ""}>
-                {viewTab === "all" && (
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-indigo-800 mb-2">
-                    {t.signWiseHeading}
-                  </p>
-                )}
-                {signFindings.length === 0 ? (
-                  <p className="text-xs text-gray-500">{t.noSignFindings}</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                    {signFindings.map((f, i) => (
-                      <FindingCard
-                        key={`sign-${f.combination}-${f.sign}-${i}`}
-                        theme="pitru"
-                        index={i + 1}
-                        title={f.combination}
-                        meta={signMeta(f, lang, t)}
-                        severity={f.sign_wise_severity}
-                        fields={buildSignFields(f, t)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+            {showSign && signFindings.length > 0 && (
+              <FindingsSection
+                label={viewTab === "all" ? <SubsectionLabel theme="pitru">{t.signWiseHeading}</SubsectionLabel> : undefined}
+              >
+                {signFindings.map((f, i) => (
+                  <FindingCard
+                    key={`sign-${f.combination}-${f.sign}-${i}`}
+                    theme="pitru"
+                    index={i + 1}
+                    title={f.combination}
+                    meta={signMeta(f, lang, t)}
+                    severity={f.sign_wise_severity}
+                    fields={buildSignFields(f, t)}
+                    compact
+                  />
+                ))}
+              </FindingsSection>
             )}
 
-            {showHouse && (
-              <div>
-                {viewTab === "all" && (
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-teal-800 mb-2">
-                    {t.houseWiseHeading}
-                  </p>
-                )}
-                {houseFindings.length === 0 ? (
-                  <p className="text-xs text-gray-500">{t.noHouseFindings}</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-                    {houseFindings.map((f, i) => (
-                      <FindingCard
-                        key={`house-${f.combination}-${f.house}-${i}`}
-                        theme="pitru"
-                        index={i + 1}
-                        title={f.combination}
-                        meta={houseMeta(f, lang, t)}
-                        severity={f.house_wise_severity}
-                        fields={buildHouseFields(f, t)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+            {showSign && signFindings.length === 0 && (
+              <p className="dosha-font-body text-base text-[#47464f] px-1">{t.noSignFindings}</p>
             )}
-          </DetailsPanel>
+
+            {showHouse && houseFindings.length > 0 && (
+              <FindingsSection
+                label={viewTab === "all" ? <SubsectionLabel theme="pitru">{t.houseWiseHeading}</SubsectionLabel> : undefined}
+              >
+                {houseFindings.map((f, i) => (
+                  <FindingCard
+                    key={`house-${f.combination}-${f.house}-${i}`}
+                    theme="pitru"
+                    index={i + 1}
+                    title={f.combination}
+                    meta={houseMeta(f, lang, t)}
+                    severity={f.house_wise_severity}
+                    fields={buildHouseFields(f, t)}
+                    compact
+                  />
+                ))}
+              </FindingsSection>
+            )}
+
+            {showHouse && houseFindings.length === 0 && (
+              <p className="dosha-font-body text-base text-[#47464f] px-1">{t.noHouseFindings}</p>
+            )}
+          </div>
+          )}
         </>
       )}
 

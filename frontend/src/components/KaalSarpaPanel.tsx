@@ -12,6 +12,7 @@ import { calculateKaalSarpa } from "@/services/api";
 import { type Lang, SIGN_NAMES } from "@/lib/translations";
 import {
   AbsentReport,
+  AnalysisToggleButton,
   DetailsPanel,
   Disclaimer,
   DoshaError,
@@ -25,9 +26,8 @@ import {
   type OverviewStat,
   PageBar,
   ReadableText,
-  SectionDivider,
-  SeverityBadge,
-  SplitLayout,
+  FlowLayout,
+  RemediesGrid,
   TagList,
   TextBlock,
 } from "@/components/dosha/DoshaUI";
@@ -172,17 +172,19 @@ function YogaExtras({
     factorKey === "Strong Raja Yogas" || factorKey === "Multiple Mahapurusha Yogas";
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2 space-y-2 pt-2 border-t border-slate-200/60">
       {showYogas && f.raja_yogas && f.raja_yogas.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.rajaYogas}</p>
-          <ul className="space-y-1">
+          <p className="text-sm font-bold uppercase tracking-wide text-indigo-600 mb-1.5">
+            {t.rajaYogas}
+          </p>
+          <ul className="space-y-1.5">
             {f.raja_yogas.map((y: RajaYogaFinding, i: number) => (
-              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-indigo-200">
-                <span className="font-medium">{y.yoga_name}</span>
-                <span className="text-gray-500"> — {y.lords.join(" + ")}</span>
+              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-indigo-300/70">
+                <span className="font-bold text-[#1e1b4b]">{y.yoga_name}</span>
+                <span className="text-slate-500"> — {y.lords.join(" + ")}</span>
                 {y.afflicted && (
-                  <span className="text-red-600 text-[10px] ml-1">[{t.afflicted}]</span>
+                  <span className="text-red-600 text-xs ml-1">[{t.afflicted}]</span>
                 )}
               </li>
             ))}
@@ -191,12 +193,14 @@ function YogaExtras({
       )}
       {showYogas && f.mahapurusha_yogas && f.mahapurusha_yogas.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.mahapurusha}</p>
-          <ul className="space-y-1">
+          <p className="text-sm font-bold uppercase tracking-wide text-violet-600 mb-1.5">
+            {t.mahapurusha}
+          </p>
+          <ul className="space-y-1.5">
             {f.mahapurusha_yogas.map((m: MahapurushaFinding, i: number) => (
-              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-violet-200">
-                <span className="font-medium">{m.yoga}</span>
-                <span className="text-gray-500">
+              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-violet-300/70">
+                <span className="font-bold text-[#1e1b4b]">{m.yoga}</span>
+                <span className="text-slate-500">
                   {" "}
                   — {m.planet}, {m.sign}, H{m.house}
                 </span>
@@ -219,6 +223,7 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
   const [data, setData] = useState<KaalSarpaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -273,12 +278,6 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
 
   const overviewStats: OverviewStat[] = [
     { label: t.type, value: typeName ?? "—", wide: true },
-    ...(data.base_severity
-      ? [{ label: t.baseSeverity, value: <SeverityBadge severity={data.base_severity} /> }]
-      : []),
-    ...(data.effective_severity && data.effective_severity !== data.base_severity
-      ? [{ label: t.effectiveSeverity, value: <SeverityBadge severity={data.effective_severity} /> }]
-      : []),
     ...(data.life_domains?.length
       ? [
           {
@@ -287,6 +286,13 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
             wide: true,
           },
         ]
+      : []),
+  ];
+
+  const severityItems = [
+    ...(data.base_severity ? [{ label: t.baseSeverity, severity: data.base_severity }] : []),
+    ...(data.effective_severity && data.effective_severity !== data.base_severity
+      ? [{ label: t.effectiveSeverity, severity: data.effective_severity }]
       : []),
   ];
 
@@ -306,102 +312,107 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
         <>
           {isMitigated && <NoticeBanner>{t.mitigatedNote}</NoticeBanner>}
 
-          <OverviewPanel theme="kaalsarpa" title={t.overview} stats={overviewStats} />
-
-          <SectionDivider theme="kaalsarpa" label={t.analysis} />
-
-          <SplitLayout
-            left={
-              <>
-                <DetailsPanel theme="kaalsarpa" title={t.chartFacts}>
-                  <FactGrid cols={2}>
-                    {data.rahu && (
-                      <FactRow
-                        label={t.rahu}
-                        value={`${ordinalHouse(data.rahu.house)} · ${tSign(data.rahu.sign, lang)}`}
-                      />
-                    )}
-                    {data.ketu && (
-                      <FactRow
-                        label={t.ketu}
-                        value={`${ordinalHouse(data.ketu.house)} · ${tSign(data.ketu.sign, lang)}`}
-                      />
-                    )}
-                    {orientationLabel && (
-                      <FactRow label={t.orientation} value={orientationLabel} fullWidth />
-                    )}
-                    {data.planets_inside && data.planets_inside.length > 0 && (
-                      <FactRow
-                        label={t.planetsInside}
-                        value={<TagList theme="kaalsarpa" items={data.planets_inside} />}
-                        fullWidth
-                      />
-                    )}
-                    {data.type?.sanskrit && (
-                      <FactRow label="Sanskrit" value={data.type.sanskrit} fullWidth />
-                    )}
-                  </FactGrid>
-                </DetailsPanel>
-
-                {mitigationItems.length > 0 && (
-                  <DetailsPanel theme="kaalsarpa" title={t.mitigations}>
-                    <MitigationList
-                      items={mitigationItems}
-                      matchedLabel={t.matched}
-                      notMatchedLabel={t.notMatched}
-                      infoOnlyLabel={t.infoOnly}
-                    >
-                      {(key) => (
-                        <YogaExtras
-                          factorKey={key}
-                          factors={data.mitigating_factors ?? []}
-                          t={t}
-                        />
-                      )}
-                    </MitigationList>
-                  </DetailsPanel>
-                )}
-              </>
-            }
-            right={
-              <>
-                {(data.impact_area || data.impact_types || data.positive_note) && (
-                  <DetailsPanel theme="kaalsarpa" title={t.impact}>
-                    {data.impact_area && (
-                      <TextBlock label={t.impactArea}>
-                        <ReadableText text={data.impact_area} />
-                      </TextBlock>
-                    )}
-                    {data.impact_types && (
-                      <TextBlock label={t.impactTypes}>
-                        <ReadableText text={data.impact_types} />
-                      </TextBlock>
-                    )}
-                    {data.positive_note && (
-                      <TextBlock label={t.positiveNote} last>
-                        <ReadableText text={data.positive_note} />
-                      </TextBlock>
-                    )}
-                  </DetailsPanel>
-                )}
-
-                {(data.conventional_remedies || data.modern_remedies) && (
-                  <DetailsPanel theme="kaalsarpa" title={t.remedies}>
-                    {data.conventional_remedies && (
-                      <TextBlock label={t.conventionalRemedies}>
-                        <ReadableText text={data.conventional_remedies} />
-                      </TextBlock>
-                    )}
-                    {data.modern_remedies && (
-                      <TextBlock label={t.modernRemedies} last>
-                        <ReadableText text={data.modern_remedies} />
-                      </TextBlock>
-                    )}
-                  </DetailsPanel>
-                )}
-              </>
-            }
+          <OverviewPanel
+            theme="kaalsarpa"
+            title={t.overview}
+            stats={overviewStats}
+            severityItems={severityItems}
           />
+
+          <AnalysisToggleButton
+            theme="kaalsarpa"
+            label={t.analysis}
+            expanded={showDetails}
+            onToggle={() => setShowDetails((v) => !v)}
+          />
+
+          {showDetails && (
+          <FlowLayout>
+            <DetailsPanel theme="kaalsarpa" title={t.chartFacts} variant="causes">
+              <FactGrid cols={2}>
+                {data.rahu && (
+                  <FactRow
+                    label={t.rahu}
+                    value={`${ordinalHouse(data.rahu.house)} · ${tSign(data.rahu.sign, lang)}`}
+                  />
+                )}
+                {data.ketu && (
+                  <FactRow
+                    label={t.ketu}
+                    value={`${ordinalHouse(data.ketu.house)} · ${tSign(data.ketu.sign, lang)}`}
+                  />
+                )}
+                {orientationLabel && (
+                  <FactRow label={t.orientation} value={orientationLabel} fullWidth />
+                )}
+                {data.planets_inside && data.planets_inside.length > 0 && (
+                  <FactRow
+                    label={t.planetsInside}
+                    value={<TagList theme="kaalsarpa" items={data.planets_inside} />}
+                    fullWidth
+                  />
+                )}
+                {data.type?.sanskrit && (
+                  <FactRow label="Sanskrit" value={data.type.sanskrit} fullWidth />
+                )}
+              </FactGrid>
+            </DetailsPanel>
+
+            {mitigationItems.length > 0 && (
+              <DetailsPanel theme="kaalsarpa" title={t.mitigations} variant="causes" span={2}>
+                <MitigationList
+                  items={mitigationItems}
+                  matchedLabel={t.matched}
+                  notMatchedLabel={t.notMatched}
+                  infoOnlyLabel={t.infoOnly}
+                  columns={2}
+                >
+                  {(key) => (
+                    <YogaExtras
+                      factorKey={key}
+                      factors={data.mitigating_factors ?? []}
+                      t={t}
+                    />
+                  )}
+                </MitigationList>
+              </DetailsPanel>
+            )}
+
+            {(data.impact_area || data.impact_types) && (
+              <>
+                {data.impact_area && (
+                  <DetailsPanel theme="kaalsarpa" title={t.impactArea} variant="effects">
+                    <ReadableText text={data.impact_area} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+                {data.impact_types && (
+                  <DetailsPanel theme="kaalsarpa" title={t.impactTypes} variant="effects">
+                    <ReadableText text={data.impact_types} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+              </>
+            )}
+
+            {(data.conventional_remedies || data.modern_remedies) && (
+              <DetailsPanel theme="kaalsarpa" variant="remedies" span={2}>
+                <RemediesGrid
+                  conventional={data.conventional_remedies}
+                  modern={data.modern_remedies}
+                  conventionalLabel={t.conventionalRemedies}
+                  modernLabel={t.modernRemedies}
+                />
+              </DetailsPanel>
+            )}
+
+            {data.positive_note && (
+              <DetailsPanel theme="kaalsarpa" title={t.positiveNote} variant="recommendations">
+                <TextBlock label={t.positiveNote} kind="recommendation" last>
+                  <ReadableText text={data.positive_note} bulletClass="bg-violet-500" />
+                </TextBlock>
+              </DetailsPanel>
+            )}
+          </FlowLayout>
+          )}
         </>
       )}
 

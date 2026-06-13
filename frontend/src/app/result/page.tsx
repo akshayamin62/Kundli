@@ -20,6 +20,7 @@ import BirthForm from "@/components/BirthForm";
 import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
 import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
+import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
 interface VargaMeta { name: string; area: string; }
@@ -529,7 +530,11 @@ export default function ResultPage() {
           )}
           <span className={`text-sm truncate ${req?.name ? "text-indigo-300 font-normal" : "font-bold"}`}>{meta.birth_place}</span>
           <span className="text-indigo-300 text-xs shrink-0 hidden sm:block">
-            {meta.birth_date} · {meta.birth_time} · {meta.timezone}
+            {meta.birth_date} · {meta.birth_time} · {formatTimezoneDisplay(meta.timezone, {
+              utcOffset: meta.utc_offset,
+              latitude: meta.latitude,
+              longitude: meta.longitude,
+            })}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">

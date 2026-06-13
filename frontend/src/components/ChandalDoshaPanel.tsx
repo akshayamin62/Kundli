@@ -12,6 +12,7 @@ import { calculateChandalDosha } from "@/services/api";
 import { type Lang, SIGN_NAMES } from "@/lib/translations";
 import {
   AbsentReport,
+  AnalysisToggleButton,
   DetailsPanel,
   Disclaimer,
   DoshaError,
@@ -26,9 +27,8 @@ import {
   type OverviewStat,
   PageBar,
   ReadableText,
-  SectionDivider,
-  SeverityBadge,
-  SplitLayout,
+  FlowLayout,
+  RemediesGrid,
   TextBlock,
 } from "@/components/dosha/DoshaUI";
 
@@ -231,15 +231,17 @@ function YogaExtras({
   const showYogas = f.factor === "Strong Raja Yogas" || f.factor === "Hamsa Mahapurusha";
 
   return (
-    <div className="mt-2 space-y-2">
+    <div className="mt-2 space-y-2 pt-2 border-t border-slate-200/60">
       {showYogas && f.raja_yogas && f.raja_yogas.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.rajaYogas}</p>
-          <ul className="space-y-1">
+          <p className="text-sm font-bold uppercase tracking-wide text-indigo-600 mb-1.5">
+            {t.rajaYogas}
+          </p>
+          <ul className="space-y-1.5">
             {f.raja_yogas.map((y: RajaYogaFinding, i: number) => (
-              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-indigo-200">
-                <span className="font-medium">{y.yoga_name}</span>
-                <span className="text-gray-500"> — {y.lords.join(" + ")}</span>
+              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-indigo-300/70">
+                <span className="font-bold text-[#1e1b4b]">{y.yoga_name}</span>
+                <span className="text-slate-500"> — {y.lords.join(" + ")}</span>
               </li>
             ))}
           </ul>
@@ -247,12 +249,14 @@ function YogaExtras({
       )}
       {showYogas && f.mahapurusha_yogas && f.mahapurusha_yogas.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold uppercase text-gray-400 mb-1">{t.mahapurusha}</p>
-          <ul className="space-y-1">
+          <p className="text-sm font-bold uppercase tracking-wide text-violet-600 mb-1.5">
+            {t.mahapurusha}
+          </p>
+          <ul className="space-y-1.5">
             {f.mahapurusha_yogas.map((m: MahapurushaFinding, i: number) => (
-              <li key={i} className="text-[11px] text-gray-700 pl-2 border-l border-violet-200">
-                <span className="font-medium">{m.yoga}</span>
-                <span className="text-gray-500">
+              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-violet-300/70">
+                <span className="font-bold text-[#1e1b4b]">{m.yoga}</span>
+                <span className="text-slate-500">
                   {" "}
                   — {m.planet}, {m.sign}
                 </span>
@@ -275,6 +279,7 @@ export default function ChandalDoshaPanel({ chart, lang }: Props) {
   const [data, setData] = useState<ChandalDoshaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -335,11 +340,12 @@ export default function ChandalDoshaPanel({ chart, lang }: Props) {
     ...(data.type?.house_category
       ? [{ label: t.houseCategory, value: categoryLabel(data.type.house_category, t) }]
       : []),
-    ...(data.base_severity
-      ? [{ label: t.baseSeverity, value: <SeverityBadge severity={data.base_severity} /> }]
-      : []),
-    ...(data.effective_severity && data.effective_severity !== data.effective_severity
-      ? [{ label: t.effectiveSeverity, value: <SeverityBadge severity={data.effective_severity} /> }]
+  ];
+
+  const severityItems = [
+    ...(data.base_severity ? [{ label: t.baseSeverity, severity: data.base_severity }] : []),
+    ...(data.effective_severity && data.effective_severity !== data.base_severity
+      ? [{ label: t.effectiveSeverity, severity: data.effective_severity }]
       : []),
   ];
 
@@ -359,128 +365,131 @@ export default function ChandalDoshaPanel({ chart, lang }: Props) {
         <>
           {isMitigated && <NoticeBanner>{t.mitigatedNote}</NoticeBanner>}
 
-          <OverviewPanel theme="chandal" title={t.overview} stats={overviewStats} />
-
-          <SectionDivider theme="chandal" label={t.analysis} />
-
-          <SplitLayout
-            left={
-              <>
-                <DetailsPanel theme="chandal" title={t.chartFacts}>
-                  <FactGrid cols={2}>
-                    {data.jupiter && (
-                      <>
-                        <FactRow
-                          label={t.jupiter}
-                          value={`${ordinalHouse(data.jupiter.house)} · ${tSign(data.jupiter.sign, lang)}`}
-                        />
-                        {data.jupiter.dignity && (
-                          <FactRow label={t.dignity} value={data.jupiter.dignity} />
-                        )}
-                        {data.jupiter.functional_role && (
-                          <FactRow label={t.functionalRole} value={data.jupiter.functional_role} />
-                        )}
-                        <FactRow label={t.combust} value={data.jupiter.combust ? t.yes : t.no} />
-                        <FactRow
-                          label={t.retrograde}
-                          value={data.jupiter.retrograde ? t.yes : t.no}
-                        />
-                      </>
-                    )}
-                    {data.node && (
-                      <FactRow
-                        label={`${t.node} (${data.node.name})`}
-                        value={`${ordinalHouse(data.node.house)} · ${tSign(data.node.sign, lang)}`}
-                        fullWidth
-                      />
-                    )}
-                  </FactGrid>
-                </DetailsPanel>
-
-                {data.conjunction_orb_degrees != null && (
-                  <DetailsPanel theme="chandal" title={t.conjunction}>
-                    <OrbMeter
-                      theme="chandal"
-                      degrees={data.conjunction_orb_degrees}
-                      strengthLabel={strengthLabel(data.conjunction_strength, t)}
-                      label={t.orb}
-                    />
-                  </DetailsPanel>
-                )}
-
-                {mitigationItems.length > 0 && (
-                  <DetailsPanel theme="chandal" title={t.mitigations}>
-                    <MitigationList
-                      items={mitigationItems}
-                      matchedLabel={t.matched}
-                      notMatchedLabel={t.notMatched}
-                      infoOnlyLabel={t.infoOnly}
-                    >
-                      {(key) => (
-                        <YogaExtras
-                          factorKey={key}
-                          factors={data.mitigating_factors ?? []}
-                          t={t}
-                        />
-                      )}
-                    </MitigationList>
-                  </DetailsPanel>
-                )}
-              </>
-            }
-            right={
-              <>
-                {(data.variant_impact ||
-                  data.variant_positive ||
-                  data.impact_area ||
-                  data.impact_types ||
-                  data.positive_note) && (
-                  <DetailsPanel theme="chandal" title={t.impact}>
-                    {data.variant_impact && (
-                      <TextBlock label={t.variantNote}>
-                        <ReadableText text={data.variant_impact} />
-                      </TextBlock>
-                    )}
-                    {data.variant_positive && (
-                      <TextBlock label={t.variantPositive}>
-                        <ReadableText text={data.variant_positive} />
-                      </TextBlock>
-                    )}
-                    {data.impact_area && (
-                      <TextBlock label={t.impactArea}>
-                        <ReadableText text={data.impact_area} />
-                      </TextBlock>
-                    )}
-                    {data.impact_types && (
-                      <TextBlock label={t.impactTypes}>
-                        <ReadableText text={data.impact_types} />
-                      </TextBlock>
-                    )}
-                    {data.positive_note && (
-                      <TextBlock label={t.positiveNote} last>
-                        <ReadableText text={data.positive_note} />
-                      </TextBlock>
-                    )}
-                  </DetailsPanel>
-                )}
-
-                {(data.conventional_remedies || data.modern_remedies) && (
-                  <DetailsPanel theme="chandal" title={t.remedies}>
-                    {data.conventional_remedies && (
-                      <TextBlock label={t.conventionalRemedies}>
-                        <ReadableText text={data.conventional_remedies} />
-                      </TextBlock>
-                    )}
-                    {data.modern_remedies && (
-                      <TextBlock label={t.modernRemedies} last>
-                        <ReadableText text={data.modern_remedies} />
-                      </TextBlock>
-                    )}
-                  </DetailsPanel>
-                )}
-              </>
-            }
+          <OverviewPanel
+            theme="chandal"
+            title={t.overview}
+            stats={overviewStats}
+            severityItems={severityItems}
           />
+
+          <AnalysisToggleButton
+            theme="chandal"
+            label={t.analysis}
+            expanded={showDetails}
+            onToggle={() => setShowDetails((v) => !v)}
+          />
+
+          {showDetails && (
+          <FlowLayout>
+            <DetailsPanel theme="chandal" title={t.chartFacts} variant="causes" span={2}>
+              <FactGrid cols={2}>
+                {data.jupiter && (
+                  <>
+                    <FactRow
+                      label={t.jupiter}
+                      value={`${ordinalHouse(data.jupiter.house)} · ${tSign(data.jupiter.sign, lang)}`}
+                    />
+                    {data.jupiter.dignity && (
+                      <FactRow label={t.dignity} value={data.jupiter.dignity} />
+                    )}
+                    {data.jupiter.functional_role && (
+                      <FactRow label={t.functionalRole} value={data.jupiter.functional_role} />
+                    )}
+                    <FactRow label={t.combust} value={data.jupiter.combust ? t.yes : t.no} />
+                    <FactRow
+                      label={t.retrograde}
+                      value={data.jupiter.retrograde ? t.yes : t.no}
+                    />
+                  </>
+                )}
+                {data.node && (
+                  <FactRow
+                    label={`${t.node} (${data.node.name})`}
+                    value={`${ordinalHouse(data.node.house)} · ${tSign(data.node.sign, lang)}`}
+                    fullWidth
+                  />
+                )}
+              </FactGrid>
+              {data.conjunction_orb_degrees != null && (
+                <div className="mt-4 pt-4 border-t border-slate-200/70">
+                  <OrbMeter
+                    theme="chandal"
+                    degrees={data.conjunction_orb_degrees}
+                    strengthLabel={strengthLabel(data.conjunction_strength, t)}
+                    label={t.orb}
+                  />
+                </div>
+              )}
+            </DetailsPanel>
+
+            {mitigationItems.length > 0 && (
+              <DetailsPanel theme="chandal" title={t.mitigations} variant="causes" span={2}>
+                <MitigationList
+                  items={mitigationItems}
+                  matchedLabel={t.matched}
+                  notMatchedLabel={t.notMatched}
+                  infoOnlyLabel={t.infoOnly}
+                  columns={2}
+                >
+                  {(key) => (
+                    <YogaExtras
+                      factorKey={key}
+                      factors={data.mitigating_factors ?? []}
+                      t={t}
+                    />
+                  )}
+                </MitigationList>
+              </DetailsPanel>
+            )}
+
+            {(data.variant_impact ||
+              data.variant_positive ||
+              data.impact_area ||
+              data.impact_types) && (
+              <>
+                {data.variant_impact && (
+                  <DetailsPanel theme="chandal" title={t.variantNote} variant="effects">
+                    <ReadableText text={data.variant_impact} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+                {data.variant_positive && (
+                  <DetailsPanel theme="chandal" title={t.variantPositive} variant="effects">
+                    <ReadableText text={data.variant_positive} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+                {data.impact_area && (
+                  <DetailsPanel theme="chandal" title={t.impactArea} variant="effects">
+                    <ReadableText text={data.impact_area} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+                {data.impact_types && (
+                  <DetailsPanel theme="chandal" title={t.impactTypes} variant="effects">
+                    <ReadableText text={data.impact_types} bulletClass="bg-[#674bb5]" />
+                  </DetailsPanel>
+                )}
+              </>
+            )}
+
+            {(data.conventional_remedies || data.modern_remedies) && (
+              <DetailsPanel theme="chandal" variant="remedies" span={2}>
+                <RemediesGrid
+                  conventional={data.conventional_remedies}
+                  modern={data.modern_remedies}
+                  conventionalLabel={t.conventionalRemedies}
+                  modernLabel={t.modernRemedies}
+                />
+              </DetailsPanel>
+            )}
+
+            {data.positive_note && (
+              <DetailsPanel theme="chandal" title={t.positiveNote} variant="recommendations">
+                <TextBlock label={t.positiveNote} kind="recommendation" last>
+                  <ReadableText text={data.positive_note} bulletClass="bg-violet-500" />
+                </TextBlock>
+              </DetailsPanel>
+            )}
+          </FlowLayout>
+          )}
         </>
       )}
 

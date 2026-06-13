@@ -7,6 +7,7 @@ import {
 } from "@/types/chart";
 import { calculateVargaBulk, calculateDasha, calculateVarga } from "@/services/api";
 import { formatHouseSystemLabel, formatZodiacLabel, normalizeChartRequest } from "@/lib/chartRequestNormalize";
+import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
 import { toMoonChart } from "@/lib/chartTransforms";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
@@ -589,7 +590,11 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
           ["Time of Birth", m.birth_time],
           ["Birth Place", m.birth_place],
           ["Coordinates", `${m.latitude.toFixed(3)}°, ${m.longitude.toFixed(3)}°`],
-          ["Timezone", `${m.timezone} (${m.utc_offset})`],
+          ["Timezone", `${formatTimezoneDisplay(m.timezone, {
+            utcOffset: m.utc_offset,
+            latitude: m.latitude,
+            longitude: m.longitude,
+          })} (${m.utc_offset})`],
           ["System", `${formatHouseSystemLabel(m.house_system)} · ${formatZodiacLabel(m.zodiac)}`],
         ].map(([l, v]) => `
           <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 14px;backdrop-filter:blur(4px);">
