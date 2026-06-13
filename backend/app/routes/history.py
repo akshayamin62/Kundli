@@ -1,18 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.deps.auth import require_auth
+from datetime import datetime, timezone
 from typing import Literal, Optional
+import pytz
 from bson import ObjectId
 from pydantic import BaseModel
 from app.database import get_history_collection
 
 router = APIRouter(dependencies=[Depends(require_auth)])
 
+IST = pytz.timezone("Asia/Kolkata")
+
+
+def _created_at_ist_iso(dt: datetime | None) -> str | None:
+    """Serialize stored UTC timestamp as IST ISO string for API clients."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(IST).isoformat(timespec="seconds")
+
 
 def _serialize(doc: dict) -> dict:
     """Convert MongoDB document to JSON-serialisable dict."""
     doc["id"] = str(doc.pop("_id"))
     if "created_at" in doc and doc["created_at"] is not None:
-        doc["created_at"] = doc["created_at"].isoformat()
+        doc["created_at"] = _created_at_ist_iso(doc["created_at"])
     inp = doc.get("input") or {}
     if doc.get("type") == "kundali":
         doc["name"] = inp.get("name")

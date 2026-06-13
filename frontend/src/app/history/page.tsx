@@ -12,6 +12,7 @@ import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
 import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import AppNavbar from "@/components/AppNavbar";
 import { formatBirthPlaceDisplay } from "@/lib/birthPlaceDisplay";
+import { formatIstDateTime } from "@/lib/formatIst";
 
 type TabType = "kundali" | "match";
 
@@ -118,15 +119,6 @@ function RowActions({
       )}
     </div>
   );
-}
-
-function formatCreatedAt(ts?: string) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}-${month}-${year} ${d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function formatInputDate(dateStr?: string) {
@@ -414,7 +406,7 @@ export default function HistoryPage() {
                     <div className="col-span-4 text-base text-slate-700 truncate" title={formatBirthPlaceDisplay(item.birth_place, item.birth_lat, item.birth_lon)}>
                       {formatBirthPlaceDisplay(item.birth_place, item.birth_lat, item.birth_lon)}
                     </div>
-                    <div className="col-span-2 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
+                    <div className="col-span-2 text-sm text-slate-500">{formatIstDateTime(item.created_at)}</div>
                     <div className="col-span-2">
                       <RowActions
                         onView={() => handleView(item)}
@@ -451,7 +443,7 @@ export default function HistoryPage() {
                         {formatBirthPlaceDisplay(item.girl_birth_place, item.girl_birth_lat, item.girl_birth_lon)}
                       </p>
                     </div>
-                    <div className="col-span-1 text-sm text-slate-500">{formatCreatedAt(item.created_at)}</div>
+                    <div className="col-span-1 text-sm text-slate-500">{formatIstDateTime(item.created_at)}</div>
                     <div className="col-span-2">
                       <RowActions
                         onView={() => handleView(item)}
