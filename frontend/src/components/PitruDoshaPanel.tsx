@@ -316,7 +316,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
             )}
 
             {showSign && signFindings.length === 0 && (
-              <p className="dosha-font-body text-base text-[#47464f] px-1">{t.noSignFindings}</p>
+              <p className="dosha-font-body text-sm text-[#47464f] px-1">{t.noSignFindings}</p>
             )}
 
             {showHouse && houseFindings.length > 0 && (
@@ -339,7 +339,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
             )}
 
             {showHouse && houseFindings.length === 0 && (
-              <p className="dosha-font-body text-base text-[#47464f] px-1">{t.noHouseFindings}</p>
+              <p className="dosha-font-body text-sm text-[#47464f] px-1">{t.noHouseFindings}</p>
             )}
           </div>
           )}

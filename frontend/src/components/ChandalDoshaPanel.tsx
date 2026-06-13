@@ -234,12 +234,12 @@ function YogaExtras({
     <div className="mt-2 space-y-2 pt-2 border-t border-slate-200/60">
       {showYogas && f.raja_yogas && f.raja_yogas.length > 0 && (
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-indigo-600 mb-1.5">
+          <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 mb-1.5">
             {t.rajaYogas}
           </p>
           <ul className="space-y-1.5">
             {f.raja_yogas.map((y: RajaYogaFinding, i: number) => (
-              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-indigo-300/70">
+              <li key={i} className="text-sm text-slate-700 pl-2.5 border-l-2 border-indigo-300/70">
                 <span className="font-bold text-[#1e1b4b]">{y.yoga_name}</span>
                 <span className="text-slate-500"> — {y.lords.join(" + ")}</span>
               </li>
@@ -249,12 +249,12 @@ function YogaExtras({
       )}
       {showYogas && f.mahapurusha_yogas && f.mahapurusha_yogas.length > 0 && (
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-violet-600 mb-1.5">
+          <p className="text-xs font-bold uppercase tracking-wide text-violet-600 mb-1.5">
             {t.mahapurusha}
           </p>
           <ul className="space-y-1.5">
             {f.mahapurusha_yogas.map((m: MahapurushaFinding, i: number) => (
-              <li key={i} className="text-base text-slate-700 pl-2.5 border-l-2 border-violet-300/70">
+              <li key={i} className="text-sm text-slate-700 pl-2.5 border-l-2 border-violet-300/70">
                 <span className="font-bold text-[#1e1b4b]">{m.yoga}</span>
                 <span className="text-slate-500">
                   {" "}

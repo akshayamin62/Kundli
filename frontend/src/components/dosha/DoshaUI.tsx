@@ -18,13 +18,13 @@ const REMEDY_DARK =
   "space-y-3 p-4 md:p-5 rounded-2xl bg-[#1e1b4b] text-[#e3dfff] w-full min-w-0";
 
 const SECTION_TITLE =
-  "dosha-font-display text-2xl sm:text-3xl font-bold text-[#070235] tracking-tight drop-shadow-[0_1px_1px_rgba(7,2,53,0.08)]";
+  "dosha-font-display text-xl sm:text-2xl font-bold text-[#070235] tracking-tight drop-shadow-[0_1px_1px_rgba(7,2,53,0.08)]";
 
 const OVERVIEW_TITLE =
-  "dosha-font-display text-xl sm:text-2xl font-bold uppercase tracking-[0.08em] text-[#070235]";
+  "dosha-font-display text-lg sm:text-xl font-bold uppercase tracking-[0.08em] text-[#070235]";
 
 const CARD_INDEX_BADGE =
-  "shrink-0 dosha-font-body text-sm sm:text-base font-extrabold text-white bg-[#1e1b4b] px-3 py-1 rounded-full shadow-sm";
+  "shrink-0 dosha-font-body text-xs sm:text-sm font-extrabold text-white bg-[#1e1b4b] px-3 py-1 rounded-full shadow-sm";
 
 const CARD_SURFACE = GLASS_CARD;
 
@@ -104,11 +104,11 @@ function RemedyBulletList({
       <div className="flex items-center gap-2 min-w-0">
         <MaterialIcon
           name={icon}
-          className={`${compact ? "text-xl" : "text-2xl"} text-[#e8ddff] shrink-0`}
+          className={`${compact ? "text-lg" : "text-xl"} text-[#e8ddff] shrink-0`}
         />
         <h3
           className={`dosha-font-display font-bold text-white leading-snug break-words ${
-            compact ? "text-base" : "text-lg sm:text-xl"
+            compact ? "text-sm" : "text-base sm:text-lg"
           }`}
         >
           {title}
@@ -120,7 +120,7 @@ function RemedyBulletList({
             <span className="w-2 h-2 rounded-full bg-white shrink-0 mt-[0.5rem]" />
             <span
               className={`dosha-font-body text-[#e3dfff] leading-relaxed break-words ${
-                compact ? "text-sm sm:text-base" : "text-base"
+                compact ? "text-xs sm:text-sm" : "text-sm"
               }`}
             >
               {item}
@@ -136,7 +136,7 @@ function KarmaIntensityMeter({ label, severity }: { label: string; severity: str
   const pct = severityToPercent(severity);
   return (
     <div className="shrink-0 min-w-0 max-w-[55%] sm:max-w-none text-right">
-      <div className="dosha-font-body text-xs sm:text-sm font-bold uppercase tracking-widest text-[#47464f] mb-1">
+      <div className="dosha-font-body text-xs sm:text-xs font-bold uppercase tracking-widest text-[#47464f] mb-1">
         {label}
       </div>
       <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -147,7 +147,7 @@ function KarmaIntensityMeter({ label, severity }: { label: string; severity: str
           />
         </div>
         <span
-          className="dosha-font-body text-sm sm:text-base font-extrabold text-[#674bb5] break-words leading-tight"
+          className="dosha-font-body text-xs sm:text-sm font-extrabold text-[#674bb5] break-words leading-tight"
           title={severity}
         >
           {severity}
@@ -177,10 +177,10 @@ function BentoTextCell({
   return (
     <div className={`${BENTO_CELL} ${compact ? "!p-3.5 !space-y-2.5 min-w-0" : "min-w-0"}`}>
       <div className={`flex items-start gap-2.5 min-w-0 ${iconColor}`}>
-        <MaterialIcon name={icon} className={compact ? "text-2xl shrink-0" : "text-3xl shrink-0"} />
+        <MaterialIcon name={icon} className={compact ? "text-xl shrink-0" : "text-2xl shrink-0"} />
         <h3
           className={`dosha-font-display font-bold text-[#070235] leading-snug break-words ${
-            compact ? "text-base" : "text-xl"
+            compact ? "text-sm" : "text-lg"
           }`}
         >
           {title}
@@ -189,21 +189,21 @@ function BentoTextCell({
       {primary && (
         <p
           className={`dosha-font-body text-[#47464f] leading-relaxed break-words ${
-            compact ? "text-sm sm:text-base" : "text-base"
+            compact ? "text-xs sm:text-sm" : "text-sm"
           }`}
         >
           {primary}
         </p>
       )}
       {secondary && (
-        <p className="dosha-font-body text-sm text-[#47464f]/80 leading-relaxed break-words">{secondary}</p>
+        <p className="dosha-font-body text-xs text-[#47464f]/80 leading-relaxed break-words">{secondary}</p>
       )}
       {bullets && bullets.length > 0 && (
         <ul className="space-y-2">
           {bullets.map((b) => (
             <li key={b} className="flex items-start gap-2.5 min-w-0">
               <span className="w-2 h-2 rounded-full bg-[#674bb5] shrink-0 mt-2" />
-              <span className="dosha-font-body text-sm sm:text-base font-semibold text-[#070235] break-words">{b}</span>
+              <span className="dosha-font-body text-xs sm:text-sm font-semibold text-[#070235] break-words">{b}</span>
             </li>
           ))}
         </ul>
@@ -325,7 +325,7 @@ export function SeverityBadge({ severity, large }: { severity: string; large?: b
   return (
     <span
       className={`inline-flex items-center font-extrabold rounded-full transition-transform duration-200 hover:scale-[1.02] ${severityBadgeClass(severity)} ${
-        large ? "text-base px-4 py-1.5" : "text-sm px-3 py-1"
+        large ? "text-sm px-4 py-1.5" : "text-xs px-3 py-1"
       }`}
     >
       {severity}
@@ -360,7 +360,7 @@ export function DoshaLoading({ theme, message }: { theme: DoshaTheme; message: s
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[180px]">
       <div className={`w-10 h-10 rounded-full border-[3px] animate-spin ${t.spinner}`} />
-      <p className="text-sm font-medium text-slate-600 animate-pulse">{message}</p>
+      <p className="text-xs font-medium text-slate-600 animate-pulse">{message}</p>
     </div>
   );
 }
@@ -368,7 +368,7 @@ export function DoshaLoading({ theme, message }: { theme: DoshaTheme; message: s
 export function DoshaError({ message }: { message: string }) {
   return (
     <div className="flex-1 flex items-center justify-center p-4">
-      <p className="text-sm text-red-800 bg-red-50/95 border border-red-200 rounded-xl px-4 py-2.5 shadow-sm">
+      <p className="text-xs text-red-800 bg-red-50/95 border border-red-200 rounded-xl px-4 py-2.5 shadow-sm">
         {message}
       </p>
     </div>
@@ -403,19 +403,19 @@ export function PageBar({
       <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 min-w-0">
         <div className="flex items-center gap-4 min-w-0 flex-1">
           <span
-            className={`shrink-0 w-12 h-12 rounded-2xl bg-[#1e1b4b]/10 border border-[#674bb5]/20 text-[22px] flex items-center justify-center ${t.heroIconClass}`}
+            className={`shrink-0 w-12 h-12 rounded-2xl bg-[#1e1b4b]/10 border border-[#674bb5]/20 text-xl flex items-center justify-center ${t.heroIconClass}`}
           >
             {HERO_ICON[theme]}
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="dosha-font-display text-2xl sm:text-3xl font-bold text-[#070235] leading-tight break-words">
+            <h1 className="dosha-font-display text-xl sm:text-2xl font-bold text-[#070235] leading-tight break-words">
               {title}
             </h1>
           </div>
         </div>
         {present !== undefined && presentLabel && absentLabel && (
           <span
-            className={`shrink-0 dosha-font-body text-base sm:text-lg font-bold px-6 py-2.5 sm:px-7 sm:py-3 rounded-full border transition-transform duration-200 hover:scale-[1.03] ${
+            className={`shrink-0 dosha-font-body text-sm sm:text-base font-bold px-6 py-2.5 sm:px-7 sm:py-3 rounded-full border transition-transform duration-200 hover:scale-[1.03] ${
               present ? t.statusPresent : t.statusAbsent
             }`}
           >
@@ -432,10 +432,10 @@ export function AbsentReport({ title, body }: { title: string; body: string }) {
     <div className={`dosha-fade-up dosha-fade-up-1 ${GLASS_CARD} px-6 py-8 text-center`}>
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 to-emerald-600" />
       <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500 flex items-center justify-center text-white mb-4 shadow-md">
-        <MaterialIcon name="check" className="text-2xl" />
+        <MaterialIcon name="check" className="text-xl" />
       </div>
-      <h2 className="dosha-font-display text-2xl font-bold text-[#070235]">{title}</h2>
-      <p className="dosha-font-body text-lg text-[#47464f] mt-2 leading-relaxed max-w-lg mx-auto">{body}</p>
+      <h2 className="dosha-font-display text-xl font-bold text-[#070235]">{title}</h2>
+      <p className="dosha-font-body text-base text-[#47464f] mt-2 leading-relaxed max-w-lg mx-auto">{body}</p>
     </div>
   );
 }
@@ -443,8 +443,8 @@ export function AbsentReport({ title, body }: { title: string; body: string }) {
 export function NoticeBanner({ children }: { children: ReactNode }) {
   return (
     <div className="dosha-fade-up dosha-fade-up-1 dosha-glass-card rounded-2xl px-4 py-3 border border-emerald-200/50">
-      <p className="dosha-font-body text-base text-emerald-900 font-semibold leading-snug flex items-start gap-2">
-        <MaterialIcon name="info" className="text-emerald-600 text-lg shrink-0" />
+      <p className="dosha-font-body text-sm text-emerald-900 font-semibold leading-snug flex items-start gap-2">
+        <MaterialIcon name="info" className="text-emerald-600 text-base shrink-0" />
         <span>{children}</span>
       </p>
     </div>
@@ -485,8 +485,8 @@ export function OverviewPanel({
                 key={stat.label}
                 className="inline-flex items-center gap-2 bg-[#070235]/5 px-3 py-1.5 rounded-full border border-[#070235]/10 min-w-0 max-w-full"
               >
-                <MaterialIcon name="stars" className="text-sm text-[#674bb5] shrink-0" />
-                <span className="dosha-font-body text-sm sm:text-base font-bold text-[#070235] break-words">
+                <MaterialIcon name="stars" className="text-xs text-[#674bb5] shrink-0" />
+                <span className="dosha-font-body text-xs sm:text-sm font-bold text-[#070235] break-words">
                   {stat.label}: {stat.value}
                 </span>
               </div>
@@ -537,7 +537,7 @@ export function SeverityStrip({
           <span className={`absolute inline-flex h-full w-full rounded-full ${t.accent} opacity-40 animate-ping`} />
           <span className={`relative inline-flex w-2.5 h-2.5 rounded-full ${t.accent} shadow-sm`} />
         </span>
-        <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-700">
+        <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700">
           Severity Analysis
         </h2>
       </div>
@@ -585,7 +585,7 @@ export function AnalysisToggleButton({
       <span
         className={`shrink-0 w-9 h-9 rounded-xl bg-[#1e1b4b] flex items-center justify-center text-white shadow-md transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
       >
-        <MaterialIcon name="expand_more" className="text-xl" />
+        <MaterialIcon name="expand_more" className="text-lg" />
       </span>
     </button>
   );
@@ -598,13 +598,13 @@ export function SectionDivider({ theme, label }: { theme: DoshaTheme; label: str
   return (
     <div className="dosha-fade-up dosha-fade-up-2 flex items-center gap-2 py-1">
       <span className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/80 to-transparent" />
-      <span className="text-[9px] text-amber-500/80">✦</span>
+      <span className="text-[8px] text-amber-500/80">✦</span>
       <span
         className={`text-xs font-bold uppercase tracking-[0.18em] ${t.label} px-4 py-1.5 rounded-full bg-white/95 backdrop-blur-sm border border-slate-200/70 shadow-[0_2px_8px_-2px_rgba(30,27,75,0.1)]`}
       >
         {label}
       </span>
-      <span className="text-[9px] text-amber-500/80">✦</span>
+      <span className="text-[8px] text-amber-500/80">✦</span>
       <span className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300/80 to-transparent" />
     </div>
   );
@@ -652,7 +652,7 @@ export function DetailsPanel({
       <section className={`md:col-span-2 space-y-4 ${className}`}>
         {title && (
           <div className={`flex items-center gap-3 ${iconColorMap[variant]}`}>
-            <MaterialIcon name={iconMap[variant]} className="text-3xl" />
+            <MaterialIcon name={iconMap[variant]} className="text-2xl" />
             <h2 className={SECTION_TITLE}>{title}</h2>
           </div>
         )}
@@ -665,7 +665,7 @@ export function DetailsPanel({
     <section className={`${BENTO_CELL} min-w-0 overflow-hidden ${className}`}>
       {title && (
         <div className={`flex items-center gap-3 ${iconColorMap[variant]}`}>
-          <MaterialIcon name={iconMap[variant]} className="text-3xl" />
+          <MaterialIcon name={iconMap[variant]} className="text-2xl" />
           <h2 className={`${SECTION_TITLE}`}>{title}</h2>
         </div>
       )}
@@ -699,10 +699,10 @@ export function FactRow({
         fullWidth ? "col-span-full" : ""
       }`}
     >
-      <dt className="dosha-font-body text-sm font-bold uppercase tracking-wider text-[#47464f] w-36 shrink-0 pt-0.5">
+      <dt className="dosha-font-body text-xs font-bold uppercase tracking-wider text-[#47464f] w-36 shrink-0 pt-0.5">
         {label}
       </dt>
-      <dd className="dosha-font-body text-base font-semibold text-[#070235] leading-snug flex-1 min-w-0">{value}</dd>
+      <dd className="dosha-font-body text-sm font-semibold text-[#070235] leading-snug flex-1 min-w-0">{value}</dd>
     </div>
   );
 }
@@ -721,11 +721,11 @@ export function TextBlock({
   return (
     <div className={`${last ? "" : "mb-4 pb-4 border-b border-[#c8c5d0]/20"}`}>
       {kind !== "default" && (
-        <p className="dosha-font-body text-sm font-bold uppercase tracking-wider mb-2 text-[#674bb5] flex items-center gap-1.5">
+        <p className="dosha-font-body text-xs font-bold uppercase tracking-wider mb-2 text-[#674bb5] flex items-center gap-1.5">
           {label}
         </p>
       )}
-      <div className="dosha-font-body text-base text-[#47464f] leading-relaxed">{children}</div>
+      <div className="dosha-font-body text-sm text-[#47464f] leading-relaxed">{children}</div>
     </div>
   );
 }
@@ -742,14 +742,14 @@ export function ReadableText({
     .map((s) => s.trim())
     .filter(Boolean);
 
-  if (parts.length <= 1) return <p className="text-base leading-relaxed">{text}</p>;
+  if (parts.length <= 1) return <p className="text-sm leading-relaxed">{text}</p>;
 
   return (
     <ul className="space-y-2.5 list-none">
       {parts.map((part, i) => (
         <li key={i} className="flex gap-2.5 items-start">
           <span className={`shrink-0 w-2 h-2 rounded-full ${bulletClass} mt-[0.6rem]`} />
-          <span className="text-base leading-relaxed">{part}</span>
+          <span className="text-sm leading-relaxed">{part}</span>
         </li>
       ))}
     </ul>
@@ -804,7 +804,7 @@ export function TagList({ theme, items }: { theme?: DoshaTheme; items: string[] 
 
 export function Disclaimer({ text }: { text: string }) {
   return (
-    <p className="dosha-font-body text-sm text-[#47464f]/80 leading-relaxed text-center px-2 pt-4 border-t border-[#c8c5d0]/30">
+    <p className="dosha-font-body text-xs text-[#47464f]/80 leading-relaxed text-center px-2 pt-4 border-t border-[#c8c5d0]/30">
       {text}
     </p>
   );
@@ -890,15 +890,15 @@ export function MitigationList({
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 className="dosha-font-body text-base sm:text-lg font-bold text-[#070235] leading-snug flex items-center gap-2 min-w-0">
+            <h3 className="dosha-font-body text-sm sm:text-base font-bold text-[#070235] leading-snug flex items-center gap-2 min-w-0">
               <MaterialIcon
                 name={item.isInfo ? "info" : item.matched ? "check_circle" : "radio_button_unchecked"}
-                className={`text-lg ${item.matched ? "text-emerald-600" : "text-[#47464f]"}`}
+                className={`text-base ${item.matched ? "text-emerald-600" : "text-[#47464f]"}`}
               />
               {item.factor}
             </h3>
             <span
-              className={`dosha-font-body text-xs sm:text-sm font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
+              className={`dosha-font-body text-xs sm:text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
                 item.isInfo
                   ? "bg-sky-100 text-sky-800"
                   : item.matched
@@ -909,7 +909,7 @@ export function MitigationList({
               {item.isInfo ? infoOnlyLabel : item.matched ? matchedLabel : notMatchedLabel}
             </span>
           </div>
-          <p className="dosha-font-body text-base text-[#47464f] leading-relaxed">{item.detail}</p>
+          <p className="dosha-font-body text-sm text-[#47464f] leading-relaxed">{item.detail}</p>
           {children?.(item.key)}
         </li>
       ))}
@@ -977,7 +977,7 @@ export function FindingCard({
         </div>
         <h3
           className={`dosha-font-display font-bold text-[#070235] leading-snug break-words ${
-            compact ? "text-base sm:text-lg" : "text-xl sm:text-2xl"
+            compact ? "text-sm sm:text-base" : "text-lg sm:text-xl"
           }`}
         >
           {title}
@@ -987,7 +987,7 @@ export function FindingCard({
             {metaParts.map((part, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border dosha-font-body text-xs sm:text-sm font-bold bg-[#070235]/5 border-[#070235]/10 text-[#070235] max-w-full break-words"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border dosha-font-body text-xs sm:text-xs font-bold bg-[#070235]/5 border-[#070235]/10 text-[#070235] max-w-full break-words"
               >
                 {part}
               </span>
@@ -1049,8 +1049,8 @@ export function FindingCard({
 
 export function SubsectionLabel({ theme, children }: { theme: DoshaTheme; children: ReactNode }) {
   return (
-    <p className="dosha-font-display text-lg sm:text-xl font-bold text-[#674bb5] flex items-center gap-2 min-w-0">
-      <MaterialIcon name="folder_open" className="text-lg shrink-0" />
+    <p className="dosha-font-display text-base sm:text-lg font-bold text-[#674bb5] flex items-center gap-2 min-w-0">
+      <MaterialIcon name="folder_open" className="text-base shrink-0" />
       <span className="break-words">{children}</span>
     </p>
   );
@@ -1076,7 +1076,7 @@ export function SegmentTabs<T extends string>({
           key={tab.id}
           type="button"
           onClick={() => onChange(tab.id)}
-          className={`px-4 py-2.5 rounded-lg dosha-font-body text-base font-bold transition-all duration-200 ${
+          className={`px-4 py-2.5 rounded-lg dosha-font-body text-sm font-bold transition-all duration-200 ${
             active === tab.id
               ? "bg-[#1e1b4b] text-white shadow-md"
               : "text-[#47464f] hover:bg-white/80 hover:text-[#070235]"
@@ -1109,10 +1109,10 @@ export function OrbMeter({
   return (
     <div className="rounded-2xl border border-[#c8c5d0]/25 bg-white/80 p-4">
       <div className="flex justify-between items-center mb-2">
-        <span className="dosha-font-body text-base font-bold text-[#070235]">
+        <span className="dosha-font-body text-sm font-bold text-[#070235]">
           {label}: <span className="text-[#47464f] font-semibold">{degrees.toFixed(1)}°</span>
         </span>
-        <span className="dosha-font-body text-sm font-bold text-[#674bb5] bg-[#e5eeff] px-3 py-1 rounded-full">
+        <span className="dosha-font-body text-xs font-bold text-[#674bb5] bg-[#e5eeff] px-3 py-1 rounded-full">
           {strengthLabel}
         </span>
       </div>
