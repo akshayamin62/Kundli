@@ -9,8 +9,9 @@ from app.models.schemas import (
     DashaRequest, DashaResponse, DashaPeriod,
     TransitRequest, TransitResponse, TransitEntry,
     PitruDoshaResponse, PitruDoshaSignFinding, PitruDoshaHouseFinding,
+    PitruDoshaDomainImpact,
     KaalSarpaResponse, KaalSarpaTypeInfo, KaalSarpaNodeInfo,
-    KaalSarpaMitigation, RajaYogaFinding, MahapurushaFinding,
+    KaalSarpaMitigation, KaalSarpaDivisionalPresence, RajaYogaFinding, MahapurushaFinding,
     ChandalDoshaResponse, ChandalDoshaTypeInfo, ChandalDoshaPlanetInfo,
     ChandalDoshaNodeInfo, ChandalDoshaMitigation,
 )
@@ -318,6 +319,33 @@ def calculate_transit(req: TransitRequest):
         raise HTTPException(status_code=500, detail=f"Transit calculation error: {str(e)}")
 
 
+def _build_pitru_house_finding(raw: dict) -> PitruDoshaHouseFinding:
+    """Map service dict to API model; preserve nested domain payloads."""
+    domains_raw = raw.get("domains") or {}
+    domains = {
+        key: PitruDoshaDomainImpact(**value)
+        for key, value in domains_raw.items()
+        if isinstance(value, dict)
+    } or None
+    return PitruDoshaHouseFinding(
+        combination=raw["combination"],
+        sign=raw["sign"],
+        house=raw["house"],
+        house_label=raw["house_label"],
+        detail=raw["detail"],
+        rahu_sign=raw.get("rahu_sign"),
+        ketu_sign=raw.get("ketu_sign"),
+        rahu_house=raw.get("rahu_house"),
+        ketu_house=raw.get("ketu_house"),
+        house_wise_impact=raw.get("house_wise_impact"),
+        house_wise_severity=raw.get("house_wise_severity"),
+        health_focus=raw.get("health_focus"),
+        domains=domains,
+        conventional_remedies=raw.get("conventional_remedies"),
+        modern_remedies=raw.get("modern_remedies"),
+    )
+
+
 @router.post("/chart/pitru-dosha", response_model=PitruDoshaResponse, tags=["Chart"])
 def pitru_dosha(chart: ChartResponse):
     """
@@ -330,7 +358,7 @@ def pitru_dosha(chart: ChartResponse):
             present=raw["present"],
             confirmation_count=raw["confirmation_count"],
             sign_findings=[PitruDoshaSignFinding(**f) for f in raw["sign_findings"]],
-            house_findings=[PitruDoshaHouseFinding(**f) for f in raw["house_findings"]],
+            house_findings=[_build_pitru_house_finding(f) for f in raw["house_findings"]],
             disclaimer=raw["disclaimer"],
         )
     except Exception as e:
@@ -358,13 +386,25 @@ def _build_kaal_sarpa_mitigations(raw_factors: list | None) -> list[KaalSarpaMit
     return out
 
 
+def _build_kaal_sarpa_divisional(raw_list: list | None) -> list[KaalSarpaDivisionalPresence] | None:
+    if not raw_list:
+        return None
+    return [KaalSarpaDivisionalPresence(**d) for d in raw_list]
+
+
 @router.post("/chart/kaal-sarpa", response_model=KaalSarpaResponse, tags=["Chart"])
 def kaal_sarpa(chart: ChartResponse):
     """Kaal Sarpa Yoga from natal D1 chart with mitigating factors."""
     try:
         raw = calculate_kaal_sarpa(chart.model_dump())
+        divisional_presence = _build_kaal_sarpa_divisional(raw.get("divisional_presence"))
         if not raw["present"]:
-            return KaalSarpaResponse(present=False, type=None, disclaimer=raw["disclaimer"])
+            return KaalSarpaResponse(
+                present=False,
+                type=None,
+                divisional_presence=divisional_presence,
+                disclaimer=raw["disclaimer"],
+            )
 
         t = raw["type"]
         return KaalSarpaResponse(
@@ -389,6 +429,7 @@ def kaal_sarpa(chart: ChartResponse):
             modern_remedies=raw.get("modern_remedies"),
             positive_note=raw.get("positive_note"),
             mitigating_factors=_build_kaal_sarpa_mitigations(raw.get("mitigating_factors")),
+            divisional_presence=divisional_presence,
             disclaimer=raw["disclaimer"],
         )
     except Exception as e:

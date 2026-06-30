@@ -77,6 +77,14 @@ export interface PitruDoshaSignFinding {
   modern_remedies?: string | null;
 }
 
+export interface PitruDoshaDomainImpact {
+  area_affected: string;
+  impact: string;
+  severity?: string | null;
+  conventional_remedies?: string | null;
+  modern_remedies?: string | null;
+}
+
 export interface PitruDoshaHouseFinding {
   combination: string;
   sign: string;
@@ -90,6 +98,7 @@ export interface PitruDoshaHouseFinding {
   house_wise_impact?: string | null;
   house_wise_severity?: string | null;
   health_focus?: string | null;
+  domains?: Partial<Record<"health" | "career" | "finance" | "relationship", PitruDoshaDomainImpact>> | null;
   conventional_remedies?: string | null;
   modern_remedies?: string | null;
 }
@@ -149,6 +158,13 @@ export interface KaalSarpaMitigation {
   mahapurusha_yogas?: MahapurushaFinding[] | null;
 }
 
+export interface KaalSarpaDivisionalPresence {
+  division: number;
+  name: string;
+  area: string;
+  orientation?: string | null;
+}
+
 export interface KaalSarpaResponse {
   present: boolean;
   type?: KaalSarpaTypeInfo | null;
@@ -165,6 +181,7 @@ export interface KaalSarpaResponse {
   modern_remedies?: string | null;
   positive_note?: string | null;
   mitigating_factors?: KaalSarpaMitigation[] | null;
+  divisional_presence?: KaalSarpaDivisionalPresence[] | null;
   disclaimer: string;
 }
 

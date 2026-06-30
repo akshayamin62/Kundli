@@ -1,13 +1,25 @@
 """Regenerate pitru_dosha_data.py from Excel (+ severity from House Matrix & Dosha Matrix)."""
 import os
 import re
+import sys
 
 import openpyxl
+
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
+from pitru_dosha_remedies import enrich_domain, remedies_for_domain  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 XLSX_MAIN = os.path.join(ROOT, "Pitru_Dosha_Zodiac_House_Wise_Combinations.xlsx")
 XLSX_DOSHA = os.path.join(ROOT, "Pitru_Dosha_Health_and_Modern_Solutions.xlsx")
+XLSX_CAREER = os.path.join(ROOT, "Pitrudosha and Career.xlsx")
+XLSX_FINANCE = os.path.join(ROOT, "Pitrudosha and Finance.xlsx")
+XLSX_RELATIONSHIP = os.path.join(ROOT, "Pitrudosha and Relationship.xlsx")
 OUT = os.path.join(ROOT, "backend", "app", "data", "pitru_dosha_data.py")
+
+DOMAIN_KEYS = ("health", "career", "finance", "relationship")
 
 # Sign Wise combination → Dosha Matrix severity (same for every zodiac sign row).
 SIGN_COMBINATION_SEVERITY: dict[str, str] = {
@@ -189,8 +201,31 @@ CONVENTIONAL_BY_DOSHA_TYPE: dict[str, str] = {
     "6th/8th/12th Link with Sun or 9th Lord": "Dusthana shanti, health and pitru combined remedies",
 }
 
+DOMAIN_SHEETS: dict[str, tuple[str, str, str, str]] = {
+    "career": (
+        XLSX_CAREER,
+        "Career Area Affected",
+        "Possible Career Impact",
+        "Severity",
+    ),
+    "finance": (
+        XLSX_FINANCE,
+        "Financial Area Affected",
+        "Possible Impact on Income, Revenue, Savings and Wealth",
+        "Severity",
+    ),
+    "relationship": (
+        XLSX_RELATIONSHIP,
+        "Relationship Area Affected",
+        "Possible Relationship Impact",
+        "Severity",
+    ),
+}
+
 
 def load_modern_solutions() -> dict[str, str]:
+    if not os.path.isfile(XLSX_DOSHA):
+        return {}
     wb = openpyxl.load_workbook(XLSX_DOSHA, read_only=True, data_only=True)
     ws = wb["Modern Solutions"]
     out: dict[str, str] = {}
@@ -253,6 +288,32 @@ def read_sheet(wb, name: str, header_row: int = 2) -> list[dict]:
     return data
 
 
+def read_domain_sheet(path: str) -> list[dict]:
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    ws = wb["Sheet1"]
+    rows = list(ws.iter_rows(values_only=True))
+    header_idx = next(
+        i
+        for i, r in enumerate(rows)
+        if r and any(c and "Pitru Dosha Combination" in str(c) for c in r)
+    )
+    headers = [str(h).strip() if h else "" for h in rows[header_idx]]
+    data: list[dict] = []
+    for r in rows[header_idx + 1 :]:
+        if not r or all(c is None or str(c).strip() == "" for c in r):
+            continue
+        d = {
+            headers[i]: (str(r[i]).strip() if r[i] is not None else "")
+            for i in range(len(headers))
+            if headers[i]
+        }
+        combo = d.get("Pitru Dosha Combination", "")
+        if combo:
+            data.append(d)
+    wb.close()
+    return data
+
+
 def load_house_severity_matrix() -> dict[str, str]:
     wb = openpyxl.load_workbook(XLSX_MAIN, read_only=True, data_only=True)
     ws = wb["Severity Matrix"]
@@ -276,61 +337,236 @@ def house_label_to_ordinal(house_label: str) -> str:
     return ""
 
 
-def house_row_severity(house_label: str, combination: str, house_matrix: dict[str, str]) -> str:
+def ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+def house_label(n: int) -> str:
+    return f"{ordinal(n)} House"
+
+
+def house_row_severity(house_label_str: str, combination: str, house_matrix: dict[str, str]) -> str:
     if combination in HOUSE_COMBINATION_SEVERITY:
         return HOUSE_COMBINATION_SEVERITY[combination]
-    ordinal = house_label_to_ordinal(house_label)
-    return house_matrix.get(ordinal, "")
+    ordinal_label = house_label_to_ordinal(house_label_str)
+    return house_matrix.get(ordinal_label, "")
+
+
+def canonical_combination(combo: str) -> str:
+    s = re.sub(r"\s+", " ", combo.strip())
+    s = re.sub(r"\bin (\d+(?:st|nd|rd|th)?)\s+[Hh]ouse\b", r"in \1", s)
+    s = re.sub(
+        r"^(Rahu|Ketu) in (\d+(?:st|nd|rd|th)?)\s+[Hh]ouse$",
+        r"\1 in \2",
+        s,
+        flags=re.I,
+    )
+    s = s.replace("Rahu/Ketu axis in", "Rahu/Ketu in")
+    s = s.replace("Rahu/Ketu on ", "Rahu/Ketu in ")
+    s = re.sub(r"(\d+)(?:st|nd|rd|th) house afflicted", r"\1 afflicted", s, flags=re.I)
+    s = re.sub(r" with affliction$", "", s, flags=re.I)
+    s = s.replace("Venus + Rahu House", "Venus + Rahu")
+    s = s.replace("Venus + Ketu House", "Venus + Ketu")
+    return s
+
+
+def is_axis_combination(combo: str) -> bool:
+    canon = canonical_combination(combo)
+    return "axis" in canon.lower() or bool(
+        re.search(r"Rahu/Ketu in \d+(?:st|nd|rd|th)-\d+", canon, re.I)
+    )
+
+
+def parse_house_label(combination: str) -> str:
+    m = re.search(r"\bin (\d+)(?:st|nd|rd|th)?\s+[Hh]ouse\b", combination, re.I)
+    if m:
+        return house_label(int(m.group(1)))
+    m = re.search(
+        r"(?:^| )(?:Rahu|Ketu) in (\d+)(?:st|nd|rd|th)\s+[Hh]ouse",
+        combination,
+        re.I,
+    )
+    if m:
+        return house_label(int(m.group(1)))
+    m = re.search(r"(\d+)(?:st|nd|rd|th)-(\d+)(?:st|nd|rd|th)", combination, re.I)
+    if m:
+        return house_label(int(m.group(1)))
+    m = re.search(r"Afflicted (\d+)(?:st|nd|rd|th) house", combination, re.I)
+    if m:
+        return house_label(int(m.group(1)))
+    m = re.search(
+        r"(\d+)(?:st|nd|rd|th) lord in (\d+)(?:st|nd|rd|th)",
+        combination,
+        re.I,
+    )
+    if m:
+        return house_label(int(m.group(2)))
+    m = re.search(r"(\d+)(?:st|nd|rd|th) lord", combination, re.I)
+    if m:
+        return house_label(int(m.group(1)))
+    m = re.search(r"(\d+)(?:st|nd|rd|th)/(\d+)", combination)
+    if m:
+        return house_label(int(m.group(1)))
+    if re.search(r"\bD-\d+\b|Dasha|Transit|Navamsa|Hora|Dashamsha", combination, re.I):
+        return "General"
+    if re.search(
+        r"connected to|both afflicted|confirm|influence on|affecting|afflicted by",
+        combination,
+        re.I,
+    ):
+        nums = [int(x) for x in re.findall(r"(\d+)(?:st|nd|rd|th)", combination)]
+        if nums:
+            return house_label(nums[0])
+    return "General"
 
 
 def py_str(s: str) -> str:
     return repr(s)
 
 
+def py_domains(domains: dict[str, dict[str, str]]) -> str:
+    if not domains:
+        return "{}"
+    parts: list[str] = []
+    for key in DOMAIN_KEYS:
+        if key not in domains:
+            continue
+        d = domains[key]
+        parts.append(
+            f'        "{key}": {{'
+            f'"area_affected": {py_str(d["area_affected"])}, '
+            f'"impact": {py_str(d["impact"])}, '
+            f'"severity": {py_str(d["severity"])}, '
+            f'"conventional_remedies": {py_str(d["conventional_remedies"])}, '
+            f'"modern_remedies": {py_str(d["modern_remedies"])}, '
+            f"}},"
+        )
+    return "{\n" + "\n".join(parts) + "\n    }"
+
+
 def main() -> None:
     house_matrix = load_house_severity_matrix()
-    modern_map = load_modern_solutions()
 
     wb = openpyxl.load_workbook(XLSX_MAIN, read_only=True, data_only=True)
     sign_rows = read_sheet(wb, "Sign Wise Combos")
     house_rows = read_sheet(wb, "House Wise Combos")
     wb.close()
 
-    sign_wise = [
-        {
-            "sign": d["Zodiac Sign"],
-            "combination": d["Combination in Sign"],
-            "stronger_houses": d["Stronger House/Axis"],
-            "general_impact": d["Health Impact"],
-            "nature_theme": d["Nature/Theme"],
-            "severity": SIGN_COMBINATION_SEVERITY.get(d["Combination in Sign"], ""),
-            "conventional_remedies": conventional_for(d["Combination in Sign"]),
-            "modern_remedies": modern_for(d["Combination in Sign"], modern_map),
-        }
-        for d in sign_rows
-    ]
+    # house_key -> row dict
+    merged: dict[tuple[str, str], dict] = {}
+    axis_index: dict[str, list[tuple[str, str]]] = {}
 
-    house_wise = [
-        {
-            "house": d["House"],
-            "combination": d["Combination"],
-            "specific_impact": d["Impact"],
-            "health_focus": d["Health Focus"],
-            "severity": house_row_severity(d["House"], d["Combination"], house_matrix),
-            "conventional_remedies": conventional_for(d["Combination"]),
-            "modern_remedies": modern_for(d["Combination"], modern_map),
+    def ensure_row(house: str, combination: str) -> dict:
+        key = (house, combination)
+        if key not in merged:
+            merged[key] = {
+                "house": house,
+                "combination": combination,
+                "domains": {},
+            }
+        canon = canonical_combination(combination)
+        if is_axis_combination(combination):
+            axis_index.setdefault(canon, [])
+            if key not in axis_index[canon]:
+                axis_index[canon].append(key)
+        return merged[key]
+
+    def attach_domain(
+        row: dict,
+        domain: str,
+        domain_data: dict,
+        remedy_combo: str,
+    ) -> None:
+        enrich_domain(domain_data, remedy_combo, domain, row["house"])
+        row["domains"][domain] = domain_data
+
+    for d in house_rows:
+        house = d["House"]
+        combo = d["Combination"]
+        row = ensure_row(house, combo)
+        health_data = {
+            "area_affected": d["Health Focus"],
+            "impact": d["Impact"],
+            "severity": house_row_severity(house, combo, house_matrix),
         }
-        for d in house_rows
-    ]
+        attach_domain(row, "health", health_data, combo)
+
+    domain_counts: dict[str, int] = {"health": len(house_rows)}
+
+    for domain, (path, area_col, impact_col, sev_col) in DOMAIN_SHEETS.items():
+        rows = read_domain_sheet(path)
+        domain_counts[domain] = len(rows)
+        for d in rows:
+            combo_raw = d["Pitru Dosha Combination"]
+            canon = canonical_combination(combo_raw)
+            house = parse_house_label(combo_raw)
+            domain_data = {
+                "area_affected": d[area_col],
+                "impact": d[impact_col],
+                "severity": d[sev_col],
+            }
+            if is_axis_combination(combo_raw):
+                targets = axis_index.get(canon)
+                if targets:
+                    for key in targets:
+                        attach_domain(merged[key], domain, domain_data, combo_raw)
+                    continue
+            # Try merge with existing health row by canonical combo + house
+            matched = False
+            for key, row in merged.items():
+                if key[0] == house and canonical_combination(row["combination"]) == canon:
+                    attach_domain(row, domain, domain_data, combo_raw)
+                    matched = True
+                    break
+            if not matched:
+                row = ensure_row(house, combo_raw)
+                attach_domain(row, domain, domain_data, combo_raw)
+
+    house_wise = sorted(
+        merged.values(),
+        key=lambda r: (
+            999 if r["house"] == "General" else int(re.match(r"^(\d+)", r["house"]).group(1)),
+            r["combination"],
+        ),
+    )
+
+    sign_wise = []
+    for d in sign_rows:
+        combo = d["Combination in Sign"]
+        health_remedies = remedies_for_domain(combo, "health", "General", d["Health Impact"], d["Health Impact"])
+        sign_wise.append(
+            {
+                "sign": d["Zodiac Sign"],
+                "combination": combo,
+                "stronger_houses": d["Stronger House/Axis"],
+                "general_impact": d["Health Impact"],
+                "nature_theme": d["Nature/Theme"],
+                "severity": SIGN_COMBINATION_SEVERITY.get(combo, ""),
+                "conventional_remedies": health_remedies["conventional_remedies"],
+                "modern_remedies": health_remedies["modern_remedies"],
+            }
+        )
 
     lines = [
         '"""',
-        "Pitru Dosha reference data (from Pitru_Dosha_Zodiac_House_Wise_Combinations.xlsx).",
-        "Severity: Sign Wise from Dosha Matrix; House Wise from Dosha Matrix or House Severity Matrix.",
+        "Pitru Dosha reference data (house-wise domains: health, career, finance, relationship).",
+        "Sources: Pitru_Dosha_Zodiac_House_Wise_Combinations.xlsx + Career/Finance/Relationship workbooks.",
         "Regenerate: python backend/scripts/build_pitru_dosha_data.py",
         '"""',
         "",
         "from typing import TypedDict",
+        "",
+        "",
+        "class DomainImpact(TypedDict):",
+        "    area_affected: str",
+        "    impact: str",
+        "    severity: str",
+        "    conventional_remedies: str",
+        "    modern_remedies: str",
         "",
         "",
         "class SignWiseRow(TypedDict):",
@@ -347,11 +583,7 @@ def main() -> None:
         "class HouseWiseRow(TypedDict):",
         "    house: str",
         "    combination: str",
-        "    specific_impact: str",
-        "    health_focus: str",
-        "    severity: str",
-        "    conventional_remedies: str",
-        "    modern_remedies: str",
+        "    domains: dict[str, DomainImpact]",
         "",
         "",
         "SIGN_WISE: list[SignWiseRow] = [",
@@ -380,11 +612,7 @@ def main() -> None:
             "    {"
             f'"house": {py_str(row["house"])}, '
             f'"combination": {py_str(row["combination"])}, '
-            f'"specific_impact": {py_str(row["specific_impact"])}, '
-            f'"health_focus": {py_str(row["health_focus"])}, '
-            f'"severity": {py_str(row["severity"])}, '
-            f'"conventional_remedies": {py_str(row["conventional_remedies"])}, '
-            f'"modern_remedies": {py_str(row["modern_remedies"])}, '
+            f'"domains": {py_domains(row["domains"])}, '
             "},"
         )
 
@@ -422,13 +650,18 @@ def main() -> None:
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
+    # Verify every domain row is stored
+    stored_domain_rows = {k: 0 for k in DOMAIN_KEYS}
+    for row in house_wise:
+        for k in row["domains"]:
+            stored_domain_rows[k] += 1
+
     missing_sign = {r["combination"] for r in sign_wise if not r["severity"]}
-    missing_house = {r["combination"] for r in house_wise if not r["severity"]}
     print(f"Wrote {OUT} ({len(sign_wise)} sign, {len(house_wise)} house rows)")
+    print("Domain rows loaded:", domain_counts)
+    print("Domain rows stored (may exceed loaded when axis merges to multiple houses):", stored_domain_rows)
     if missing_sign:
         print("Sign combos without severity:", sorted(missing_sign))
-    if missing_house:
-        print("House combos without severity:", sorted(missing_house))
 
 
 if __name__ == "__main__":

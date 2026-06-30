@@ -252,7 +252,6 @@ export default function ResultPage() {
   const [activeTab, setActiveTab]     = useState<Tab>("planets");
   const [dashaMounted, setDashaMounted] = useState(false);
   const [transitMounted, setTransitMounted] = useState(false);
-  const [pitruMounted, setPitruMounted] = useState(false);
   const [kaalsarpaMounted, setKaalsarpaMounted] = useState(false);
   const [chandalMounted, setChandalMounted] = useState(false);
 
@@ -302,7 +301,6 @@ export default function ResultPage() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (mainTab === "pitru") setPitruMounted(true);
     if (mainTab === "kaalsarpa") setKaalsarpaMounted(true);
     if (mainTab === "chandal") setChandalMounted(true);
   }, [mainTab]);
@@ -621,10 +619,10 @@ export default function ResultPage() {
           </div>
         )}
 
-        {/* ── Pitru Dosha tab ── */}
-        {pitruMounted && chart && (
-          <div className={`flex-1 min-h-0 flex flex-col overflow-hidden ${mainTab !== "pitru" ? "hidden" : ""}`}>
-            <PitruDoshaPanel key={dashaReqKey} chart={chart} lang={lang} />
+        {/* ── Pitru Dosha tab (remount on each visit for fresh API data) ── */}
+        {mainTab === "pitru" && chart && (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <PitruDoshaPanel key={`pitru-${dashaReqKey}`} chart={chart} lang={lang} />
           </div>
         )}
 

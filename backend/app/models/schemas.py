@@ -114,6 +114,14 @@ class PitruDoshaSignFinding(BaseModel):
     modern_remedies: Optional[str] = None
 
 
+class PitruDoshaDomainImpact(BaseModel):
+    area_affected: str
+    impact: str
+    severity: Optional[str] = None
+    conventional_remedies: Optional[str] = None
+    modern_remedies: Optional[str] = None
+
+
 class PitruDoshaHouseFinding(BaseModel):
     combination: str
     sign: str
@@ -127,6 +135,7 @@ class PitruDoshaHouseFinding(BaseModel):
     house_wise_impact: Optional[str] = None
     house_wise_severity: Optional[str] = None
     health_focus: Optional[str] = None
+    domains: Optional[dict[str, PitruDoshaDomainImpact]] = None
     conventional_remedies: Optional[str] = None
     modern_remedies: Optional[str] = None
 
@@ -186,6 +195,13 @@ class KaalSarpaMitigation(BaseModel):
     mahapurusha_yogas: Optional[list[MahapurushaFinding]] = None
 
 
+class KaalSarpaDivisionalPresence(BaseModel):
+    division: int
+    name: str
+    area: str
+    orientation: Optional[str] = None
+
+
 class KaalSarpaResponse(BaseModel):
     present: bool
     type: Optional[KaalSarpaTypeInfo] = None
@@ -202,6 +218,7 @@ class KaalSarpaResponse(BaseModel):
     modern_remedies: Optional[str] = None
     positive_note: Optional[str] = None
     mitigating_factors: Optional[list[KaalSarpaMitigation]] = None
+    divisional_presence: Optional[list[KaalSarpaDivisionalPresence]] = None
     disclaimer: str
 
 

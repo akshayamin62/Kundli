@@ -96,6 +96,86 @@ VARGA_NAMES: dict[int, str] = {
     60: "D60 – Shashtiamsa",
 }
 
+# Classical area of life for each varga (mirrors frontend src/lib/vargaMeta.ts)
+VARGA_AREAS: dict[int, str] = {
+    1: "Overall life, personality",
+    2: "Wealth, finances",
+    3: "Siblings, courage",
+    4: "Property, home, fortune",
+    5: "Fame, authority, power",
+    6: "Diseases, enemies",
+    7: "Children, progeny",
+    8: "Longevity, obstacles",
+    9: "Marriage, dharma, spouse",
+    10: "Career, profession",
+    11: "Gains, achievements",
+    12: "Parents, ancestry",
+    13: "Rarely used",
+    14: "Rarely used",
+    15: "Spiritual inclinations",
+    16: "Vehicles, comforts, luxuries",
+    17: "Strength, authority",
+    18: "Conflicts, struggles",
+    19: "Spiritual development",
+    20: "Spirituality, worship",
+    21: "Status, recognition",
+    22: "Learning capacity",
+    23: "Intelligence",
+    24: "Education, academics",
+    25: "Fame, creativity",
+    26: "Weaknesses, defects",
+    27: "Physical & mental strength",
+    28: "Hidden strengths",
+    29: "Karmic tendencies",
+    30: "Misfortunes, hidden karma",
+    31: "Hidden weaknesses, subconscious karmic patterns",
+    32: "Material stability, hidden fortune fluctuations",
+    33: "Spiritual protection, unseen divine support",
+    34: "Obstacles in career growth and social rise",
+    35: "Mental endurance, resistance against adversity",
+    36: "Collective karma, social influence patterns",
+    37: "Family lineage effects and inherited tendencies",
+    38: "Sudden transformations and instability",
+    39: "Fortune evolution through spiritual maturity",
+    40: "Maternal lineage karma, ancestral blessings",
+    41: "Hidden talents emerging later in life",
+    42: "Emotional purification and inner healing",
+    43: "Dharma under pressure, ethical testing",
+    44: "Stability of accumulated karma and legacy",
+    45: "Paternal lineage karma, ancestral blessings",
+    46: "Stability of personal authority and influence",
+    47: "Intellectual refinement and advanced thinking",
+    48: "Deep subconscious tendencies and hidden fears",
+    49: "Destiny refinement through repeated experiences",
+    50: "Spiritual merit accumulated from past karmas",
+    51: "Internal moral conflicts and ethical evolution",
+    52: "Higher intuitive intelligence",
+    53: "Hidden psychological patterns",
+    54: "Persistence, determination, karmic effort",
+    55: "Recognition, honor, reputation at subtle level",
+    56: "Long-term karmic consequences of actions",
+    57: "Spiritual resilience and inner awakening",
+    58: "Dissolution of ego and karmic purification",
+    59: "Pre-final karmic refinement before D60",
+    60: "Past life karma, root karma",
+}
+
+
+def varga_display_name(n: int) -> str:
+    """Short chart name without the D-N prefix (e.g. Navamsa)."""
+    raw = VARGA_NAMES.get(n, f"D{n}")
+    if " – " in raw:
+        return raw.split(" – ", 1)[1]
+    return raw
+
+
+def varga_meta(n: int) -> dict[str, str | int]:
+    return {
+        "division": n,
+        "name": varga_display_name(n),
+        "area": VARGA_AREAS.get(n, ""),
+    }
+
 
 def _slice(deg_in_sign: float, n: int) -> int:
     """Zero-based slice index (0 … n-1) within a sign."""

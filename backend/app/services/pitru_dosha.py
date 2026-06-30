@@ -256,17 +256,20 @@ def _build_house_finding(
     hr = ref.house_lookup(_house_label(house), combination)
     if not hr:
         return None
+    domains = hr.get("domains", {})
+    health = domains.get("health", {})
     return {
         "combination": combination,
         "house": house,
         "house_label": _house_label(house),
         "sign": planet_sign,
         "detail": detail,
-        "house_wise_impact": hr["specific_impact"],
-        "house_wise_severity": hr.get("severity") or None,
-        "health_focus": hr["health_focus"],
-        "conventional_remedies": hr.get("conventional_remedies"),
-        "modern_remedies": hr.get("modern_remedies"),
+        "house_wise_impact": health.get("impact"),
+        "house_wise_severity": health.get("severity") or None,
+        "health_focus": health.get("area_affected"),
+        "domains": domains,
+        "conventional_remedies": health.get("conventional_remedies"),
+        "modern_remedies": health.get("modern_remedies"),
     }
 
 

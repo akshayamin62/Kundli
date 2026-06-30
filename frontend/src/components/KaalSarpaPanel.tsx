@@ -62,13 +62,20 @@ const LABELS: Record<Lang, Record<string, string>> = {
     loading: "Analyzing…",
     error: "Could not load Kaal Sarpa analysis.",
     absentTitle: "Kaal Sarpa not present",
-    absentBody: "Not all seven grahas lie on one side of the Rahu–Ketu axis.",
+    absentBody: "Not all seven grahas lie on one side of the Rahu–Ketu axis in D1 (birth chart).",
+    absentTitleD1: "Not present in D1 (birth chart)",
+    absentBodyD1:
+      "All seven grahas are not on one side of the Rahu–Ketu axis in the birth chart. See divisional charts below where Kaal Sarpa does appear.",
+    absentDivisionalNote:
+      "Kaal Sarpa is not in D1, but it appears in one or more divisional charts listed below.",
     mitigatedNote: "Present, but strong chart factors may reduce its effects.",
     rahuToKetu: "Rahu → Ketu",
     ketuToRahu: "Ketu → Rahu",
     infoOnly: "Info",
     lifeDomains: "Life domains",
     analysis: "Detailed analysis",
+    divisionalPresence: "Kaal Sarpa in divisional charts",
+    divisionalMeaning: "Area of life",
   },
   hi: {
     title: "काल सर्प योग",
@@ -99,13 +106,20 @@ const LABELS: Record<Lang, Record<string, string>> = {
     loading: "विश्लेषण…",
     error: "काल सर्प लोड नहीं हो सका।",
     absentTitle: "काल सर्प नहीं",
-    absentBody: "सभी ग्रह राहु–केतु अक्ष के एक ओर नहीं हैं।",
+    absentBody: "D1 (जन्म कुंडली) में सभी सात ग्रह राहु–केतु अक्ष के एक ओर नहीं हैं।",
+    absentTitleD1: "D1 (जन्म कुंडली) में नहीं",
+    absentBodyD1:
+      "जन्म कुंडली में सभी ग्रह राहु–केतु अक्ष के एक ओर नहीं हैं। नीचे उन विभाजन कुंडलियों में देखें जहाँ काल सर्प है।",
+    absentDivisionalNote:
+      "D1 में काल सर्प नहीं है, परंतु नीचे सूचीबद्ध एक या अधिक विभाजन कुंडलियों में उपस्थित है।",
     mitigatedNote: "उपस्थित है, परंतु प्रबल योग प्रभाव कम कर सकते हैं।",
     rahuToKetu: "राहु → केतु",
     ketuToRahu: "केतु → राहु",
     infoOnly: "जानकारी",
     lifeDomains: "जीवन क्षेत्र",
     analysis: "विस्तृत विश्लेषण",
+    divisionalPresence: "विभाजन कुंडली में काल सर्प",
+    divisionalMeaning: "जीवन क्षेत्र",
   },
   gu: {
     title: "કાલ સર્પ યોગ",
@@ -136,13 +150,20 @@ const LABELS: Record<Lang, Record<string, string>> = {
     loading: "વિશ્લેષણ…",
     error: "કાલ સર્પ લોડ થયો નહીં.",
     absentTitle: "કાલ સર્પ નથી",
-    absentBody: "બધા ગ્રહ રાહુ–કેતુ અક્ષની એક બાજુએ નથી.",
+    absentBody: "D1 (જન્મ કુંડળી) માં બધા સાત ગ્રહ રાહુ–કેતુ અક્ષની એક બાજુએ નથી.",
+    absentTitleD1: "D1 (જન્મ કુંડળી) માં નથી",
+    absentBodyD1:
+      "જન્મ કુંડળીમાં બધા ગ્રહ રાહુ–કેતુ અક્ષની એક બાજુએ નથી. નીચે જ્યાં કાલ સર્પ છે તે વિભાજન કુંડળીઓ જુઓ.",
+    absentDivisionalNote:
+      "D1 માં કાલ સર્પ નથી, પરંતુ નીચે સૂચિબદ્ધ એક અથવા વધુ વિભાજન કુંડળીઓમાં હાજર છે.",
     mitigatedNote: "હાજર છે, પરંતુ મજબૂત યોગો અસર ઘટાડી શકે છે.",
     rahuToKetu: "રાહુ → કેતુ",
     ketuToRahu: "કેતુ → રાહુ",
     infoOnly: "માહિતી",
     lifeDomains: "જીવન ક્ષેત્રો",
     analysis: "વિગતવાર વિશ્લેષણ",
+    divisionalPresence: "વિભાજન કુંડળીમાં કાલ સર્પ",
+    divisionalMeaning: "જીવન ક્ષેત્ર",
   },
 };
 
@@ -213,6 +234,58 @@ function YogaExtras({
   );
 }
 
+function DivisionalPresenceList({
+  items,
+  t,
+}: {
+  items: NonNullable<KaalSarpaResponse["divisional_presence"]>;
+  t: Record<string, string>;
+}) {
+  const otherCharts = items.filter((v) => v.division !== 1);
+  if (otherCharts.length === 0) return null;
+
+  return (
+    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {otherCharts.map((v) => (
+        <li
+          key={v.division}
+          className="rounded-xl border border-sky-200/60 bg-white/90 p-3 min-w-0"
+        >
+          <p className="dosha-font-body text-sm sm:text-base font-bold text-[#070235] leading-snug">
+            D{v.division} – {v.name}
+          </p>
+          {v.area && (
+            <p className="dosha-font-body text-xs font-semibold uppercase tracking-wide text-[#674bb5] mt-1">
+              {t.divisionalMeaning}
+            </p>
+          )}
+          {v.area && (
+            <p className="dosha-font-body text-sm text-[#47464f] leading-relaxed mt-0.5">
+              {v.area}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DivisionalPresenceSection({
+  items,
+  t,
+}: {
+  items: NonNullable<KaalSarpaResponse["divisional_presence"]>;
+  t: Record<string, string>;
+}) {
+  if (items.filter((v) => v.division !== 1).length === 0) return null;
+
+  return (
+    <DetailsPanel theme="kaalsarpa" title={t.divisionalPresence} variant="causes" span={2}>
+      <DivisionalPresenceList items={items} t={t} />
+    </DetailsPanel>
+  );
+}
+
 interface Props {
   chart: ChartResponse;
   lang: Lang;
@@ -273,8 +346,11 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
       factor: f.factor,
       matched: f.matched,
       detail: f.detail,
-      isInfo: f.factor === "D-9 Kaal Sarpa note",
     })) ?? [];
+
+  const divisionalCharts =
+    data.divisional_presence?.filter((v) => v.division !== 1) ?? [];
+  const divisionalOnly = !data.present && divisionalCharts.length > 0;
 
   const overviewStats: OverviewStat[] = [
     { label: t.type, value: typeName ?? "—", wide: true },
@@ -307,7 +383,14 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
       />
 
       {!data.present ? (
-        <AbsentReport title={t.absentTitle} body={t.absentBody} />
+        <>
+          {divisionalOnly && <NoticeBanner>{t.absentDivisionalNote}</NoticeBanner>}
+          <AbsentReport
+            title={divisionalOnly ? t.absentTitleD1 : t.absentTitle}
+            body={divisionalOnly ? t.absentBodyD1 : t.absentBody}
+          />
+          <DivisionalPresenceSection items={data.divisional_presence ?? []} t={t} />
+        </>
       ) : (
         <>
           {isMitigated && <NoticeBanner>{t.mitigatedNote}</NoticeBanner>}
@@ -413,6 +496,8 @@ export default function KaalSarpaPanel({ chart, lang }: Props) {
             )}
           </FlowLayout>
           )}
+
+          <DivisionalPresenceSection items={data.divisional_presence ?? []} t={t} />
         </>
       )}
 

@@ -36,6 +36,13 @@ const LABELS: Record<Lang, Record<string, string>> = {
     houseWiseImpact: "Impact",
     natureTheme: "Nature & theme",
     healthFocus: "Health focus",
+    areaAffected: "Area affected",
+    domainImpact: "Impact",
+    healthTab: "Health",
+    careerTab: "Career",
+    financeTab: "Finance",
+    relationshipTab: "Relationship",
+    noDomainFindings: "No house-wise combinations for this life area.",
     sign: "Sign",
     rahu: "Rahu",
     ketu: "Ketu",
@@ -70,6 +77,13 @@ const LABELS: Record<Lang, Record<string, string>> = {
     houseWiseImpact: "प्रभाव",
     natureTheme: "प्रकृति / विषय",
     healthFocus: "स्वास्थ्य",
+    areaAffected: "प्रभावित क्षेत्र",
+    domainImpact: "प्रभाव",
+    healthTab: "स्वास्थ्य",
+    careerTab: "करियर",
+    financeTab: "वित्त",
+    relationshipTab: "संबंध",
+    noDomainFindings: "इस जीवन क्षेत्र के लिए कोई भाव संयोजन नहीं।",
     sign: "राशि",
     rahu: "राहु",
     ketu: "केतु",
@@ -104,6 +118,13 @@ const LABELS: Record<Lang, Record<string, string>> = {
     houseWiseImpact: "અસર",
     natureTheme: "સ્વભાવ / વિષય",
     healthFocus: "આરોગ્ય",
+    areaAffected: "પ્રભાવિત ક્ષેત્ર",
+    domainImpact: "અસર",
+    healthTab: "આરોગ્ય",
+    careerTab: "કેરિયર",
+    financeTab: "નાણાં",
+    relationshipTab: "સંબંધ",
+    noDomainFindings: "આ જીવન ક્ષેત્ર માટે કોઈ ભાવ સંયોજન નથી.",
     sign: "રાશિ",
     rahu: "રાહુ",
     ketu: "કેતુ",
@@ -132,6 +153,9 @@ const LABELS: Record<Lang, Record<string, string>> = {
 };
 
 type ViewTab = "all" | "sign" | "house";
+type DomainTab = "health" | "career" | "finance" | "relationship";
+
+const DOMAIN_TABS: DomainTab[] = ["health", "career", "finance", "relationship"];
 
 function tSign(name: string, lang: Lang): string {
   const i = SIGN_NAMES.en.indexOf(name);
@@ -158,16 +182,43 @@ function buildSignFields(f: PitruDoshaSignFinding, t: Record<string, string>): F
   return fields;
 }
 
-function buildHouseFields(f: PitruDoshaHouseFinding, t: Record<string, string>): FindingField[] {
+function buildHouseFields(
+  f: PitruDoshaHouseFinding,
+  t: Record<string, string>,
+  domain: DomainTab,
+): FindingField[] {
   const fields: FindingField[] = [];
-  if (f.house_wise_impact)
-    fields.push({ label: t.houseWiseImpact, value: f.house_wise_impact, kind: "effect" });
-  if (f.health_focus) fields.push({ label: t.healthFocus, value: f.health_focus, kind: "effect" });
-  if (f.conventional_remedies)
+  const domainData = f.domains?.[domain];
+  if (domainData) {
+    if (domainData.area_affected) {
+      fields.push({ label: t.areaAffected, value: domainData.area_affected, kind: "effect" });
+    }
+    if (domainData.impact) {
+      fields.push({ label: t.domainImpact, value: domainData.impact, kind: "effect" });
+    }
+  } else if (domain === "health") {
+    if (f.house_wise_impact) {
+      fields.push({ label: t.houseWiseImpact, value: f.house_wise_impact, kind: "effect" });
+    }
+    if (f.health_focus) {
+      fields.push({ label: t.healthFocus, value: f.health_focus, kind: "effect" });
+    }
+  }
+  if (domainData?.conventional_remedies) {
+    fields.push({ label: t.conventionalRemedies, value: domainData.conventional_remedies, kind: "remedy" });
+  } else if (domain === "health" && f.conventional_remedies) {
     fields.push({ label: t.conventionalRemedies, value: f.conventional_remedies, kind: "remedy" });
-  if (f.modern_remedies)
+  }
+  if (domainData?.modern_remedies) {
+    fields.push({ label: t.modernRemedies, value: domainData.modern_remedies, kind: "remedy" });
+  } else if (domain === "health" && f.modern_remedies) {
     fields.push({ label: t.modernRemedies, value: f.modern_remedies, kind: "remedy" });
+  }
   return fields;
+}
+
+function houseSeverityForDomain(f: PitruDoshaHouseFinding, domain: DomainTab): string | null | undefined {
+  return f.domains?.[domain]?.severity ?? (domain === "health" ? f.house_wise_severity : null);
 }
 
 function signMeta(f: PitruDoshaSignFinding, lang: Lang, t: Record<string, string>): string {
@@ -195,12 +246,14 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<ViewTab>("all");
-  const [showDetails, setShowDetails] = useState(false);
+  const [domainTab, setDomainTab] = useState<DomainTab>("health");
+  const [showDetails, setShowDetails] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setData(null);
     calculatePitruDosha(chart)
       .then((res) => {
         if (!cancelled) setData(res);
@@ -219,6 +272,33 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
   const signFindings = data?.sign_findings ?? [];
   const houseFindings = data?.house_findings ?? [];
   const totalCount = signFindings.length + houseFindings.length;
+
+  const domainHouseFindings = useMemo(() => {
+    if (domainTab === "health") {
+      return houseFindings.filter((f) => f.domains?.health || f.house_wise_impact || f.health_focus);
+    }
+    return houseFindings.filter((f) => f.domains?.[domainTab]);
+  }, [houseFindings, domainTab]);
+
+  const domainTabLabels: Record<DomainTab, string> = {
+    health: t.healthTab,
+    career: t.careerTab,
+    finance: t.financeTab,
+    relationship: t.relationshipTab,
+  };
+
+  const domainCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        DOMAIN_TABS.map((key) => [
+          key,
+          key === "health"
+            ? houseFindings.filter((f) => f.domains?.health || f.house_wise_impact || f.health_focus).length
+            : houseFindings.filter((f) => f.domains?.[key]).length,
+        ]),
+      ) as Record<DomainTab, number>,
+    [houseFindings],
+  );
 
   const highestSeverity = useMemo(() => {
     const severities = [
@@ -320,22 +400,41 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
             )}
 
             {showHouse && houseFindings.length > 0 && (
+              <div className="dosha-glass-card rounded-2xl p-3 md:p-4 min-w-0">
+                <SegmentTabs
+                  theme="pitru"
+                  active={domainTab}
+                  onChange={setDomainTab}
+                  tabs={DOMAIN_TABS.map((id) => ({
+                    id,
+                    label: domainTabLabels[id],
+                    count: domainCounts[id],
+                  }))}
+                />
+              </div>
+            )}
+
+            {showHouse && domainHouseFindings.length > 0 && (
               <FindingsSection
                 label={viewTab === "all" ? <SubsectionLabel theme="pitru">{t.houseWiseHeading}</SubsectionLabel> : undefined}
               >
-                {houseFindings.map((f, i) => (
+                {domainHouseFindings.map((f, i) => (
                   <FindingCard
-                    key={`house-${f.combination}-${f.house}-${i}`}
+                    key={`house-${domainTab}-${f.combination}-${f.house}-${i}`}
                     theme="pitru"
                     index={i + 1}
                     title={f.combination}
                     meta={houseMeta(f, lang, t)}
-                    severity={f.house_wise_severity}
-                    fields={buildHouseFields(f, t)}
+                    severity={houseSeverityForDomain(f, domainTab)}
+                    fields={buildHouseFields(f, t, domainTab)}
                     compact
                   />
                 ))}
               </FindingsSection>
+            )}
+
+            {showHouse && houseFindings.length > 0 && domainHouseFindings.length === 0 && (
+              <p className="dosha-font-body text-sm text-[#47464f] px-1">{t.noDomainFindings}</p>
             )}
 
             {showHouse && houseFindings.length === 0 && (

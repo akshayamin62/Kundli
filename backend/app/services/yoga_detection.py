@@ -591,70 +591,7 @@ def evaluate_mitigations(chart: dict) -> tuple[list[dict[str, Any]], str]:
         }
     )
 
-    # M8 — D-9 note (informational)
-    from app.services.varga import varga_sign_index
-
-    d9_present = _kaal_sarpa_d9_note(chart, by, varga_sign_index)
-    factors.append(
-        {
-            "factor": "D-9 Kaal Sarpa note",
-            "matched": False,  # informational only — never a mitigation
-            "detail": (
-                "Navamsa also shows Kaal Sarpa (informational)"
-                if d9_present
-                else "Navamsa does not repeat Kaal Sarpa (informational)"
-            ),
-            "weight": "low",
-            "severity_reduction": "none",
-            "informational": True,
-            "navamsa_repeats": d9_present,
-        }
-    )
-
     return factors, m2_strength
-
-
-def _sign_in_arc(sign: str, start_sign: str, end_sign: str) -> bool:
-    if sign == start_sign or sign == end_sign:
-        return True
-    si = ZODIAC_SIGNS.index(sign)
-    rs = ZODIAC_SIGNS.index(start_sign)
-    es = ZODIAC_SIGNS.index(end_sign)
-    if rs < es:
-        return rs < si < es
-    return si > rs or si < es
-
-
-def _all_signs_in_arc(signs: list[str], start_sign: str, end_sign: str) -> bool:
-    return all(_sign_in_arc(s, start_sign, end_sign) for s in signs)
-
-
-_TARA_GRAHAS = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
-
-
-def _kaal_sarpa_d9_note(chart: dict, by: dict[str, dict], varga_sign_index) -> bool:
-    """Informational: whether D-9 also has all grahas on one side of nodal axis."""
-    rahu = by.get("Rahu")
-    ketu = by.get("Ketu")
-    if not rahu or not ketu:
-        return False
-
-    def d9_sign(p: dict) -> str:
-        lon = p.get("longitude")
-        if lon is None:
-            return ""
-        return ZODIAC_SIGNS[varga_sign_index(float(lon), 9)]
-
-    r9 = d9_sign(rahu)
-    k9 = d9_sign(ketu)
-    if not r9 or not k9:
-        return False
-
-    graha_signs = [d9_sign(by[g]) for g in _TARA_GRAHAS if g in by]
-    if len(graha_signs) != 7:
-        return False
-
-    return _all_signs_in_arc(graha_signs, r9, k9) or _all_signs_in_arc(graha_signs, k9, r9)
 
 
 def adjust_severity(base_severity: str, factors: list[dict], m2_strength: str) -> str:

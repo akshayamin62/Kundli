@@ -33,6 +33,8 @@ async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
 export async function calculatePitruDosha(chart: ChartResponse): Promise<PitruDoshaResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/pitru-dosha`, {
     method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(chart),
   });
   if (!res.ok) {
