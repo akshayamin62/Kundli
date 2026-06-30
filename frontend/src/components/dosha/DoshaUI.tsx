@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 // ── AuraAxis design tokens ───────────────────────────────────────────────────
 
@@ -929,22 +929,19 @@ export type FindingField = {
   kind?: "effect" | "remedy";
 };
 
-export function FindingCard({
-  theme,
-  index,
-  title,
-  meta,
-  severity,
-  fields,
-  compact = false,
-}: {
-  theme: DoshaTheme;
-  index: number;
-  title: string;
-  meta?: string;
+export type FindingDomainSection = {
+  id: string;
+  label: string;
   severity?: string | null;
   fields: FindingField[];
-  compact?: boolean;
+};
+
+function FindingCardFields({
+  fields,
+  compact,
+}: {
+  fields: FindingField[];
+  compact: boolean;
 }) {
   const effectFields = fields.filter((f) => f.kind !== "remedy");
   const remedyFields = fields.filter((f) => f.kind === "remedy");
@@ -957,6 +954,115 @@ export function FindingCard({
     f.label.toLowerCase().includes("conventional"),
   );
   const modern = remedyFields.find((f) => f.label.toLowerCase().includes("modern"));
+
+  return (
+    <div className={`grid gap-3 min-w-0 flex-1 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
+      {impactField && (
+        <BentoTextCell
+          icon="all_inclusive"
+          iconColor="text-[#674bb5]"
+          title={impactField.label}
+          primary={parseListItems(impactField.value)[0] ?? impactField.value}
+          secondary={
+            parseListItems(impactField.value).length > 1
+              ? parseListItems(impactField.value).slice(1).join(" · ")
+              : undefined
+          }
+          bullets={extraBullets.length > 0 ? extraBullets : undefined}
+          compact={compact}
+        />
+      )}
+      {secondaryField && (
+        <BentoTextCell
+          icon="healing"
+          iconColor="text-[#070235]"
+          title={secondaryField.label}
+          primary={parseListItems(secondaryField.value)[0] ?? secondaryField.value}
+          bullets={
+            parseListItems(secondaryField.value).length > 1
+              ? parseListItems(secondaryField.value).slice(1)
+              : undefined
+          }
+          compact={compact}
+        />
+      )}
+      {conventional && (
+        <RemedyBulletList
+          title={conventional.label}
+          icon="temple_buddhist"
+          items={parseListItems(conventional.value)}
+          compact={compact}
+        />
+      )}
+      {modern && (
+        <RemedyBulletList
+          title={modern.label}
+          icon="checklist_rtl"
+          items={parseListItems(modern.value)}
+          compact={compact}
+        />
+      )}
+    </div>
+  );
+}
+
+function CardDomainTabs<T extends string>({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { id: T; label: string }[];
+  active: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1 p-1 bg-[#070235]/[0.04] rounded-xl border border-[#c8c5d0]/30 w-full">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          className={`flex-1 min-w-[4.5rem] px-2.5 py-2 rounded-lg dosha-font-body text-xs font-bold transition-all duration-200 ${
+            active === tab.id
+              ? "bg-[#1e1b4b] text-white shadow-sm"
+              : "text-[#47464f] hover:bg-white/90 hover:text-[#070235]"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function FindingCard({
+  theme,
+  index,
+  title,
+  meta,
+  severity,
+  fields,
+  domainSections,
+  compact = false,
+}: {
+  theme: DoshaTheme;
+  index: number;
+  title: string;
+  meta?: string;
+  severity?: string | null;
+  fields?: FindingField[];
+  domainSections?: FindingDomainSection[];
+  compact?: boolean;
+}) {
+  const sections = domainSections ?? [];
+  const useDomainTabs = sections.length > 1;
+  const [activeDomain, setActiveDomain] = useState(sections[0]?.id ?? "");
+
+  const activeSection = useDomainTabs
+    ? sections.find((s) => s.id === activeDomain) ?? sections[0]
+    : sections[0];
+  const displayFields = activeSection?.fields ?? fields ?? [];
+  const displaySeverity = activeSection?.severity ?? severity;
 
   const metaParts = meta?.split(" · ") ?? [];
 
@@ -977,7 +1083,9 @@ export function FindingCard({
       >
         <div className="flex items-start justify-between gap-3 min-w-0">
           <span className={CARD_INDEX_BADGE}>#{index}</span>
-          {severity && <KarmaIntensityMeter label="Karma Intensity" severity={severity} />}
+          {displaySeverity && (
+            <KarmaIntensityMeter label="Karma Intensity" severity={displaySeverity} />
+          )}
         </div>
         <h3
           className={`dosha-font-display font-bold text-[#070235] leading-snug break-words ${
@@ -1000,53 +1108,17 @@ export function FindingCard({
         )}
       </div>
 
-      <div className={`grid gap-3 min-w-0 flex-1 ${compact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"}`}>
-        {impactField && (
-          <BentoTextCell
-            icon="all_inclusive"
-            iconColor="text-[#674bb5]"
-            title={impactField.label}
-            primary={parseListItems(impactField.value)[0] ?? impactField.value}
-            secondary={
-              parseListItems(impactField.value).length > 1
-                ? parseListItems(impactField.value).slice(1).join(" · ")
-                : undefined
-            }
-            bullets={extraBullets.length > 0 ? extraBullets : undefined}
-            compact={compact}
+      {useDomainTabs && (
+        <div className="mb-3.5">
+          <CardDomainTabs
+            tabs={sections.map((s) => ({ id: s.id, label: s.label }))}
+            active={activeDomain}
+            onChange={setActiveDomain}
           />
-        )}
-        {secondaryField && (
-          <BentoTextCell
-            icon="healing"
-            iconColor="text-[#070235]"
-            title={secondaryField.label}
-            primary={parseListItems(secondaryField.value)[0] ?? secondaryField.value}
-            bullets={
-              parseListItems(secondaryField.value).length > 1
-                ? parseListItems(secondaryField.value).slice(1)
-                : undefined
-            }
-            compact={compact}
-          />
-        )}
-        {conventional && (
-          <RemedyBulletList
-            title={conventional.label}
-            icon="temple_buddhist"
-            items={parseListItems(conventional.value)}
-            compact={compact}
-          />
-        )}
-        {modern && (
-          <RemedyBulletList
-            title={modern.label}
-            icon="checklist_rtl"
-            items={parseListItems(modern.value)}
-            compact={compact}
-          />
-        )}
-      </div>
+        </div>
+      )}
+
+      <FindingCardFields fields={displayFields} compact={compact} />
     </article>
   );
 }

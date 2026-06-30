@@ -166,6 +166,30 @@ type DomainTab = "health" | "career" | "finance" | "relationship";
 
 const DOMAIN_TABS: DomainTab[] = ["health", "career", "finance", "relationship"];
 
+function houseMatchesDomain(f: PitruDoshaHouseFinding, domain: DomainTab): boolean {
+  if (domain === "health") {
+    return Boolean(f.domains?.health || f.house_wise_impact || f.health_focus);
+  }
+  return Boolean(f.domains?.[domain]);
+}
+
+function domainsForHouse(f: PitruDoshaHouseFinding): DomainTab[] {
+  return DOMAIN_TABS.filter((domain) => houseMatchesDomain(f, domain));
+}
+
+function buildDomainSections(
+  f: PitruDoshaHouseFinding,
+  t: Record<string, string>,
+  domainLabels: Record<DomainTab, string>,
+) {
+  return domainsForHouse(f).map((domain) => ({
+    id: domain,
+    label: domainLabels[domain],
+    severity: houseSeverityForDomain(f, domain),
+    fields: buildHouseFields(f, t, domain),
+  }));
+}
+
 function tPlanet(name: string, lang: Lang): string {
   return PLANET_NAMES[lang][name] ?? name;
 }
@@ -284,14 +308,14 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
 
   const signFindings = data?.sign_findings ?? [];
   const houseFindings = data?.house_findings ?? [];
-  const totalCount = signFindings.length + houseFindings.length;
+  const signCount = signFindings.length;
+  const houseCount = houseFindings.length;
+  const totalCount = data?.confirmation_count ?? signCount + houseCount;
 
-  const domainHouseFindings = useMemo(() => {
-    if (domainTab === "health") {
-      return houseFindings.filter((f) => f.domains?.health || f.house_wise_impact || f.health_focus);
-    }
-    return houseFindings.filter((f) => f.domains?.[domainTab]);
-  }, [houseFindings, domainTab]);
+  const domainHouseFindings = useMemo(
+    () => houseFindings.filter((f) => houseMatchesDomain(f, domainTab)),
+    [houseFindings, domainTab],
+  );
 
   const domainTabLabels: Record<DomainTab, string> = {
     health: t.healthTab,
@@ -305,9 +329,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
       Object.fromEntries(
         DOMAIN_TABS.map((key) => [
           key,
-          key === "health"
-            ? houseFindings.filter((f) => f.domains?.health || f.house_wise_impact || f.health_focus).length
-            : houseFindings.filter((f) => f.domains?.[key]).length,
+          houseFindings.filter((f) => houseMatchesDomain(f, key)).length,
         ]),
       ) as Record<DomainTab, number>,
     [houseFindings],
@@ -332,14 +354,17 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
 
   const showSign = viewTab === "all" || viewTab === "sign";
   const showHouse = viewTab === "all" || viewTab === "house";
+  const filterHouseByDomain = viewTab === "house";
+  const displayedHouseFindings = filterHouseByDomain ? domainHouseFindings : houseFindings;
+  const houseTabCount = filterHouseByDomain ? domainCounts[domainTab] : houseCount;
 
   const overviewStats: OverviewStat[] = [
     ...(data.janma_rashi
       ? [{ label: t.janmaRashi, value: tSign(data.janma_rashi, lang) }]
       : []),
     { label: t.total, value: totalCount },
-    { label: t.signCount, value: signFindings.length },
-    { label: t.houseCount, value: houseFindings.length },
+    { label: t.signCount, value: signCount },
+    { label: t.houseCount, value: houseCount },
   ];
 
   const severityItems = highestSeverity
@@ -422,8 +447,8 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
                 onChange={setViewTab}
                 tabs={[
                   { id: "all", label: t.allTab, count: totalCount },
-                  { id: "sign", label: t.signTab, count: signFindings.length },
-                  { id: "house", label: t.houseTab, count: houseFindings.length },
+                  { id: "sign", label: t.signTab, count: signCount },
+                  { id: "house", label: t.houseTab, count: houseTabCount },
                 ]}
               />
             </div>
@@ -451,7 +476,7 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
               <p className="dosha-font-body text-sm text-[#47464f] px-1">{t.noSignFindings}</p>
             )}
 
-            {showHouse && houseFindings.length > 0 && (
+            {showHouse && filterHouseByDomain && houseFindings.length > 0 && (
               <div className="dosha-glass-card rounded-2xl p-3 md:p-4 min-w-0">
                 <SegmentTabs
                   theme="pitru"
@@ -466,26 +491,31 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
               </div>
             )}
 
-            {showHouse && domainHouseFindings.length > 0 && (
+            {showHouse && displayedHouseFindings.length > 0 && (
               <FindingsSection
                 label={viewTab === "all" ? <SubsectionLabel theme="pitru">{t.houseWiseHeading}</SubsectionLabel> : undefined}
               >
-                {domainHouseFindings.map((f, i) => (
+                {displayedHouseFindings.map((f, i) => (
                   <FindingCard
-                    key={`house-${domainTab}-${f.combination}-${f.house}-${i}`}
+                    key={`house-${filterHouseByDomain ? domainTab : "all"}-${f.combination}-${f.house}-${i}`}
                     theme="pitru"
                     index={i + 1}
                     title={f.combination}
                     meta={houseMeta(f, lang, t)}
-                    severity={houseSeverityForDomain(f, domainTab)}
-                    fields={buildHouseFields(f, t, domainTab)}
+                    domainSections={
+                      filterHouseByDomain ? undefined : buildDomainSections(f, t, domainTabLabels)
+                    }
+                    fields={filterHouseByDomain ? buildHouseFields(f, t, domainTab) : undefined}
+                    severity={
+                      filterHouseByDomain ? houseSeverityForDomain(f, domainTab) : undefined
+                    }
                     compact
                   />
                 ))}
               </FindingsSection>
             )}
 
-            {showHouse && houseFindings.length > 0 && domainHouseFindings.length === 0 && (
+            {showHouse && filterHouseByDomain && houseFindings.length > 0 && displayedHouseFindings.length === 0 && (
               <p className="dosha-font-body text-sm text-[#47464f] px-1">{t.noDomainFindings}</p>
             )}
 

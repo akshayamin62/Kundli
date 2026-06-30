@@ -8,6 +8,7 @@ Sign-wise and house-wise are separate:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.data import pitru_dosha_data as ref
@@ -108,8 +109,45 @@ def _same_sign(a: dict, b: dict) -> bool:
     return a.get("sign") == b.get("sign")
 
 
-def _house_of(p: dict) -> int:
+def _asc_sign(chart: dict) -> str:
+    angles = chart.get("angles") or {}
+    asc = angles.get("ascendant") or {}
+    sign = str(asc.get("sign") or "")
+    if sign in ZODIAC_SIGNS:
+        return sign
+    return _house_sign(chart, 1)
+
+
+def _whole_sign_house(sign: str, asc_sign: str) -> int:
+    if not sign or not asc_sign:
+        return 0
+    if sign not in ZODIAC_SIGNS or asc_sign not in ZODIAC_SIGNS:
+        return 0
+    return (ZODIAC_SIGNS.index(sign) - ZODIAC_SIGNS.index(asc_sign)) % 12 + 1
+
+
+def _house_of(p: dict, chart: dict | None = None) -> int:
+    """Whole-sign bhava from planet rashi and lagna (Parashari default for pitru)."""
+    if chart is not None:
+        ws = _whole_sign_house(str(p.get("sign") or ""), _asc_sign(chart))
+        if ws:
+            return ws
     return int(p.get("house") or 0)
+
+
+def _pitru_lord_of_house(chart: dict, by: dict[str, dict], house_num: int) -> dict | None:
+    """
+    Lord for '{n}th lord' pitru combos.
+
+    For 11th-lord rows when lagna is Aquarius (11th rashi), pitru references use
+    the lagna lord Saturn — lord of the 11th zodiac sign — not Jupiter (lord of
+    the 11th bhava, Sagittarius).
+    """
+    asc = _asc_sign(chart)
+    if house_num == 11 and asc == "Aquarius":
+        lord_name = SIGN_LORDS.get(asc)
+        return by.get(lord_name) if lord_name else None
+    return _house_lord(chart, house_num, by)
 
 
 def _varga_sign(longitude: float, n: int) -> str:
@@ -133,15 +171,118 @@ def _sun_weak_in_varga(by: dict[str, dict], n: int) -> tuple[bool, str | None]:
 
 
 def _house_sign(chart: dict, num: int) -> str:
+    """Whole-sign rashi on the Nth bhava (Parashari default for pitru)."""
+    asc = _asc_sign(chart)
+    if asc in ZODIAC_SIGNS and 1 <= num <= 12:
+        return ZODIAC_SIGNS[(ZODIAC_SIGNS.index(asc) + num - 1) % 12]
     for h in chart.get("houses", []):
         if int(h.get("number", 0)) == num:
             return str(h.get("sign", "Aries"))
     return "Aries"
 
 
-def _ninth_lord(chart: dict, by: dict[str, dict]) -> dict | None:
-    lord = SIGN_LORDS.get(_house_sign(chart, 9))
-    return by.get(lord) if lord else None
+def _by_for_affliction(chart: dict, by: dict[str, dict]) -> dict[str, dict]:
+    """Planet dicts with whole-sign houses for affliction / node drishti."""
+    return {name: {**planet, "house": _house_of(planet, chart)} for name, planet in by.items()}
+
+
+def _is_afflicted_in_chart(planet: dict, chart: dict, by: dict[str, dict]) -> bool:
+    by_ws = _by_for_affliction(chart, by)
+    name = str(planet.get("name", ""))
+    if name == "North Node":
+        name = "Rahu"
+    elif name == "South Node":
+        name = "Ketu"
+    p = by_ws.get(name) or {**planet, "house": _house_of(planet, chart)}
+    return is_afflicted(p, by_ws)
+
+
+def _afflicted_by_rahu_ketu_in_chart(planet: dict, chart: dict, by: dict[str, dict]) -> bool:
+    by_ws = _by_for_affliction(chart, by)
+    name = str(planet.get("name", ""))
+    p = by_ws.get(name) or {**planet, "house": _house_of(planet, chart)}
+    return _afflicted_by_rahu_ketu(p, by_ws)
+
+
+def _house_lord(chart: dict, house_num: int, by: dict[str, dict]) -> dict | None:
+    lord_name = SIGN_LORDS.get(_house_sign(chart, house_num))
+    return by.get(lord_name) if lord_name else None
+
+
+def _parse_house_num(token: str) -> int:
+    return int(re.sub(r"(?:st|nd|rd|th)$", "", token, flags=re.I))
+
+
+def _parse_lord_placement(combo: str) -> tuple[int, list[int], bool] | None:
+    """
+    Parse house-lord placement combos from pitru_dosha_data.
+    Returns (lord_of_house, [placement_houses], require_afflicted).
+    """
+    patterns: list[tuple[str, bool]] = [
+        (r"^(\d+(?:st|nd|rd|th)?) lord in (\d+(?:st|nd|rd|th)?)/(\d+(?:st|nd|rd|th)?) afflicted$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord in (\d+(?:st|nd|rd|th)?) afflicted$", True),
+        (r"^Afflicted (\d+(?:st|nd|rd|th)?) lord in (\d+(?:st|nd|rd|th)?)$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord afflicted in (\d+(?:st|nd|rd|th)?)$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord in (\d+(?:st|nd|rd|th)?) but afflicted$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord afflicted from (\d+(?:st|nd|rd|th)?)$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord afflicted$", True),
+        (r"^(\d+(?:st|nd|rd|th)?) lord in (\d+(?:st|nd|rd|th)?)$", False),
+    ]
+    for pattern, require_afflicted in patterns:
+        m = re.match(pattern, combo, re.I)
+        if not m:
+            continue
+        groups = m.groups()
+        if len(groups) == 3:
+            return (
+                _parse_house_num(groups[0]),
+                [_parse_house_num(groups[1]), _parse_house_num(groups[2])],
+                require_afflicted,
+            )
+        if len(groups) == 2:
+            return (
+                _parse_house_num(groups[0]),
+                [_parse_house_num(groups[1])],
+                require_afflicted,
+            )
+        if len(groups) == 1:
+            house = _parse_house_num(groups[0])
+            return house, [house], require_afflicted
+    return None
+
+
+def _detect_lord_placements(
+    chart: dict,
+    by: dict[str, dict],
+    push_house: Any,
+) -> None:
+    """Match '{n}th lord in {m}th afflicted' and related rows from pitru_dosha_data."""
+    seen: set[str] = set()
+    for row in ref.HOUSE_WISE:
+        combo = row["combination"]
+        if combo in seen:
+            continue
+        parsed = _parse_lord_placement(combo)
+        if not parsed:
+            continue
+        seen.add(combo)
+        lord_of_house, placement_houses, require_afflicted = parsed
+        lord = _pitru_lord_of_house(chart, by, lord_of_house)
+        if not lord:
+            continue
+        lh = _house_of(lord, chart)
+        if lh not in placement_houses:
+            continue
+        if require_afflicted and not _is_afflicted_in_chart(lord, chart, by):
+            continue
+        if not require_afflicted and _is_afflicted_in_chart(lord, chart, by):
+            continue
+        push_house(
+            combo,
+            lh,
+            lord["sign"],
+            f"{lord_of_house}th lord ({lord['name']}) in {_ordinal(lh)} house",
+        )
 
 
 def _house_combo_in_house(base: str, house: int) -> str:
@@ -326,19 +467,19 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         ("Moon + Ketu", moon, ketu),
     ]:
         if a and b and _same_sign(a, b):
-            h = _house_of(a)
+            h = _house_of(a, chart)
             detail = f"{label} in {a['sign']} (house {h})"
             push_sign(label, [a["sign"]], detail)
             push_house(_house_combo_in_house(label, h), h, a["sign"], detail)
 
     if sun and rahu and _same_sign(sun, rahu) and sun.get("sign") == "Libra":
-        h = _house_of(sun)
+        h = _house_of(sun, chart)
         detail = "Debilitated Sun with Rahu in Libra"
         push_sign("Debilitated Sun + Rahu", ["Libra"], detail)
         push_house(_house_combo_in_house("Sun + Rahu", h), h, "Libra", detail)
 
     if sun and saturn and _same_sign(sun, saturn):
-        h = _house_of(sun)
+        h = _house_of(sun, chart)
         detail = f"Sun with Saturn in {sun['sign']} (house {h})"
         push_sign("Sun + Saturn", [sun["sign"]], detail)
         push_house(_house_combo_in_house("Sun + Saturn", h), h, sun["sign"], detail)
@@ -359,7 +500,7 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
 
     # ── House-wise: Rahu / Ketu in sensitive houses (no sign lookup) ───────
     if rahu:
-        h = _house_of(rahu)
+        h = _house_of(rahu, chart)
         detail = f"Rahu in {_ordinal(h)} house"
         if h == 9:
             push_house("Rahu in 9th", h, rahu["sign"], detail)
@@ -368,7 +509,7 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
             push_house(f"Rahu in {_ordinal(h)}", h, rahu["sign"], detail)
 
     if ketu:
-        h = _house_of(ketu)
+        h = _house_of(ketu, chart)
         detail = f"Ketu in {_ordinal(h)} house"
         if h == 9:
             push_house("Ketu in 9th", h, ketu["sign"], detail)
@@ -378,7 +519,7 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
 
     if rahu and ketu:
         rs, ks = str(rahu["sign"]), str(ketu["sign"])
-        rh, kh = _house_of(rahu), _house_of(ketu)
+        rh, kh = _house_of(rahu, chart), _house_of(ketu, chart)
         axis_detail = f"Rahu in {rs}, Ketu in {ks}"
         house_detail = (
             f"Rahu in {_ordinal(rh)} house, Ketu in {_ordinal(kh)} house"
@@ -387,27 +528,27 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         _push_axis_house(house_findings, house_keys, rh, kh, rs, ks, house_detail)
 
     # ── Sign-wise: planet afflictions by sign ───────────────────────────────
-    if mars and _house_of(mars) in (8, 9) and is_afflicted(mars, by):
-        h = _house_of(mars)
+    if mars and _house_of(mars, chart) in (8, 9) and _is_afflicted_in_chart(mars, chart, by):
+        h = _house_of(mars, chart)
         push_sign(
             "Afflicted Mars linked to 8th/9th",
             [mars["sign"]],
             f"Mars afflicted in {h}th house",
         )
-    if mars and mars.get("sign") == "Scorpio" and is_afflicted(mars, by):
+    if mars and mars.get("sign") == "Scorpio" and _is_afflicted_in_chart(mars, chart, by):
         push_sign("Afflicted Mars", ["Scorpio"], "Afflicted Mars in Scorpio")
 
     if venus:
-        if is_afflicted(venus, by) and _afflicted_by_rahu_ketu(venus, by):
+        if _is_afflicted_in_chart(venus, chart, by) and _afflicted_by_rahu_ketu_in_chart(venus, chart, by):
             push_sign(
                 "Afflicted Venus with Rahu/Ketu",
                 [venus["sign"]],
                 "Venus afflicted by Rahu/Ketu conjunction or 7th drishti",
             )
-        if venus.get("sign") == "Libra" and is_afflicted(venus, by):
+        if venus.get("sign") == "Libra" and _is_afflicted_in_chart(venus, chart, by):
             push_sign("Afflicted Venus", ["Libra"], "Afflicted Venus in Libra")
 
-    if mercury and is_afflicted(mercury, by) and _afflicted_by_rahu_ketu(mercury, by):
+    if mercury and _is_afflicted_in_chart(mercury, chart, by) and _afflicted_by_rahu_ketu_in_chart(mercury, chart, by):
         push_sign(
             "Mercury afflicted with Rahu/Ketu",
             [mercury["sign"]],
@@ -420,7 +561,7 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
                 "Mercury with nodes in Virgo",
             )
 
-    if jupiter and is_afflicted(jupiter, by) and jupiter["sign"] in (
+    if jupiter and _is_afflicted_in_chart(jupiter, chart, by) and jupiter["sign"] in (
         "Sagittarius",
         "Aquarius",
         "Pisces",
@@ -431,53 +572,28 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
             "Jupiter afflicted (dusthana, nodes, or debilitation)",
         )
 
-    if moon and moon.get("sign") == "Cancer" and is_afflicted(moon, by):
+    if moon and moon.get("sign") == "Cancer" and _is_afflicted_in_chart(moon, chart, by):
         push_sign(
             "Saturn influence on Cancer Moon",
             ["Cancer"],
             "Saturn afflicts Moon in Cancer",
         )
 
-    # ── House-wise: 9th lord in dusthana ───────────────────────────────────
-    lord9 = _ninth_lord(chart, by)
+    # ── House-wise: lord placements (from pitru_dosha_data) ─────────────────
+    _detect_lord_placements(chart, by, push_house)
+
+    # ── Sign-wise: 9th lord special cases ───────────────────────────────────
+    lord9 = _house_lord(chart, 9, by)
     if lord9:
-        lh = _house_of(lord9)
-        ls = lord9["sign"]
+        lh = _house_of(lord9, chart)
         sign9 = _house_sign(chart, 9)
-        if lh == 6:
-            if sign9 == "Virgo":
-                push_sign(
-                    "9th lord in Virgo dusthana",
-                    ["Virgo"],
-                    "9th lord in 6th (Virgo lagna 9th)",
-                )
-            push_house("9th lord in 6th", 6, ls, "9th lord in 6th house")
-            if is_afflicted(lord9, by):
-                push_house(
-                    "9th lord in 6th house afflicted",
-                    6,
-                    ls,
-                    "9th lord afflicted in 6th house",
-                )
-        if lh == 8 and is_afflicted(lord9, by):
-            push_house("9th lord in 8th afflicted", 8, ls, "9th lord in 8th house")
-        if lh == 12 and is_afflicted(lord9, by):
-            push_house("9th lord in 12th afflicted", 12, ls, "9th lord in 12th house")
-        if lh == 1 and is_afflicted(lord9, by):
-            push_house(
-                "Afflicted 9th lord in 1st", 1, ls, "9th lord in 1st house (afflicted)"
+        if lh == 6 and sign9 == "Virgo":
+            push_sign(
+                "9th lord in Virgo dusthana",
+                ["Virgo"],
+                "9th lord in 6th (Virgo lagna 9th)",
             )
-        if lh == 7 and is_afflicted(lord9, by):
-            push_house(
-                "9th lord afflicted in 7th", 7, ls, "9th lord afflicted in 7th house"
-            )
-        if lh == 10 and is_afflicted(lord9, by):
-            push_house(
-                "9th lord afflicted in 10th", 10, ls, "9th lord afflicted in 10th house"
-            )
-        if lh == 9 and is_afflicted(lord9, by):
-            push_house("9th lord afflicted", 9, ls, "9th lord afflicted in 9th house")
-        if sign9 == "Capricorn" and lh in (6, 8, 12) and is_afflicted(lord9, by):
+        if sign9 == "Capricorn" and lh in (6, 8, 12) and _is_afflicted_in_chart(lord9, chart, by):
             push_sign(
                 "Afflicted 9th lord in Capricorn",
                 ["Capricorn"],
@@ -486,12 +602,12 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
 
     # ── House-wise: graha afflictions (shared rules) ────────────────────────
     if sun:
-        sh = _house_of(sun)
-        if sh == 4 and is_afflicted(sun, by):
+        sh = _house_of(sun, chart)
+        if sh == 4 and _is_afflicted_in_chart(sun, chart, by):
             push_house("Sun afflicted in 4th", 4, sun["sign"], "Sun afflicted in 4th house")
-        if sh == 6 and is_afflicted(sun, by):
+        if sh == 6 and _is_afflicted_in_chart(sun, chart, by):
             push_house("Sun afflicted in 6th", 6, sun["sign"], "Sun afflicted in 6th house")
-        if sh == 9 and is_afflicted(sun, by) and _afflicted_by_rahu_ketu(sun, by):
+        if sh == 9 and _is_afflicted_in_chart(sun, chart, by) and _afflicted_by_rahu_ketu_in_chart(sun, chart, by):
             push_house(
                 "Sun afflicted by Rahu/Ketu in 9th house",
                 9,
@@ -500,8 +616,8 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
             )
 
     if mars:
-        mh = _house_of(mars)
-        if mh in (7, 8) and is_afflicted(mars, by):
+        mh = _house_of(mars, chart)
+        if mh in (7, 8) and _is_afflicted_in_chart(mars, chart, by):
             push_house(
                 "Mars afflicted in 7th/8th House",
                 mh,
@@ -510,10 +626,10 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
             )
 
     if venus:
-        vh = _house_of(venus)
-        if vh == 7 and is_afflicted(venus, by):
+        vh = _house_of(venus, chart)
+        if vh == 7 and _is_afflicted_in_chart(venus, chart, by):
             push_house("Venus afflicted in 7th", 7, venus["sign"], "Venus afflicted in 7th house")
-        if is_afflicted(venus, by) and _afflicted_by_rahu_ketu(venus, by):
+        if _is_afflicted_in_chart(venus, chart, by) and _afflicted_by_rahu_ketu_in_chart(venus, chart, by):
             push_general(
                 "Venus afflicted with Rahu/Ketu",
                 venus["sign"],
@@ -522,15 +638,15 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
             )
 
     if mercury:
-        mrh = _house_of(mercury)
-        if mrh in (2, 7) and is_afflicted(mercury, by):
+        mrh = _house_of(mercury, chart)
+        if mrh in (2, 7) and _is_afflicted_in_chart(mercury, chart, by):
             push_house(
                 "Mercury afflicted in 2nd/7th House",
                 mrh,
                 mercury["sign"],
                 f"Mercury afflicted in {mrh}th house",
             )
-        if is_afflicted(mercury, by) and _afflicted_by_rahu_ketu(mercury, by):
+        if _is_afflicted_in_chart(mercury, chart, by) and _afflicted_by_rahu_ketu_in_chart(mercury, chart, by):
             push_general(
                 "Mercury afflicted with Rahu/Ketu",
                 mercury["sign"],
@@ -538,17 +654,17 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
                 house=mrh,
             )
 
-    if jupiter and is_afflicted(jupiter, by) and _afflicted_by_rahu_ketu(jupiter, by):
+    if jupiter and _is_afflicted_in_chart(jupiter, chart, by) and _afflicted_by_rahu_ketu_in_chart(jupiter, chart, by):
         push_general(
             "Jupiter afflicted by Rahu/Ketu",
             jupiter["sign"],
             "Jupiter afflicted by Rahu/Ketu conjunction or 7th drishti",
-            house=_house_of(jupiter),
+            house=_house_of(jupiter, chart),
         )
 
     if saturn:
-        sh = _house_of(saturn)
-        if sh == 2 and is_afflicted(saturn, by):
+        sh = _house_of(saturn, chart)
+        if sh == 2 and _is_afflicted_in_chart(saturn, chart, by):
             push_general(
                 "Saturn in 2nd with affliction",
                 saturn["sign"],
@@ -558,7 +674,7 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
 
     # ── House-wise: Saturn in sensitive houses ─────────────────────────────
     if saturn:
-        sh = _house_of(saturn)
+        sh = _house_of(saturn, chart)
         if sh == 2:
             push_house("Saturn in 2nd", sh, saturn["sign"], "Saturn in 2nd house")
         if sh == 4:
@@ -573,7 +689,7 @@ def calculate_pitru_dosha(chart: dict) -> dict[str, Any]:
     by = _planets(chart)
     janma = _janma_rashi(chart)
     sign_findings, house_findings = _detect(chart)
-    afflicted_planets = list_afflicted_planets(by)
+    afflicted_planets = list_afflicted_planets(_by_for_affliction(chart, by))
     total = len(sign_findings) + len(house_findings)
 
     return {
