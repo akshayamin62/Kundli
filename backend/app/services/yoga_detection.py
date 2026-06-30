@@ -60,7 +60,7 @@ UPACHAYA = frozenset({3, 6, 10, 11})
 DUSTHANA = frozenset({6, 8, 12})
 BENEFICS = frozenset({"Jupiter", "Venus", "Mercury", "Moon"})
 MALEFICS = frozenset({"Mars", "Saturn", "Rahu", "Ketu", "Sun"})
-AFFLICTORS = frozenset({"Rahu", "Ketu", "Saturn"})
+NODE_NAMES = frozenset({"Rahu", "Ketu"})
 
 COMBUST_ORB: dict[str, float] = {
     "Moon": 12.0,
@@ -134,6 +134,11 @@ def _in_own_or_exalt(planet: dict) -> bool:
     return EXALTATION.get(name) == sign
 
 
+def _affliction_exempt_by_dignity(planet: dict) -> bool:
+    """Priority 1: Swakshetra (own) or Uchcha (exaltation) → not afflicted."""
+    return _in_own_or_exalt(planet)
+
+
 def _is_debilitated(planet: dict) -> bool:
     return DEBILITATION.get(planet.get("name", "")) == planet.get("sign", "")
 
@@ -157,18 +162,95 @@ def _is_combust(planet: dict, by: dict[str, dict]) -> bool:
     return _angular_distance(float(planet["longitude"]), float(sun["longitude"])) <= orb
 
 
-def is_afflicted(planet: dict, by: dict[str, dict]) -> bool:
-    sign = planet.get("sign", "")
-    pname = planet.get("name", "")
-    if _is_debilitated(planet):
-        return True
-    if _is_combust(planet, by):
-        return True
-    for n in AFFLICTORS:
-        o = by.get(n)
-        if o and o.get("sign") == sign and n != pname:
+def _seventh_house_from(from_house: int) -> int:
+    return ((from_house + 6 - 1) % 12) + 1
+
+
+def _node_seventh_drishti_on(node: dict, planet: dict) -> bool:
+    """Rahu/Ketu 7th-house full aspect (Whole Sign)."""
+    node_house = int(node.get("house") or 0)
+    planet_house = int(planet.get("house") or 0)
+    if node_house < 1 or planet_house < 1:
+        return False
+    return planet_house == _seventh_house_from(node_house)
+
+
+def _afflicted_by_rahu_ketu(planet: dict, by: dict[str, dict]) -> bool:
+    """Priority 3: same-sign conjunction or 7th drishti from Rahu/Ketu."""
+    for node_name in NODE_NAMES:
+        node = by.get(node_name)
+        if not node:
+            continue
+        if _same_sign(planet, node):
+            return True
+        if _node_seventh_drishti_on(node, planet):
             return True
     return False
+
+
+def affliction_reasons(planet: dict, by: dict[str, dict]) -> list[str]:
+    """Human-readable affliction causes (empty if not afflicted)."""
+    name = planet.get("name", "")
+    if name in NODE_NAMES:
+        return []
+    house = int(planet.get("house") or 0)
+    if name == "Saturn" and house == 8:
+        return []
+
+    if _affliction_exempt_by_dignity(planet):
+        return []
+
+    reasons: list[str] = []
+    if house in DUSTHANA and not (name == "Saturn" and house == 8):
+        reasons.append(f"Dusthana ({house}th house)")
+
+    for node_name in NODE_NAMES:
+        node = by.get(node_name)
+        if not node:
+            continue
+        if _same_sign(planet, node):
+            reasons.append(f"Conjunct {node_name}")
+        elif _node_seventh_drishti_on(node, planet):
+            reasons.append(f"7th drishti from {node_name}")
+
+    if _is_debilitated(planet):
+        reasons.append("Debilitated (Neecha)")
+
+    return reasons
+
+
+def is_afflicted(planet: dict, by: dict[str, dict]) -> bool:
+    """
+    Affliction rules (priority order):
+    1) Own sign (Swakshetra) or exaltation (Uchcha) → NOT afflicted
+    2) Saturn in 8th house → NOT afflicted (absolute exemption)
+    3) Houses 6, 8, 12 → afflicted (except Saturn in 8th)
+    4) Conjunct Rahu/Ketu or under their 7th drishti → afflicted
+    5) Debilitated (Neecha) → afflicted
+    """
+    return bool(affliction_reasons(planet, by))
+
+
+def list_afflicted_planets(by: dict[str, dict]) -> list[dict[str, Any]]:
+    """All afflicted grahas (Sun–Saturn) with sign, house, and reasons."""
+    grahas = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+    out: list[dict[str, Any]] = []
+    for name in grahas:
+        planet = by.get(name)
+        if not planet:
+            continue
+        reasons = affliction_reasons(planet, by)
+        if not reasons:
+            continue
+        out.append(
+            {
+                "planet": name,
+                "sign": str(planet.get("sign", "")),
+                "house": int(planet.get("house") or 0),
+                "reasons": reasons,
+            }
+        )
+    return out
 
 
 def _aspect_target_houses(from_house: int, planet_name: str) -> set[int]:
@@ -225,11 +307,8 @@ def _connection_type(
 def _yoga_strength(planet: dict, by: dict[str, dict]) -> str:
     if is_afflicted(planet, by):
         return "weak"
-    if _in_own_or_exalt(planet):
+    if _affliction_exempt_by_dignity(planet):
         return "strong"
-    house = int(planet.get("house") or 0)
-    if house in DUSTHANA:
-        return "weak"
     return "moderate"
 
 

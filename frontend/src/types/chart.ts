@@ -103,10 +103,18 @@ export interface PitruDoshaHouseFinding {
   modern_remedies?: string | null;
 }
 
+export interface PitruDoshaAfflictedPlanet {
+  planet: string;
+  sign: string;
+  house: number;
+  reasons: string[];
+}
+
 export interface PitruDoshaResponse {
   janma_rashi?: string | null;
   present: boolean;
   confirmation_count: number;
+  afflicted_planets: PitruDoshaAfflictedPlanet[];
   sign_findings: PitruDoshaSignFinding[];
   house_findings: PitruDoshaHouseFinding[];
   disclaimer: string;

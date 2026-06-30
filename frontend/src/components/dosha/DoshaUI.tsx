@@ -465,11 +465,13 @@ export function OverviewPanel({
   title,
   stats,
   severityItems,
+  footer,
 }: {
   theme: DoshaTheme;
   title: string;
   stats: OverviewStat[];
   severityItems?: { label: string; severity: string }[];
+  footer?: ReactNode;
 }) {
   const primarySeverity = severityItems?.[0];
 
@@ -513,6 +515,8 @@ export function OverviewPanel({
           ))}
         </div>
       )}
+
+      {footer && <div className="mt-5 pt-5 border-t border-[#c8c5d0]/25">{footer}</div>}
     </section>
   );
 }

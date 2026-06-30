@@ -8,7 +8,7 @@ import {
   PitruDoshaSignFinding,
 } from "@/types/chart";
 import { calculatePitruDosha } from "@/services/api";
-import { type Lang, SIGN_NAMES } from "@/lib/translations";
+import { type Lang, PLANET_NAMES, SIGN_NAMES } from "@/lib/translations";
 import {
   AbsentReport,
   AnalysisToggleButton,
@@ -67,6 +67,9 @@ const LABELS: Record<Lang, Record<string, string>> = {
     signTab: "Sign",
     houseTab: "House",
     details: "Detailed findings",
+    afflictedPlanets: "Afflicted planets",
+    noAfflictedPlanets: "No afflicted planets (Sun–Saturn) by current rules.",
+    afflictionReasons: "Reasons",
   },
   hi: {
     title: "पितृ दोष",
@@ -108,6 +111,9 @@ const LABELS: Record<Lang, Record<string, string>> = {
     signTab: "राशि",
     houseTab: "भाव",
     details: "विस्तृत निष्कर्ष",
+    afflictedPlanets: "पीड़ित ग्रह",
+    noAfflictedPlanets: "वर्तमान नियमों के अनुसार कोई पीड़ित ग्रह (सूर्य–शनि) नहीं।",
+    afflictionReasons: "कारण",
   },
   gu: {
     title: "પિતૃ દોષ",
@@ -149,6 +155,9 @@ const LABELS: Record<Lang, Record<string, string>> = {
     signTab: "રાશિ",
     houseTab: "ભાવ",
     details: "વિગતવાર નિષ્કર્ષ",
+    afflictedPlanets: "પીડિત ગ્રહો",
+    noAfflictedPlanets: "વર્તમાન નિયમો પ્રમાણે કોઈ પીડિત ગ્રહ (સૂર્ય–શનિ) નથી.",
+    afflictionReasons: "કારણો",
   },
 };
 
@@ -156,6 +165,10 @@ type ViewTab = "all" | "sign" | "house";
 type DomainTab = "health" | "career" | "finance" | "relationship";
 
 const DOMAIN_TABS: DomainTab[] = ["health", "career", "finance", "relationship"];
+
+function tPlanet(name: string, lang: Lang): string {
+  return PLANET_NAMES[lang][name] ?? name;
+}
 
 function tSign(name: string, lang: Lang): string {
   const i = SIGN_NAMES.en.indexOf(name);
@@ -333,6 +346,44 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
     ? [{ label: t.severity, severity: highestSeverity }]
     : [];
 
+  const afflictedPlanets = data.afflicted_planets ?? [];
+
+  const afflictedPlanetsFooter = (
+    <div className="min-w-0">
+      <h3 className="dosha-font-body text-sm font-bold text-[#070235] mb-3">{t.afflictedPlanets}</h3>
+      {afflictedPlanets.length === 0 ? (
+        <p className="dosha-font-body text-sm text-[#47464f]">{t.noAfflictedPlanets}</p>
+      ) : (
+        <ul className="space-y-2">
+          {afflictedPlanets.map((p) => (
+            <li
+              key={p.planet}
+              className="bg-white/80 rounded-xl border border-[#c8c5d0]/30 px-4 py-3 min-w-0"
+            >
+              <div className="dosha-font-body text-sm font-semibold text-[#070235] break-words">
+                {tPlanet(p.planet, lang)}
+                {p.house > 0 && (
+                  <span className="font-normal text-[#47464f]">
+                    {" "}
+                    · {ordinalHouse(p.house)} · {tSign(p.sign, lang)}
+                  </span>
+                )}
+                {p.house === 0 && (
+                  <span className="font-normal text-[#47464f]"> · {tSign(p.sign, lang)}</span>
+                )}
+              </div>
+              {p.reasons.length > 0 && (
+                <p className="dosha-font-body text-xs text-[#47464f] mt-1 break-words">
+                  {t.afflictionReasons}: {p.reasons.join(" · ")}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
   return (
     <DoshaPanelShell theme="pitru">
       <PageBar
@@ -343,17 +394,18 @@ export default function PitruDoshaPanel({ chart, lang }: Props) {
         absentLabel={t.notPresent}
       />
 
+      <OverviewPanel
+        theme="pitru"
+        title={t.overview}
+        stats={overviewStats}
+        severityItems={severityItems}
+        footer={afflictedPlanetsFooter}
+      />
+
       {totalCount === 0 ? (
         <AbsentReport title={t.absentTitle} body={t.absentBody} />
       ) : (
         <>
-          <OverviewPanel
-            theme="pitru"
-            title={t.overview}
-            stats={overviewStats}
-            severityItems={severityItems}
-          />
-
           <AnalysisToggleButton
             theme="pitru"
             label={t.details}

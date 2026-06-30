@@ -9,7 +9,7 @@ from app.models.schemas import (
     DashaRequest, DashaResponse, DashaPeriod,
     TransitRequest, TransitResponse, TransitEntry,
     PitruDoshaResponse, PitruDoshaSignFinding, PitruDoshaHouseFinding,
-    PitruDoshaDomainImpact,
+    PitruDoshaDomainImpact, PitruDoshaAfflictedPlanet,
     KaalSarpaResponse, KaalSarpaTypeInfo, KaalSarpaNodeInfo,
     KaalSarpaMitigation, KaalSarpaDivisionalPresence, RajaYogaFinding, MahapurushaFinding,
     ChandalDoshaResponse, ChandalDoshaTypeInfo, ChandalDoshaPlanetInfo,
@@ -357,6 +357,9 @@ def pitru_dosha(chart: ChartResponse):
             janma_rashi=raw.get("janma_rashi"),
             present=raw["present"],
             confirmation_count=raw["confirmation_count"],
+            afflicted_planets=[
+                PitruDoshaAfflictedPlanet(**p) for p in raw.get("afflicted_planets", [])
+            ],
             sign_findings=[PitruDoshaSignFinding(**f) for f in raw["sign_findings"]],
             house_findings=[_build_pitru_house_finding(f) for f in raw["house_findings"]],
             disclaimer=raw["disclaimer"],

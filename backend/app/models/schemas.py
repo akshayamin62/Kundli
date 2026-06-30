@@ -140,10 +140,18 @@ class PitruDoshaHouseFinding(BaseModel):
     modern_remedies: Optional[str] = None
 
 
+class PitruDoshaAfflictedPlanet(BaseModel):
+    planet: str
+    sign: str
+    house: int
+    reasons: list[str]
+
+
 class PitruDoshaResponse(BaseModel):
     janma_rashi: Optional[str] = None
     present: bool
     confirmation_count: int
+    afflicted_planets: list[PitruDoshaAfflictedPlanet] = []
     sign_findings: list[PitruDoshaSignFinding]
     house_findings: list[PitruDoshaHouseFinding]
     disclaimer: str

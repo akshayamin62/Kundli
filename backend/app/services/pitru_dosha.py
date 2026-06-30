@@ -12,6 +12,12 @@ from typing import Any
 
 from app.data import pitru_dosha_data as ref
 from app.services.varga import ZODIAC_SIGNS, varga_sign_index
+from app.services.yoga_detection import (
+    DEBILITATION,
+    _afflicted_by_rahu_ketu,
+    is_afflicted,
+    list_afflicted_planets,
+)
 
 SIGN_LORDS = {
     "Aries": "Mars",
@@ -27,18 +33,6 @@ SIGN_LORDS = {
     "Aquarius": "Saturn",
     "Pisces": "Jupiter",
 }
-
-DEBILITATION = {
-    "Sun": "Libra",
-    "Moon": "Scorpio",
-    "Mars": "Cancer",
-    "Mercury": "Pisces",
-    "Jupiter": "Capricorn",
-    "Venus": "Virgo",
-    "Saturn": "Aries",
-}
-
-AFFLICTORS = frozenset({"Rahu", "Ketu", "Saturn"})
 
 # Sign-axis: anchor sign → Excel combination (Rahu's rashi first; Ketu fallback).
 AXIS_SIGN_COMBO_BY_SIGN: dict[frozenset[str], dict[str, str]] = {
@@ -145,18 +139,6 @@ def _sun_weak_in_varga(by: dict[str, dict], n: int) -> tuple[bool, str | None]:
     return False, None
 
 
-def _afflicted(planet: dict, by: dict[str, dict]) -> bool:
-    sign = planet.get("sign", "")
-    pname = planet.get("name", "")
-    for n in AFFLICTORS:
-        o = by.get(n)
-        if o and o.get("sign") == sign and n != pname:
-            return True
-    if DEBILITATION.get(pname) == sign:
-        return True
-    return False
-
-
 def _house_sign(chart: dict, num: int) -> str:
     for h in chart.get("houses", []):
         if int(h.get("number", 0)) == num:
@@ -251,9 +233,15 @@ def _push_axis_house(
 
 
 def _build_house_finding(
-    combination: str, house: int, planet_sign: str, detail: str
+    combination: str,
+    house: int,
+    planet_sign: str,
+    detail: str,
+    *,
+    lookup_house_label: str | None = None,
 ) -> dict | None:
-    hr = ref.house_lookup(_house_label(house), combination)
+    label = lookup_house_label or _house_label(house)
+    hr = ref.house_lookup(label, combination)
     if not hr:
         return None
     domains = hr.get("domains", {})
@@ -261,7 +249,7 @@ def _build_house_finding(
     return {
         "combination": combination,
         "house": house,
-        "house_label": _house_label(house),
+        "house_label": label,
         "sign": planet_sign,
         "detail": detail,
         "house_wise_impact": health.get("impact"),
@@ -303,14 +291,31 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         house: int,
         planet_sign: str,
         detail: str,
+        *,
+        lookup_house_label: str | None = None,
     ) -> None:
         key = (combination, house)
         if key in house_keys:
             return
-        row = _build_house_finding(combination, house, planet_sign, detail)
+        row = _build_house_finding(
+            combination,
+            house,
+            planet_sign,
+            detail,
+            lookup_house_label=lookup_house_label,
+        )
         if row:
             house_keys.add(key)
             house_findings.append(row)
+
+    def push_general(combination: str, planet_sign: str, detail: str, *, house: int = 0) -> None:
+        push_house(
+            combination,
+            house,
+            planet_sign,
+            detail,
+            lookup_house_label="General",
+        )
 
     sun = by.get("Sun")
     moon = by.get("Moon")
@@ -393,38 +398,31 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         _push_axis_house(house_findings, house_keys, rh, kh, rs, ks, house_detail)
 
     # ── Sign-wise: planet afflictions by sign ───────────────────────────────
-    if mars and _house_of(mars) in (8, 9) and _afflicted(mars, by):
+    if mars and _house_of(mars) in (8, 9) and is_afflicted(mars, by):
         h = _house_of(mars)
         push_sign(
             "Afflicted Mars linked to 8th/9th",
             [mars["sign"]],
             f"Mars afflicted in {h}th house",
         )
-    if mars and mars.get("sign") == "Scorpio" and _afflicted(mars, by):
+    if mars and mars.get("sign") == "Scorpio" and is_afflicted(mars, by):
         push_sign("Afflicted Mars", ["Scorpio"], "Afflicted Mars in Scorpio")
 
     if venus:
-        h = _house_of(venus)
-        if rahu and _same_sign(venus, rahu):
+        if is_afflicted(venus, by) and _afflicted_by_rahu_ketu(venus, by):
             push_sign(
                 "Afflicted Venus with Rahu/Ketu",
                 [venus["sign"]],
-                "Venus conjunct Rahu (same sign)",
+                "Venus afflicted by Rahu/Ketu conjunction or 7th drishti",
             )
-        if ketu and _same_sign(venus, ketu):
-            push_sign(
-                "Afflicted Venus with Rahu/Ketu",
-                [venus["sign"]],
-                "Venus conjunct Ketu (same sign)",
-            )
-        if venus.get("sign") == "Libra" and _afflicted(venus, by):
+        if venus.get("sign") == "Libra" and is_afflicted(venus, by):
             push_sign("Afflicted Venus", ["Libra"], "Afflicted Venus in Libra")
 
-    if mercury and rahu and _same_sign(mercury, rahu):
+    if mercury and is_afflicted(mercury, by) and _afflicted_by_rahu_ketu(mercury, by):
         push_sign(
             "Mercury afflicted with Rahu/Ketu",
             [mercury["sign"]],
-            "Mercury conjunct Rahu (same sign)",
+            "Mercury afflicted by Rahu/Ketu conjunction or 7th drishti",
         )
         if mercury.get("sign") == "Virgo":
             push_sign(
@@ -432,14 +430,8 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
                 ["Virgo"],
                 "Mercury with nodes in Virgo",
             )
-    if mercury and ketu and _same_sign(mercury, ketu):
-        push_sign(
-            "Mercury afflicted with Rahu/Ketu",
-            [mercury["sign"]],
-            "Mercury conjunct Ketu (same sign)",
-        )
 
-    if jupiter and _afflicted(jupiter, by) and jupiter["sign"] in (
+    if jupiter and is_afflicted(jupiter, by) and jupiter["sign"] in (
         "Sagittarius",
         "Aquarius",
         "Pisces",
@@ -447,10 +439,10 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
         push_sign(
             "Afflicted Jupiter",
             [jupiter["sign"]],
-            "Jupiter afflicted by node/Saturn or debilitated",
+            "Jupiter afflicted (dusthana, nodes, or debilitation)",
         )
 
-    if moon and moon.get("sign") == "Cancer" and _afflicted(moon, by):
+    if moon and moon.get("sign") == "Cancer" and is_afflicted(moon, by):
         push_sign(
             "Saturn influence on Cancer Moon",
             ["Cancer"],
@@ -471,19 +463,108 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
                     "9th lord in 6th (Virgo lagna 9th)",
                 )
             push_house("9th lord in 6th", 6, ls, "9th lord in 6th house")
-        if lh == 8:
+            if is_afflicted(lord9, by):
+                push_house(
+                    "9th lord in 6th house afflicted",
+                    6,
+                    ls,
+                    "9th lord afflicted in 6th house",
+                )
+        if lh == 8 and is_afflicted(lord9, by):
             push_house("9th lord in 8th afflicted", 8, ls, "9th lord in 8th house")
-        if lh == 12:
+        if lh == 12 and is_afflicted(lord9, by):
             push_house("9th lord in 12th afflicted", 12, ls, "9th lord in 12th house")
-        if lh == 1 and _afflicted(lord9, by):
+        if lh == 1 and is_afflicted(lord9, by):
             push_house(
                 "Afflicted 9th lord in 1st", 1, ls, "9th lord in 1st house (afflicted)"
             )
-        if sign9 == "Capricorn" and lh in (6, 8, 12):
+        if lh == 7 and is_afflicted(lord9, by):
+            push_house(
+                "9th lord afflicted in 7th", 7, ls, "9th lord afflicted in 7th house"
+            )
+        if lh == 10 and is_afflicted(lord9, by):
+            push_house(
+                "9th lord afflicted in 10th", 10, ls, "9th lord afflicted in 10th house"
+            )
+        if lh == 9 and is_afflicted(lord9, by):
+            push_house("9th lord afflicted", 9, ls, "9th lord afflicted in 9th house")
+        if sign9 == "Capricorn" and lh in (6, 8, 12) and is_afflicted(lord9, by):
             push_sign(
                 "Afflicted 9th lord in Capricorn",
                 ["Capricorn"],
-                "9th lord from Capricorn 9th in dusthana",
+                "9th lord from Capricorn 9th in dusthana (afflicted)",
+            )
+
+    # ── House-wise: graha afflictions (shared rules) ────────────────────────
+    if sun:
+        sh = _house_of(sun)
+        if sh == 4 and is_afflicted(sun, by):
+            push_house("Sun afflicted in 4th", 4, sun["sign"], "Sun afflicted in 4th house")
+        if sh == 6 and is_afflicted(sun, by):
+            push_house("Sun afflicted in 6th", 6, sun["sign"], "Sun afflicted in 6th house")
+        if sh == 9 and is_afflicted(sun, by) and _afflicted_by_rahu_ketu(sun, by):
+            push_house(
+                "Sun afflicted by Rahu/Ketu in 9th house",
+                9,
+                sun["sign"],
+                "Sun afflicted by Rahu/Ketu in 9th house",
+            )
+
+    if mars:
+        mh = _house_of(mars)
+        if mh in (7, 8) and is_afflicted(mars, by):
+            push_house(
+                "Mars afflicted in 7th/8th House",
+                mh,
+                mars["sign"],
+                f"Mars afflicted in {mh}th house",
+            )
+
+    if venus:
+        vh = _house_of(venus)
+        if vh == 7 and is_afflicted(venus, by):
+            push_house("Venus afflicted in 7th", 7, venus["sign"], "Venus afflicted in 7th house")
+        if is_afflicted(venus, by) and _afflicted_by_rahu_ketu(venus, by):
+            push_general(
+                "Venus afflicted with Rahu/Ketu",
+                venus["sign"],
+                "Venus afflicted by Rahu/Ketu conjunction or 7th drishti",
+                house=vh,
+            )
+
+    if mercury:
+        mrh = _house_of(mercury)
+        if mrh in (2, 7) and is_afflicted(mercury, by):
+            push_house(
+                "Mercury afflicted in 2nd/7th House",
+                mrh,
+                mercury["sign"],
+                f"Mercury afflicted in {mrh}th house",
+            )
+        if is_afflicted(mercury, by) and _afflicted_by_rahu_ketu(mercury, by):
+            push_general(
+                "Mercury afflicted with Rahu/Ketu",
+                mercury["sign"],
+                "Mercury afflicted by Rahu/Ketu conjunction or 7th drishti",
+                house=mrh,
+            )
+
+    if jupiter and is_afflicted(jupiter, by) and _afflicted_by_rahu_ketu(jupiter, by):
+        push_general(
+            "Jupiter afflicted by Rahu/Ketu",
+            jupiter["sign"],
+            "Jupiter afflicted by Rahu/Ketu conjunction or 7th drishti",
+            house=_house_of(jupiter),
+        )
+
+    if saturn:
+        sh = _house_of(saturn)
+        if sh == 2 and is_afflicted(saturn, by):
+            push_general(
+                "Saturn in 2nd with affliction",
+                saturn["sign"],
+                "Saturn afflicted in 2nd house",
+                house=sh,
             )
 
     # ── House-wise: Saturn in sensitive houses ─────────────────────────────
@@ -500,14 +581,17 @@ def _detect(chart: dict) -> tuple[list[dict], list[dict]]:
 
 
 def calculate_pitru_dosha(chart: dict) -> dict[str, Any]:
+    by = _planets(chart)
     janma = _janma_rashi(chart)
     sign_findings, house_findings = _detect(chart)
+    afflicted_planets = list_afflicted_planets(by)
     total = len(sign_findings) + len(house_findings)
 
     return {
         "janma_rashi": janma,
         "present": total > 0,
         "confirmation_count": total,
+        "afflicted_planets": afflicted_planets,
         "sign_findings": sign_findings,
         "house_findings": house_findings,
         "disclaimer": (
