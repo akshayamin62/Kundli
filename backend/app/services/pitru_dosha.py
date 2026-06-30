@@ -45,7 +45,7 @@ AXIS_SIGN_COMBO_BY_SIGN: dict[frozenset[str], dict[str, str]] = {
         "Sagittarius": "Rahu/Ketu in Gemini-Sagittarius axis",
     },
     frozenset({"Cancer", "Capricorn"}): {
-        "Cancer": "Rahu/Ketu on Cancer-Capricorn axis",
+        "Cancer": "Rahu/Ketu in Cancer-Capricorn axis",
         "Capricorn": "Rahu/Ketu in Cancer-Capricorn axis",
     },
     frozenset({"Aries", "Libra"}): {
@@ -58,21 +58,14 @@ AXIS_SIGN_COMBO_BY_SIGN: dict[frozenset[str], dict[str, str]] = {
     },
 }
 
-# House-axis: anchor bhava → Excel combination (Rahu's house first; Ketu fallback).
-AXIS_HOUSE_COMBO_BY_HOUSE: dict[frozenset[int], dict[int, str]] = {
-    frozenset({1, 7}): {
-        1: "Rahu/Ketu on 1st-7th axis",
-        7: "Rahu/Ketu in 1st-7th axis",
-    },
-    frozenset({3, 9}): {3: "Rahu/Ketu in 3rd-9th axis"},
-    frozenset({4, 10}): {
-        4: "Rahu/Ketu in 4th-10th axis",
-        10: "Rahu/Ketu in 4th-10th axis",
-    },
-    frozenset({5, 11}): {
-        5: "Rahu/Ketu in 5th-11th axis",
-        11: "Rahu/Ketu in 5th-11th axis",
-    },
+# House-axis: unified combination per pair; lookup works from either bhava.
+AXIS_HOUSE_COMBO_BY_HOUSE: dict[frozenset[int], str] = {
+    frozenset({1, 7}): "Rahu/Ketu in 1st-7th axis",
+    frozenset({2, 8}): "Rahu/Ketu in 2nd-8th axis",
+    frozenset({3, 9}): "Rahu/Ketu in 3rd-9th axis",
+    frozenset({4, 10}): "Rahu/Ketu in 4th-10th axis",
+    frozenset({5, 11}): "Rahu/Ketu in 5th-11th axis",
+    frozenset({6, 12}): "Rahu/Ketu in 6th-12th axis",
 }
 
 NODE_9TH_SIGN_COMBO = "Rahu/Ketu affecting 9th"
@@ -209,27 +202,23 @@ def _push_axis_house(
     ketu_sign: str,
     detail: str,
 ) -> None:
-    """One house-wise axis card; display both Rahu and Ketu bhava."""
+    """One house-wise axis card; lookup from either Rahu or Ketu bhava."""
     pair = frozenset({rahu_house, ketu_house})
-    by_house = AXIS_HOUSE_COMBO_BY_HOUSE.get(pair)
-    if not by_house:
+    combo = AXIS_HOUSE_COMBO_BY_HOUSE.get(pair)
+    if not combo:
         return
-    for anchor in (rahu_house, ketu_house):
-        combo = by_house.get(anchor)
-        if not combo:
-            continue
-        key = (combo, rahu_house, ketu_house)
-        if key in house_keys:
-            return
-        row = _build_house_finding(combo, anchor, rahu_sign, detail)
-        if row:
-            row["rahu_sign"] = rahu_sign
-            row["ketu_sign"] = ketu_sign
-            row["rahu_house"] = rahu_house
-            row["ketu_house"] = ketu_house
-            house_keys.add(key)
-            house_findings.append(row)
-            return
+    key = (combo, rahu_house, ketu_house)
+    if key in house_keys:
+        return
+    anchor = rahu_house if rahu_house in pair else ketu_house
+    row = _build_house_finding(combo, anchor, rahu_sign, detail)
+    if row:
+        row["rahu_sign"] = rahu_sign
+        row["ketu_sign"] = ketu_sign
+        row["rahu_house"] = rahu_house
+        row["ketu_house"] = ketu_house
+        house_keys.add(key)
+        house_findings.append(row)
 
 
 def _build_house_finding(

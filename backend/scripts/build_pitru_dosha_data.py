@@ -371,13 +371,43 @@ def canonical_combination(combo: str) -> str:
     s = re.sub(r" with affliction$", "", s, flags=re.I)
     s = s.replace("Venus + Rahu House", "Venus + Rahu")
     s = s.replace("Venus + Ketu House", "Venus + Ketu")
+    # Unify house-axis variants: "... in 5th-11th house" / "... in 5th-11th axis" → one form
+    m = re.search(
+        r"^Rahu/Ketu in (\d+)(?:st|nd|rd|th)?-(\d+)(?:st|nd|rd|th)? (?:house|axis)$",
+        s,
+        re.I,
+    )
+    if m:
+        a, b = int(m.group(1)), int(m.group(2))
+        return f"Rahu/Ketu in {ordinal(a)}-{ordinal(b)} axis"
+    # Unify sign-axis: "on" vs "in"
+    m = re.search(r"^Rahu/Ketu in ([A-Za-z]+)-([A-Za-z]+) axis\b", s, re.I)
+    if m:
+        return f"Rahu/Ketu in {m.group(1)}-{m.group(2)} axis"
     return s
+
+
+def axis_house_pair(canon: str) -> tuple[int, int] | None:
+    m = re.search(
+        r"^Rahu/Ketu in (\d+)(?:st|nd|rd|th)?-(\d+)(?:st|nd|rd|th)? axis$",
+        canon,
+        re.I,
+    )
+    if m:
+        return int(m.group(1)), int(m.group(2))
+    return None
+
+
+def merge_domains(into: dict[str, dict], from_: dict[str, dict]) -> None:
+    for key, value in from_.items():
+        if key not in into:
+            into[key] = value
 
 
 def is_axis_combination(combo: str) -> bool:
     canon = canonical_combination(combo)
-    return "axis" in canon.lower() or bool(
-        re.search(r"Rahu/Ketu in \d+(?:st|nd|rd|th)-\d+", canon, re.I)
+    return bool(axis_house_pair(canon)) or bool(
+        re.search(r"^Rahu/Ketu in [A-Za-z]+-[A-Za-z]+ axis$", canon, re.I)
     )
 
 
@@ -456,23 +486,18 @@ def main() -> None:
     house_rows = read_sheet(wb, "House Wise Combos")
     wb.close()
 
-    # house_key -> row dict
+    # house_key -> row dict  (key = house label + canonical combination)
     merged: dict[tuple[str, str], dict] = {}
-    axis_index: dict[str, list[tuple[str, str]]] = {}
 
     def ensure_row(house: str, combination: str) -> dict:
-        key = (house, combination)
+        canon = canonical_combination(combination)
+        key = (house, canon)
         if key not in merged:
             merged[key] = {
                 "house": house,
-                "combination": combination,
+                "combination": canon,
                 "domains": {},
             }
-        canon = canonical_combination(combination)
-        if is_axis_combination(combination):
-            axis_index.setdefault(canon, [])
-            if key not in axis_index[canon]:
-                axis_index[canon].append(key)
         return merged[key]
 
     def attach_domain(
@@ -481,19 +506,60 @@ def main() -> None:
         domain_data: dict,
         remedy_combo: str,
     ) -> None:
+        if domain in row["domains"]:
+            return
         enrich_domain(domain_data, remedy_combo, domain, row["house"])
         row["domains"][domain] = domain_data
+
+    def attach_domain_to_axis(canon: str, domain: str, domain_data: dict, remedy_combo: str) -> bool:
+        pair = axis_house_pair(canon)
+        if not pair:
+            return False
+        for h in pair:
+            label = house_label(h)
+            row = ensure_row(label, canon)
+            attach_domain(row, domain, dict(domain_data), remedy_combo)
+        return True
+
+    def expand_axis_rows() -> None:
+        """Merge domains per axis combo and replicate on both houses of the pair."""
+        aggregates: dict[str, dict[str, dict]] = {}
+        for row in merged.values():
+            pair = axis_house_pair(row["combination"])
+            if not pair:
+                continue
+            agg = aggregates.setdefault(row["combination"], {})
+            merge_domains(agg, row["domains"])
+
+        for canon, domains in aggregates.items():
+            pair = axis_house_pair(canon)
+            if not pair:
+                continue
+            for h in pair:
+                label = house_label(h)
+                row = ensure_row(label, canon)
+                merge_domains(row["domains"], domains)
 
     for d in house_rows:
         house = d["House"]
         combo = d["Combination"]
-        row = ensure_row(house, combo)
-        health_data = {
-            "area_affected": d["Health Focus"],
-            "impact": d["Impact"],
-            "severity": house_row_severity(house, combo, house_matrix),
-        }
-        attach_domain(row, "health", health_data, combo)
+        canon = canonical_combination(combo)
+        if axis_house_pair(canon):
+            row = ensure_row(house, canon)
+            health_data = {
+                "area_affected": d["Health Focus"],
+                "impact": d["Impact"],
+                "severity": house_row_severity(house, combo, house_matrix),
+            }
+            attach_domain(row, "health", health_data, combo)
+        else:
+            row = ensure_row(house, combo)
+            health_data = {
+                "area_affected": d["Health Focus"],
+                "impact": d["Impact"],
+                "severity": house_row_severity(house, combo, house_matrix),
+            }
+            attach_domain(row, "health", health_data, combo)
 
     domain_counts: dict[str, int] = {"health": len(house_rows)}
 
@@ -503,28 +569,26 @@ def main() -> None:
         for d in rows:
             combo_raw = d["Pitru Dosha Combination"]
             canon = canonical_combination(combo_raw)
-            house = parse_house_label(combo_raw)
             domain_data = {
                 "area_affected": d[area_col],
                 "impact": d[impact_col],
                 "severity": d[sev_col],
             }
-            if is_axis_combination(combo_raw):
-                targets = axis_index.get(canon)
-                if targets:
-                    for key in targets:
-                        attach_domain(merged[key], domain, domain_data, combo_raw)
-                    continue
-            # Try merge with existing health row by canonical combo + house
+            if axis_house_pair(canon):
+                attach_domain_to_axis(canon, domain, domain_data, combo_raw)
+                continue
+            house = parse_house_label(combo_raw)
             matched = False
             for key, row in merged.items():
-                if key[0] == house and canonical_combination(row["combination"]) == canon:
+                if key[0] == house and row["combination"] == canon:
                     attach_domain(row, domain, domain_data, combo_raw)
                     matched = True
                     break
             if not matched:
-                row = ensure_row(house, combo_raw)
+                row = ensure_row(house, canon)
                 attach_domain(row, domain, domain_data, combo_raw)
+
+    expand_axis_rows()
 
     house_wise = sorted(
         merged.values(),
@@ -536,7 +600,8 @@ def main() -> None:
 
     sign_wise = []
     for d in sign_rows:
-        combo = d["Combination in Sign"]
+        combo_raw = d["Combination in Sign"]
+        combo = canonical_combination(combo_raw)
         health_remedies = remedies_for_domain(combo, "health", "General", d["Health Impact"], d["Health Impact"])
         sign_wise.append(
             {
@@ -545,7 +610,8 @@ def main() -> None:
                 "stronger_houses": d["Stronger House/Axis"],
                 "general_impact": d["Health Impact"],
                 "nature_theme": d["Nature/Theme"],
-                "severity": SIGN_COMBINATION_SEVERITY.get(combo, ""),
+                "severity": SIGN_COMBINATION_SEVERITY.get(combo)
+                or SIGN_COMBINATION_SEVERITY.get(combo_raw, ""),
                 "conventional_remedies": health_remedies["conventional_remedies"],
                 "modern_remedies": health_remedies["modern_remedies"],
             }
@@ -619,9 +685,42 @@ def main() -> None:
     lines.append("]")
     lines.append("")
     lines.append("")
+    lines.append("def _canonical_combination(combo: str) -> str:")
+    lines.append('    import re')
+    lines.append('    s = re.sub(r"\\s+", " ", combo.strip())')
+    lines.append('    s = s.replace("Rahu/Ketu axis in", "Rahu/Ketu in")')
+    lines.append('    s = s.replace("Rahu/Ketu on ", "Rahu/Ketu in ")')
+    lines.append('    m = re.search(r"^Rahu/Ketu in (\\d+)(?:st|nd|rd|th)?-(\\d+)(?:st|nd|rd|th)? (?:house|axis)$", s, re.I)')
+    lines.append("    if m:")
+    lines.append("        a, b = int(m.group(1)), int(m.group(2))")
+    lines.append("        def _ord(n: int) -> str:")
+    lines.append('            if 10 <= n % 100 <= 20:')
+    lines.append('                return f"{n}th"')
+    lines.append('            return f"{n}" + {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")')
+    lines.append('        return f"Rahu/Ketu in {_ord(a)}-{_ord(b)} axis"')
+    lines.append('    m = re.search(r"^Rahu/Ketu in ([A-Za-z]+)-([A-Za-z]+) axis\\b", s, re.I)')
+    lines.append("    if m:")
+    lines.append('        return f"Rahu/Ketu in {m.group(1)}-{m.group(2)} axis"')
+    lines.append("    return s")
+    lines.append("")
+    lines.append("")
+    lines.append("_AXIS_HOUSE_PAIRS: dict[str, tuple[int, int]] = {")
+    axis_pairs_set: set[str] = set()
+    for row in house_wise:
+        pair = axis_house_pair(row["combination"])
+        if pair:
+            axis_pairs_set.add(row["combination"])
+    for canon in sorted(axis_pairs_set):
+        pair = axis_house_pair(canon)
+        if pair:
+            lines.append(f'    {py_str(canon)}: {pair},')
+    lines.append("}")
+    lines.append("")
+    lines.append("")
     lines.append("def sign_lookup(sign: str, combination: str) -> SignWiseRow | None:")
+    lines.append("    canon = _canonical_combination(combination)")
     lines.append("    for row in SIGN_WISE:")
-    lines.append("        if row['sign'] == sign and row['combination'] == combination:")
+    lines.append("        if row['sign'] == sign and row['combination'] == canon:")
     lines.append("            return row")
     lines.append("    return None")
     lines.append("")
@@ -629,17 +728,27 @@ def main() -> None:
     lines.append("def find_sign_row(")
     lines.append("    combination: str, signs: list[str]")
     lines.append(") -> tuple[SignWiseRow | None, str | None]:")
+    lines.append("    canon = _canonical_combination(combination)")
     lines.append("    for sign in signs:")
-    lines.append("        row = sign_lookup(sign, combination)")
+    lines.append("        row = sign_lookup(sign, canon)")
     lines.append("        if row:")
     lines.append("            return row, sign")
     lines.append("    return None, None")
     lines.append("")
     lines.append("")
-    lines.append("def house_lookup(house_label: str, combination: str) -> HouseWiseRow | None:")
+    lines.append("def house_lookup(house_label_str: str, combination: str) -> HouseWiseRow | None:")
+    lines.append("    canon = _canonical_combination(combination)")
     lines.append("    for row in HOUSE_WISE:")
-    lines.append("        if row['house'] == house_label and row['combination'] == combination:")
+    lines.append("        if row['house'] == house_label_str and row['combination'] == canon:")
     lines.append("            return row")
+    lines.append("    pair = _AXIS_HOUSE_PAIRS.get(canon)")
+    lines.append("    if pair:")
+    lines.append("        import re")
+    lines.append("        m = re.match(r'^(\\d+)', house_label_str)")
+    lines.append("        if m and int(m.group(1)) in pair:")
+    lines.append("            for row in HOUSE_WISE:")
+    lines.append("                if row['combination'] == canon:")
+    lines.append("                    return row")
     lines.append("    return None")
     lines.append("")
     lines.append("")
