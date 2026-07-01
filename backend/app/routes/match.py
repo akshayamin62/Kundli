@@ -11,7 +11,7 @@ from app.database import get_history_collection
 router = APIRouter(dependencies=[Depends(require_auth)])
 
 
-def _person_doc(p) -> dict:
+def _person_doc(p, chart_meta=None) -> dict:
     doc = {
         "name": (p.name or "").strip(),
         "birth_date": p.birth_date,
@@ -20,27 +20,34 @@ def _person_doc(p) -> dict:
         "house_system": p.house_system,
         "zodiac": p.zodiac,
     }
-    if p.birth_lat is not None:
-        doc["birth_lat"] = p.birth_lat
-    if p.birth_lon is not None:
-        doc["birth_lon"] = p.birth_lon
+    lat = p.birth_lat
+    lon = p.birth_lon
+    if chart_meta is not None:
+        if lat is None:
+            lat = chart_meta.latitude
+        if lon is None:
+            lon = chart_meta.longitude
+    if lat is not None:
+        doc["birth_lat"] = lat
+    if lon is not None:
+        doc["birth_lon"] = lon
     return doc
 
 
-def _match_input_doc(req: MatchRequest) -> dict:
+def _match_input_doc(req: MatchRequest, boy_chart=None, girl_chart=None) -> dict:
     return {
-        "boy": _person_doc(req.boy),
-        "girl": _person_doc(req.girl),
+        "boy": _person_doc(req.boy, boy_chart.meta if boy_chart else None),
+        "girl": _person_doc(req.girl, girl_chart.meta if girl_chart else None),
     }
 
 
-def _save_match_history_from_request(req: MatchRequest) -> Optional[str]:
+def _save_match_history_from_request(req: MatchRequest, boy_chart=None, girl_chart=None) -> Optional[str]:
     """Persist or update match inputs in MongoDB. Returns history document id."""
     try:
         col = get_history_collection()
         if col is None:
             return None
-        input_doc = _match_input_doc(req)
+        input_doc = _match_input_doc(req, boy_chart, girl_chart)
 
         if req.history_id:
             oid = ObjectId(req.history_id)
@@ -104,9 +111,11 @@ def calculate_kundli_match(req: MatchRequest):
         girl_name=req.girl.name or "Girl",
         boy_nakshatra=result["boy_nakshatra"],
         boy_nakshatra_lord=result["boy_nakshatra_lord"],
+        boy_nakshatra_charan=result["boy_nakshatra_charan"],
         boy_moon_sign=result["boy_moon_sign"],
         girl_nakshatra=result["girl_nakshatra"],
         girl_nakshatra_lord=result["girl_nakshatra_lord"],
+        girl_nakshatra_charan=result["girl_nakshatra_charan"],
         girl_moon_sign=result["girl_moon_sign"],
         boy_mangal_dosha=result["boy_mangal_dosha"],
         girl_mangal_dosha=result["girl_mangal_dosha"],
@@ -116,5 +125,5 @@ def calculate_kundli_match(req: MatchRequest):
         girl_chart=girl_chart,
         sadsatkut=sadsatkut,
     )
-    history_id = _save_match_history_from_request(req)
+    history_id = _save_match_history_from_request(req, boy_chart, girl_chart)
     return match_response.model_copy(update={"history_id": history_id})

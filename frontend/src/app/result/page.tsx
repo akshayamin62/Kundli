@@ -14,12 +14,14 @@ import { ChartResponse, ChartRequest } from "@/types/chart";
 import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/api";
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
 import { getMoonJanmaFromChart, toMoonChart } from "@/lib/chartTransforms";
+import { formatNakshatraWithCharan } from "@/lib/nakshatra";
 import { downloadKundliReport } from "@/lib/reportGenerator";
 import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
 import AppLogo from "@/components/AppLogo";
 import { resolveKundaliHistoryId, setKundaliHistoryId } from "@/lib/historySession";
 import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
+import { enrichChartRequestFromMeta } from "@/lib/editPrefill";
 import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
 
 // ─── Varga metadata ──────────────────────────────────────────────────────────
@@ -392,10 +394,11 @@ export default function ResultPage() {
   const handleEditSaved = (newChart: ChartResponse, updatedReq: ChartRequest) => {
     const hid = newChart.history_id ?? editHistoryId;
     if (hid) setKundaliHistoryId(hid);
+    const enriched = enrichChartRequestFromMeta(updatedReq, newChart);
     setChart(newChart);
-    setReq(updatedReq);
+    setReq(enriched);
     sessionStorage.setItem("astroChart", JSON.stringify(newChart));
-    sessionStorage.setItem("astroReq", JSON.stringify(updatedReq));
+    sessionStorage.setItem("astroReq", JSON.stringify(enriched));
     setVargaChart(null);
     setAllVargaCharts({});
     setAllVargaStarted(false);
@@ -737,7 +740,7 @@ export default function ResultPage() {
                     </span>
                     <span>
                       <span className="font-semibold text-indigo-700">{JANMA_LABELS[lang].nak}:</span>{" "}
-                      {tNak(moonJanma.nakshatra, lang)}
+                      {formatNakshatraWithCharan(moonJanma.nakshatra, moonJanma.nakshatra_charan, lang)}
                     </span>
                   </div>
                 ) : null

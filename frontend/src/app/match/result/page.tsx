@@ -13,7 +13,8 @@ import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { resolveMatchHistoryId, setMatchHistoryId, getMatchHistoryId } from "@/lib/historySession";
 import { fetchHistoryItem, calculateVarga } from "@/services/api";
 import AppLogo from "@/components/AppLogo";
-import { toMoonChart } from "@/lib/chartTransforms";
+import { getMoonJanmaFromChart, toMoonChart } from "@/lib/chartTransforms";
+import { formatNakshatraWithCharan } from "@/lib/nakshatra";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -380,6 +381,14 @@ export default function MatchResultPage() {
     () => (data ? toMoonChart(data.girl_chart) : null),
     [data],
   );
+  const boyJanma = useMemo(
+    () => (data ? getMoonJanmaFromChart(data.boy_chart) : null),
+    [data],
+  );
+  const girlJanma = useMemo(
+    () => (data ? getMoonJanmaFromChart(data.girl_chart) : null),
+    [data],
+  );
 
   const loadD9Charts = useCallback(async () => {
     if (!data) return;
@@ -581,8 +590,8 @@ export default function MatchResultPage() {
                     { label: t.place,    bv: data.boy_chart.meta.birth_place,              gv: data.girl_chart.meta.birth_place },
                     { label: t.rasi,     bv: tSign(data.boy_moon_sign, lang),              gv: tSign(data.girl_moon_sign, lang) },
                     { label: t.rasiLord, bv: SIGN_LORDS[lang][data.boy_moon_sign] ?? "—", gv: SIGN_LORDS[lang][data.girl_moon_sign] ?? "—" },
-                    { label: t.janmaNak, bv: tNak(data.boy_nakshatra, lang),               gv: tNak(data.girl_nakshatra, lang) },
-                    { label: t.nakLord,  bv: tPlanet(data.boy_nakshatra_lord, lang),       gv: tPlanet(data.girl_nakshatra_lord, lang) },
+                    { label: t.janmaNak, bv: boyJanma ? formatNakshatraWithCharan(boyJanma.nakshatra, boyJanma.nakshatra_charan, lang) : "—", gv: girlJanma ? formatNakshatraWithCharan(girlJanma.nakshatra, girlJanma.nakshatra_charan, lang) : "—" },
+                    { label: t.nakLord,  bv: boyJanma ? tPlanet(boyJanma.nakshatra_lord, lang) : "—",       gv: girlJanma ? tPlanet(girlJanma.nakshatra_lord, lang) : "—" },
                     { label: t.dosha,
                       bv: data.boy_mangal_dosha  ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span>  : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,
                       gv: data.girl_mangal_dosha ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span> : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,

@@ -2,14 +2,17 @@
 
 import { useRouter } from "next/navigation";
 import MatchForm from "@/components/MatchForm";
-import { MatchResponse } from "@/types/chart";
+import { MatchResponse, MatchRequest } from "@/types/chart";
+import { saveMatchRequest, enrichMatchRequestFromResult } from "@/lib/editPrefill";
 import AppNavbar from "@/components/AppNavbar";
 
 export default function MatchPage() {
   const router = useRouter();
 
-  function handleResult(result: MatchResponse) {
+  function handleResult(result: MatchResponse, req: MatchRequest) {
+    const enriched = enrichMatchRequestFromResult(req, result);
     sessionStorage.setItem("matchResult", JSON.stringify(result));
+    saveMatchRequest(enriched);
     router.push("/match/result");
   }
 

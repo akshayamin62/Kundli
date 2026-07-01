@@ -383,9 +383,11 @@ export interface MatchResponse {
   girl_name: string;
   boy_nakshatra: string;
   boy_nakshatra_lord: string;
+  boy_nakshatra_charan: number;
   boy_moon_sign: string;
   girl_nakshatra: string;
   girl_nakshatra_lord: string;
+  girl_nakshatra_charan: number;
   girl_moon_sign: string;
 
   boy_mangal_dosha: boolean;

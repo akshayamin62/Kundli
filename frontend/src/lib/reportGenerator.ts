@@ -8,7 +8,8 @@ import {
 import { calculateVargaBulk, calculateDasha, calculateVarga } from "@/services/api";
 import { formatHouseSystemLabel, formatZodiacLabel, normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
-import { toMoonChart } from "@/lib/chartTransforms";
+import { toMoonChart, getMoonJanmaFromChart } from "@/lib/chartTransforms";
+import { formatNakshatraWithCharan } from "@/lib/nakshatra";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
@@ -655,6 +656,15 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
     year: "numeric", month: "long", day: "numeric",
   });
 
+  const boyJanma = getMoonJanmaFromChart(data.boy_chart);
+  const girlJanma = getMoonJanmaFromChart(data.girl_chart);
+  const boyNakLabel = boyJanma
+    ? formatNakshatraWithCharan(boyJanma.nakshatra, boyJanma.nakshatra_charan, "en")
+    : data.boy_nakshatra;
+  const girlNakLabel = girlJanma
+    ? formatNakshatraWithCharan(girlJanma.nakshatra, girlJanma.nakshatra_charan, "en")
+    : data.girl_nakshatra;
+
   const pct = data.percentage;
   const r = 60;
   const circ = 2 * Math.PI * r;
@@ -801,7 +811,7 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
             <div style="width:64px;height:64px;background:rgba(99,102,241,0.25);border:2px solid rgba(165,180,252,0.5);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:26px;font-weight:900;color:#c7d2fe;">${(data.boy_name||"B")[0].toUpperCase()}</div>
             <p style="font-size:16px;font-weight:800;color:white;margin-bottom:3px;">${data.boy_name || "Var"}</p>
             <p style="font-size:11px;color:#a5b4fc;margin-bottom:2px;">${data.boy_moon_sign}</p>
-            <p style="font-size:10px;color:rgba(165,180,252,0.6);">${data.boy_nakshatra}</p>
+            <p style="font-size:10px;color:rgba(165,180,252,0.6);">${boyNakLabel}</p>
             <p style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:1px;">♂ GROOM</p>
           </div>
 
@@ -824,7 +834,7 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
             <div style="width:64px;height:64px;background:rgba(225,29,72,0.25);border:2px solid rgba(253,164,175,0.5);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:26px;font-weight:900;color:#fda4af;">${(data.girl_name||"G")[0].toUpperCase()}</div>
             <p style="font-size:16px;font-weight:800;color:white;margin-bottom:3px;">${data.girl_name || "Vadhu"}</p>
             <p style="font-size:11px;color:#fda4af;margin-bottom:2px;">${data.girl_moon_sign}</p>
-            <p style="font-size:10px;color:rgba(253,164,175,0.6);">${data.girl_nakshatra}</p>
+            <p style="font-size:10px;color:rgba(253,164,175,0.6);">${girlNakLabel}</p>
             <p style="font-size:9px;color:rgba(255,255,255,0.35);margin-top:4px;letter-spacing:1px;">♀ BRIDE</p>
           </div>
         </div>
@@ -857,7 +867,7 @@ export async function downloadMatchReport(data: MatchResponse, matchReq?: MatchR
             ["Time of Birth", data.boy_chart.meta.birth_time, data.girl_chart.meta.birth_time],
             ["Birth Place", data.boy_chart.meta.birth_place, data.girl_chart.meta.birth_place],
             ["Moon Sign", data.boy_moon_sign, data.girl_moon_sign],
-            ["Nakshatra", data.boy_nakshatra, data.girl_nakshatra],
+            ["Nakshatra", boyNakLabel, girlNakLabel],
             ["Nak. Lord", data.boy_nakshatra_lord, data.girl_nakshatra_lord],
             ["Mangal Dosha", data.boy_mangal_dosha ? "Present" : "Absent", data.girl_mangal_dosha ? "Present" : "Absent"],
           ].map(([l, bv, gv], i) => `

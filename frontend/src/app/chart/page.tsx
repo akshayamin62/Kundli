@@ -3,13 +3,15 @@
 import { useRouter } from "next/navigation";
 import BirthForm from "@/components/BirthForm";
 import { ChartResponse, ChartRequest } from "@/types/chart";
+import { enrichChartRequestFromMeta } from "@/lib/editPrefill";
 
 export default function ChartPage() {
   const router = useRouter();
 
   function handleResult(chart: ChartResponse, req: ChartRequest) {
+    const enriched = enrichChartRequestFromMeta(req, chart);
     sessionStorage.setItem("astroChart", JSON.stringify(chart));
-    sessionStorage.setItem("astroReq", JSON.stringify(req));
+    sessionStorage.setItem("astroReq", JSON.stringify(enriched));
     router.push("/result");
   }
 

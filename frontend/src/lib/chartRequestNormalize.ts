@@ -1,4 +1,5 @@
 import { ChartRequest } from "@/types/chart";
+import type { MatchRequest } from "@/types/chart";
 
 export const HOUSE_SYSTEM_IDS = [
   "placidus",
@@ -89,5 +90,13 @@ export function normalizeChartRequest(req: Partial<ChartRequest>): ChartRequest 
     history_id: req.history_id,
     house_system: normalizeHouseSystem(req.house_system),
     zodiac: normalizeZodiac(req.zodiac),
+  };
+}
+
+export function normalizeMatchRequest(req: MatchRequest): MatchRequest {
+  return {
+    ...req,
+    boy: normalizeChartRequest(req.boy) as MatchRequest["boy"],
+    girl: normalizeChartRequest(req.girl) as MatchRequest["girl"],
   };
 }

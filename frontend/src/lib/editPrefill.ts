@@ -1,5 +1,5 @@
-import { ChartRequest, MatchPersonRequest, MatchRequest, MatchResponse } from "@/types/chart";
-import { normalizeHouseSystem, normalizeZodiac } from "@/lib/chartRequestNormalize";
+import { ChartRequest, MatchPersonRequest, MatchRequest, MatchResponse, ChartResponse } from "@/types/chart";
+import { normalizeChartRequest, normalizeHouseSystem, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
 const TAB_KEY = "jk_active_tab";
 const BIRTH_FORM_KEY = "jk_birth_form";
@@ -7,20 +7,51 @@ const MATCH_BOY_KEY = "jk_match_boy";
 const MATCH_GIRL_KEY = "jk_match_girl";
 const MATCH_REQ_SESSION_KEY = "matchReq";
 
-function personFromChart(meta: {
-  birth_date: string;
-  birth_time: string;
-  birth_place: string;
-  house_system?: string;
-  zodiac?: string;
-}, name: string): MatchPersonRequest {
+function personFromChart(meta: ChartResponse["meta"], name: string): MatchPersonRequest {
   return {
     name,
     birth_date: meta.birth_date,
     birth_time: meta.birth_time,
     birth_place: meta.birth_place,
+    birth_lat: meta.latitude,
+    birth_lon: meta.longitude,
     house_system: normalizeHouseSystem(meta.house_system),
     zodiac: normalizeZodiac(meta.zodiac),
+  };
+}
+
+/** Pin resolved coordinates from a built chart so re-runs do not re-geocode. */
+export function enrichChartRequestFromMeta(req: ChartRequest, chart: ChartResponse): ChartRequest {
+  const base = normalizeChartRequest(req);
+  return {
+    ...base,
+    birth_lat: base.birth_lat ?? chart.meta.latitude,
+    birth_lon: base.birth_lon ?? chart.meta.longitude,
+  };
+}
+
+export function enrichMatchPersonFromMeta(
+  person: MatchPersonRequest,
+  chart: ChartResponse,
+): MatchPersonRequest {
+  const base = normalizeChartRequest(person) as MatchPersonRequest;
+  return {
+    ...base,
+    name: person.name ?? base.name,
+    birth_lat: base.birth_lat ?? chart.meta.latitude,
+    birth_lon: base.birth_lon ?? chart.meta.longitude,
+    house_system: normalizeHouseSystem(person.house_system ?? chart.meta.house_system),
+    zodiac: normalizeZodiac(person.zodiac ?? chart.meta.zodiac),
+  };
+}
+
+export function enrichMatchRequestFromResult(
+  req: MatchRequest,
+  result: MatchResponse,
+): MatchRequest {
+  return {
+    boy: enrichMatchPersonFromMeta(req.boy, result.boy_chart),
+    girl: enrichMatchPersonFromMeta(req.girl, result.girl_chart),
   };
 }
 

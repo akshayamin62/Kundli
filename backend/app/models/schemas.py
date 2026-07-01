@@ -379,9 +379,11 @@ class MatchResponse(BaseModel):
     girl_name: str
     boy_nakshatra: str
     boy_nakshatra_lord: str
+    boy_nakshatra_charan: int
     boy_moon_sign: str
     girl_nakshatra: str
     girl_nakshatra_lord: str
+    girl_nakshatra_charan: int
     girl_moon_sign: str
 
     boy_mangal_dosha: bool

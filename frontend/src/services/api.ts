@@ -1,6 +1,6 @@
 import { ChartRequest, ChartResponse, VargaRequest, DashaRequest, DashaResponse, TransitRequest, TransitResponse, MatchRequest, MatchResponse, HistoryItemSummary, HistoryItemFull, PitruDoshaResponse, KaalSarpaResponse, ChandalDoshaResponse } from "@/types/chart";
 import { authHeaders, clearAuth } from "@/lib/authStorage";
-import { normalizeChartRequest, normalizeZodiac } from "@/lib/chartRequestNormalize";
+import { normalizeChartRequest, normalizeMatchRequest, normalizeZodiac } from "@/lib/chartRequestNormalize";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -152,7 +152,7 @@ export async function listHouseSystems(): Promise<{ systems: { id: string; name:
 export async function calculateMatch(req: MatchRequest): Promise<MatchResponse> {
   const res = await apiFetch(`${API_URL}/api/match/calculate`, {
     method: "POST",
-    body: JSON.stringify(req),
+    body: JSON.stringify(normalizeMatchRequest(req)),
   });
 
   if (!res.ok) {

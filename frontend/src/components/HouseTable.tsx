@@ -3,7 +3,8 @@
 import { ChartResponse } from "@/types/chart";
 import { formatHouseSystemLabel, formatZodiacLabel } from "@/lib/chartRequestNormalize";
 import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
-import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_NAMES, SIGN_LORDS as SIGN_LORDS_I18N, NAKSHATRA_NAMES, NAKSHATRA_LORDS as NAKSHATRA_LORDS_I18N, AVASTHA_NAMES, UI, translateSign } from "@/lib/translations";
+import { type Lang, SIGN_NAMES as SIGN_NAMES_I18N, PLANET_NAMES, SIGN_LORDS as SIGN_LORDS_I18N, NAKSHATRA_LORDS as NAKSHATRA_LORDS_I18N, AVASTHA_NAMES, UI, translateSign } from "@/lib/translations";
+import { getNakshatraFromLongitude, formatNakshatraWithCharan } from "@/lib/nakshatra";
 import { sortPlanetsForTable } from "@/lib/planetOrder";
 
 interface Props {
@@ -48,44 +49,6 @@ const SIGN_NUMS: Record<string, number> = Object.fromEntries(
   SIGN_NAMES_EN.map((s, i) => [s, i + 1])
 );
 
-const NAKSHATRAS: { name: string; lord: string }[] = [
-  { name: "Ashwini",           lord: "Ketu"    },
-  { name: "Bharani",           lord: "Venus"   },
-  { name: "Krittika",          lord: "Sun"     },
-  { name: "Rohini",            lord: "Moon"    },
-  { name: "Mrigashira",        lord: "Mars"    },
-  { name: "Ardra",             lord: "Rahu"    },
-  { name: "Punarvasu",         lord: "Jupiter" },
-  { name: "Pushya",            lord: "Saturn"  },
-  { name: "Ashlesha",          lord: "Mercury" },
-  { name: "Magha",             lord: "Ketu"    },
-  { name: "Purva Phalguni",    lord: "Venus"   },
-  { name: "Uttara Phalguni",   lord: "Sun"     },
-  { name: "Hasta",             lord: "Moon"    },
-  { name: "Chitra",            lord: "Mars"    },
-  { name: "Swati",             lord: "Rahu"    },
-  { name: "Vishakha",          lord: "Jupiter" },
-  { name: "Anuradha",          lord: "Saturn"  },
-  { name: "Jyeshtha",          lord: "Mercury" },
-  { name: "Mula",              lord: "Ketu"    },
-  { name: "Purva Ashadha",     lord: "Venus"   },
-  { name: "Uttara Ashadha",    lord: "Sun"     },
-  { name: "Shravana",          lord: "Moon"    },
-  { name: "Dhanishta",         lord: "Mars"    },
-  { name: "Shatabhisha",       lord: "Rahu"    },
-  { name: "Purva Bhadrapada",  lord: "Jupiter" },
-  { name: "Uttara Bhadrapada", lord: "Saturn"  },
-  { name: "Revati",            lord: "Mercury" },
-];
-
-function getNakshatra(longitude: number) {
-  const size = 360 / 27;
-  const idx = Math.floor(longitude / size) % 27;
-  const posInNak = longitude - Math.floor(longitude / size) * size;
-  const pada = Math.min(Math.floor(posInNak / (size / 4)) + 1, 4);
-  return { idx, lordKey: NAKSHATRAS[idx].lord, pada };
-}
-
 function getAvasthaIdx(longitude: number, sign: string): number {
   const signNum = SIGN_NUMS[sign] ?? 1;
   const degInSign = longitude % 30;
@@ -106,7 +69,6 @@ function formatLongitude(lon: number): string {
 
 export default function HouseTable({ chart, lang = "en" }: Props) {
   const ui = UI[lang];
-  const nakNames = NAKSHATRA_NAMES[lang];
   const nakLords = NAKSHATRA_LORDS_I18N[lang];
   const avasthas = AVASTHA_NAMES[lang];
   const planetNames = PLANET_NAMES[lang];
@@ -114,12 +76,12 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
 
   const ascLon  = chart.angles.ascendant.longitude;
   const ascSignEn = SIGN_NAMES_EN[Math.floor(ascLon / 30) % 12];
-  const ascNak  = getNakshatra(ascLon);
+  const ascNak  = getNakshatraFromLongitude(ascLon);
 
   interface TableRow {
     key: string; symbol: string; displayName: string;
     signEn: string; signLordKey: string; nakIdx: number; nakLordKey: string;
-    pada: number; position: string; retro: boolean | null;
+    nakNameEn: string; charan: number; position: string; retro: boolean | null;
     avasthaIdx: number; house: number | string; color: string;
   }
 
@@ -128,19 +90,19 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
       key: "Ascendant", symbol: "↑",
       displayName: planetNames["Ascendant"] ?? ui.ascendant,
       signEn: ascSignEn, signLordKey: SIGN_LORDS_EN[ascSignEn] ?? "",
-      nakIdx: ascNak.idx, nakLordKey: ascNak.lordKey, pada: ascNak.pada,
+      nakIdx: ascNak.index, nakLordKey: ascNak.lord, nakNameEn: ascNak.name, charan: ascNak.charan,
       position: formatLongitude(ascLon), retro: null,
       avasthaIdx: -1, house: 1, color: "#6d28d9",
     },
     ...sortPlanetsForTable(
       chart.planets.filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name)),
     ).map((p) => {
-        const nak = getNakshatra(p.longitude);
+        const nak = getNakshatraFromLongitude(p.longitude);
         return {
           key: p.name, symbol: p.symbol,
           displayName: planetNames[p.name] ?? p.name,
           signEn: p.sign, signLordKey: SIGN_LORDS_EN[p.sign] ?? "",
-          nakIdx: nak.idx, nakLordKey: nak.lordKey, pada: nak.pada,
+          nakIdx: nak.index, nakLordKey: nak.lord, nakNameEn: nak.name, charan: nak.charan,
           position: formatLongitude(p.longitude), retro: p.retrograde,
           avasthaIdx: getAvasthaIdx(p.longitude, p.sign), house: p.house,
           color: PLANET_COLORS[p.name] ?? "#374151",
@@ -160,7 +122,7 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
               <th className="px-3 py-3 text-left">{ui.signLord}</th>
               <th className="px-3 py-3 text-left">{ui.nakshatra}</th>
               <th className="px-3 py-3 text-left">{ui.nakLord}</th>
-              <th className="px-3 py-3 text-center">{ui.pada}</th>
+              <th className="px-3 py-3 text-center">{ui.charan}</th>
               <th className="px-3 py-3 text-left">{ui.position}</th>
               <th className="px-3 py-3 text-center">{ui.retroCol}</th>
               <th className="px-3 py-3 text-left">{ui.avastha}</th>
@@ -180,12 +142,14 @@ export default function HouseTable({ chart, lang = "en" }: Props) {
                   {row.signLordKey ? (signLordsLang[row.signEn] ?? row.signLordKey) : "—"}
                 </td>
                 <td className="px-3 py-2.5 text-gray-700 whitespace-nowrap">
-                  {nakNames[row.nakIdx] ?? "—"}
+                  {row.nakNameEn
+                    ? formatNakshatraWithCharan(row.nakNameEn, row.charan, lang)
+                    : "—"}
                 </td>
                 <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">
                   {row.nakLordKey ? (nakLords[row.nakLordKey] ?? row.nakLordKey) : "—"}
                 </td>
-                <td className="px-3 py-2.5 text-center text-gray-600 font-medium">{row.pada}</td>
+                <td className="px-3 py-2.5 text-center text-gray-600 font-medium">{row.charan}</td>
                 <td className="px-3 py-2.5 font-mono text-xs text-gray-800 whitespace-nowrap">{row.position}</td>
                 <td className="px-3 py-2.5 text-center whitespace-nowrap">
                   {row.retro === null ? (

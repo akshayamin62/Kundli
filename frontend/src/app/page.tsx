@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import BirthForm from "@/components/BirthForm";
 import MatchForm from "@/components/MatchForm";
 import { ChartResponse, ChartRequest, MatchResponse, MatchRequest } from "@/types/chart";
-import { saveMatchRequest } from "@/lib/editPrefill";
+import { saveMatchRequest, enrichChartRequestFromMeta, enrichMatchRequestFromResult } from "@/lib/editPrefill";
 import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
 import AppNavbar from "@/components/AppNavbar";
 
@@ -26,15 +26,17 @@ export default function HomePage() {
   };
 
   function handleChartResult(chart: ChartResponse, req: ChartRequest) {
+    const enriched = enrichChartRequestFromMeta(req, chart);
     sessionStorage.setItem("astroChart", JSON.stringify(chart));
-    sessionStorage.setItem("astroReq", JSON.stringify(req));
+    sessionStorage.setItem("astroReq", JSON.stringify(enriched));
     if (chart.history_id) setKundaliHistoryId(chart.history_id);
     router.push("/result");
   }
 
   function handleMatchResult(result: MatchResponse, req: MatchRequest) {
+    const enriched = enrichMatchRequestFromResult(req, result);
     sessionStorage.setItem("matchResult", JSON.stringify(result));
-    saveMatchRequest(req);
+    saveMatchRequest(enriched);
     if (result.history_id) setMatchHistoryId(result.history_id);
     router.push("/match/result");
   }

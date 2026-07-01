@@ -27,6 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 
+from app.services.nakshatra import nakshatra_from_longitude
+
 # ---------------------------------------------------------------------------
 # Nakshatra data (0-indexed, 27 nakshatras)
 # ---------------------------------------------------------------------------
@@ -519,9 +521,11 @@ class MatchResult:
 
     boy_nakshatra: str = ""
     boy_nakshatra_lord: str = ""
+    boy_nakshatra_charan: int = 0
     boy_moon_sign: str = ""
     girl_nakshatra: str = ""
     girl_nakshatra_lord: str = ""
+    girl_nakshatra_charan: int = 0
     girl_moon_sign: str = ""
 
     boy_mangal_dosha: bool = False
@@ -569,11 +573,12 @@ def calculate_match(
     boy_lon  = float(boy_moon.get("longitude", 0.0))
     girl_lon = float(girl_moon.get("longitude", 0.0))
 
-    boy_nak_idx  = int(boy_lon * 27 / 360) % 27
-    girl_nak_idx = int(girl_lon * 27 / 360) % 27
-
-    boy_nak_name  = NAKSHATRA_NAMES[boy_nak_idx]
-    girl_nak_name = NAKSHATRA_NAMES[girl_nak_idx]
+    boy_nak  = nakshatra_from_longitude(boy_lon)
+    girl_nak = nakshatra_from_longitude(girl_lon)
+    boy_nak_idx  = boy_nak["index"]
+    girl_nak_idx = girl_nak["index"]
+    boy_nak_name  = boy_nak["name"]
+    girl_nak_name = girl_nak["name"]
 
     # ── Compute all 8 koots ────────────────────────────────────────────────
     v1  = _varna_score(boy_sign, girl_sign)
@@ -642,10 +647,12 @@ def calculate_match(
         "recommendation": recommendation,
         "koots": koots,
         "boy_nakshatra": boy_nak_name,
-        "boy_nakshatra_lord": _NAK_LORDS[boy_nak_idx],
+        "boy_nakshatra_lord": boy_nak["lord"],
+        "boy_nakshatra_charan": boy_nak["charan"],
         "boy_moon_sign": boy_sign,
         "girl_nakshatra": girl_nak_name,
-        "girl_nakshatra_lord": _NAK_LORDS[girl_nak_idx],
+        "girl_nakshatra_lord": girl_nak["lord"],
+        "girl_nakshatra_charan": girl_nak["charan"],
         "girl_moon_sign": girl_sign,
         "boy_mangal_dosha": boy_md,
         "girl_mangal_dosha": girl_md,

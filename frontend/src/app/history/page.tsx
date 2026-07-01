@@ -7,7 +7,7 @@ import { ChartRequest, HistoryItemSummary, MatchRequest } from "@/types/chart";
 import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
 import MatchForm from "@/components/MatchForm";
-import { saveMatchRequest } from "@/lib/editPrefill";
+import { saveMatchRequest, enrichMatchRequestFromResult } from "@/lib/editPrefill";
 import { setKundaliHistoryId, setMatchHistoryId } from "@/lib/historySession";
 import { normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import AppNavbar from "@/components/AppNavbar";
@@ -233,8 +233,9 @@ export default function HistoryPage() {
           save_history: false,
         };
         const result = await calculateMatch(req);
+        const enriched = enrichMatchRequestFromResult(req, result);
         sessionStorage.setItem("matchResult", JSON.stringify(result));
-        saveMatchRequest(req);
+        saveMatchRequest(enriched);
         setMatchHistoryId(item.id);
         router.push("/match/result");
       }
