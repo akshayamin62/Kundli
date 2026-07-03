@@ -170,7 +170,7 @@ const DATA: Record<string, PlanetStaticData> = {
     neecha: "Gemini",                    neechaDeg: 15,
     moolatrikona: "Capricorn",
     ekpaad: "3, 10",    dwipaad: "5, 9",  tripaad: "4, 8",   sampurna: "7",
-    mitra: "Mars, Saturn, Venus",
+    mitra: "Mercury, Saturn, Venus",
     sama:  "Jupiter",
     shatru: "Sun, Moon, Mars",
   },

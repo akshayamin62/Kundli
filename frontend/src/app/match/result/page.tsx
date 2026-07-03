@@ -15,6 +15,14 @@ import { fetchHistoryItem, calculateVarga } from "@/services/api";
 import AppLogo from "@/components/AppLogo";
 import { getMoonJanmaFromChart, toMoonChart } from "@/lib/chartTransforms";
 import { formatNakshatraWithCharan } from "@/lib/nakshatra";
+import {
+  ASHTAKOOT_LABELS,
+  translateVarna,
+  translateVasya,
+  translateYoni,
+  translateGana,
+  translateNadi,
+} from "@/lib/ashtakootAttributes";
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 const M: Record<Lang, Record<string, string>> = {
@@ -592,6 +600,11 @@ export default function MatchResultPage() {
                     { label: t.rasiLord, bv: SIGN_LORDS[lang][data.boy_moon_sign] ?? "—", gv: SIGN_LORDS[lang][data.girl_moon_sign] ?? "—" },
                     { label: t.janmaNak, bv: boyJanma ? formatNakshatraWithCharan(boyJanma.nakshatra, boyJanma.nakshatra_charan, lang) : "—", gv: girlJanma ? formatNakshatraWithCharan(girlJanma.nakshatra, girlJanma.nakshatra_charan, lang) : "—" },
                     { label: t.nakLord,  bv: boyJanma ? tPlanet(boyJanma.nakshatra_lord, lang) : "—",       gv: girlJanma ? tPlanet(girlJanma.nakshatra_lord, lang) : "—" },
+                    { label: ASHTAKOOT_LABELS[lang].varna, bv: boyJanma ? translateVarna(boyJanma.varna, lang) : "—", gv: girlJanma ? translateVarna(girlJanma.varna, lang) : "—" },
+                    { label: ASHTAKOOT_LABELS[lang].vasya, bv: boyJanma ? translateVasya(boyJanma.vasya, lang) : "—", gv: girlJanma ? translateVasya(girlJanma.vasya, lang) : "—" },
+                    { label: ASHTAKOOT_LABELS[lang].yoni,  bv: boyJanma ? translateYoni(boyJanma.yoni, lang) : "—",   gv: girlJanma ? translateYoni(girlJanma.yoni, lang) : "—" },
+                    { label: ASHTAKOOT_LABELS[lang].gana,  bv: boyJanma ? translateGana(boyJanma.gana, lang) : "—",   gv: girlJanma ? translateGana(girlJanma.gana, lang) : "—" },
+                    { label: ASHTAKOOT_LABELS[lang].nadi,  bv: boyJanma ? translateNadi(boyJanma.nadi, lang) : "—",   gv: girlJanma ? translateNadi(girlJanma.nadi, lang) : "—" },
                     { label: t.dosha,
                       bv: data.boy_mangal_dosha  ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span>  : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,
                       gv: data.girl_mangal_dosha ? <span className="text-red-600 font-semibold text-xs">⚠ {t.mangalYes}</span> : <span className="text-emerald-600 font-semibold text-xs">✓ {t.mangalNo}</span>,

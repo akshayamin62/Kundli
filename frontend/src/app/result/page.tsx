@@ -15,6 +15,14 @@ import { calculateChart, calculateVarga, calculateVargaBulk } from "@/services/a
 import { type Lang, SIGN_NAMES, NAKSHATRA_NAMES } from "@/lib/translations";
 import { getMoonJanmaFromChart, toMoonChart } from "@/lib/chartTransforms";
 import { formatNakshatraWithCharan } from "@/lib/nakshatra";
+import {
+  ASHTAKOOT_LABELS,
+  translateVarna,
+  translateVasya,
+  translateYoni,
+  translateGana,
+  translateNadi,
+} from "@/lib/ashtakootAttributes";
 import { downloadKundliReport } from "@/lib/reportGenerator";
 import FormModal from "@/components/FormModal";
 import BirthForm from "@/components/BirthForm";
@@ -729,7 +737,7 @@ export default function ResultPage() {
           {/* D1 Lagna Kundli — top ~55% */}
           <div className="min-h-0" style={{ flex: "0 0 55%" }}>
             <ChartPanel
-              title="Lagna Kundli (D1)"
+              title="Lagna (D1)"
               accent="indigo"
               headerMeta={
                 moonJanma ? (
@@ -741,6 +749,26 @@ export default function ResultPage() {
                     <span>
                       <span className="font-semibold text-indigo-700">{JANMA_LABELS[lang].nak}:</span>{" "}
                       {formatNakshatraWithCharan(moonJanma.nakshatra, moonJanma.nakshatra_charan, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{ASHTAKOOT_LABELS[lang].varna}:</span>{" "}
+                      {translateVarna(moonJanma.varna, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{ASHTAKOOT_LABELS[lang].vasya}:</span>{" "}
+                      {translateVasya(moonJanma.vasya, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{ASHTAKOOT_LABELS[lang].yoni}:</span>{" "}
+                      {translateYoni(moonJanma.yoni, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{ASHTAKOOT_LABELS[lang].gana}:</span>{" "}
+                      {translateGana(moonJanma.gana, lang)}
+                    </span>
+                    <span>
+                      <span className="font-semibold text-indigo-700">{ASHTAKOOT_LABELS[lang].nadi}:</span>{" "}
+                      {translateNadi(moonJanma.nadi, lang)}
                     </span>
                   </div>
                 ) : null

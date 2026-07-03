@@ -1,25 +1,33 @@
 import { ChartResponse, ChartAngles, ChartMeta, HouseCusp, PlanetPosition, DegreePosition } from "@/types/chart";
 import { getNakshatraFromLongitude } from "@/lib/nakshatra";
+import { getAshtakootAttributes } from "@/lib/ashtakootAttributes";
 
 export interface MoonJanmaInfo {
   moon_sign: string;
   nakshatra: string;
   nakshatra_lord: string;
   nakshatra_charan: number;
+  varna: string;
+  vasya: string;
+  yoni: string;
+  gana: string;
+  nadi: string;
 }
 
-/** Janma Rasi & Janma Nakshatra (+ charan) from natal Moon — same rules as Kundli Milan. */
+/** Janma Rasi & Janma Nakshatra (+ charan, ashtakoot attributes) from natal Moon. */
 export function getMoonJanmaFromChart(chart: ChartResponse): MoonJanmaInfo | null {
   const moon = chart.planets.find((p) => p.name === "Moon");
   if (!moon) return null;
 
   const nak = getNakshatraFromLongitude(moon.longitude);
+  const attrs = getAshtakootAttributes(moon.sign, nak.index, nak.name);
 
   return {
     moon_sign: moon.sign,
     nakshatra: nak.name,
     nakshatra_lord: nak.lord,
     nakshatra_charan: nak.charan,
+    ...attrs,
   };
 }
 
