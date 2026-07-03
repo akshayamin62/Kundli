@@ -8,8 +8,16 @@ import {
 import { calculateVargaBulk, calculateDasha, calculateVarga } from "@/services/api";
 import { formatHouseSystemLabel, formatZodiacLabel, normalizeChartRequest } from "@/lib/chartRequestNormalize";
 import { formatTimezoneDisplay } from "@/lib/timezoneDisplay";
-import { toMoonChart, getMoonJanmaFromChart } from "@/lib/chartTransforms";
-import { formatNakshatraWithCharan } from "@/lib/nakshatra";
+import { toMoonChart, getMoonJanmaFromChart, type MoonJanmaInfo } from "@/lib/chartTransforms";
+import { formatNakshatraWithCharan, getNakshatraFromLongitude } from "@/lib/nakshatra";
+import {
+  translateVarna,
+  translateVasya,
+  translateYoni,
+  translateGana,
+  translateNadi,
+} from "@/lib/ashtakootAttributes";
+import { AVASTHA_NAMES, PLANET_NAMES } from "@/lib/translations";
 import { vargaChartLabel } from "@/lib/vargaMeta";
 import { vargaRequestForPerson } from "@/lib/matchVargaRequest";
 import { matchRequestFromResult, loadStoredMatchRequest } from "@/lib/editPrefill";
@@ -18,8 +26,6 @@ import {
   chunkArray,
   downloadPdfFromHtml,
   REPORT_PDF_STYLES,
-  reportKeepTogether,
-  reportTableBlock,
 } from "@/lib/pdfExport";
 
 /** Inline colors only — sizing/centering from .report-badge in pdfExport REPORT_PDF_STYLES */
@@ -40,6 +46,9 @@ function reportBadge(
 }
 
 const TD = "padding:9px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle;";
+const TD_COMPACT = "padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;";
+const NAK_TD = `${TD}white-space:nowrap;`;
+const NAK_TD_COMPACT = `${TD_COMPACT}white-space:nowrap;`;
 
 // ── Chart SVG builder (pure, no React) ───────────────────────────────────────
 const R_SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
@@ -61,6 +70,48 @@ const R_NEECHA: Record<string,string> = {
   Sun:"Libra",Moon:"Scorpio",Mars:"Cancer",Mercury:"Pisces",Jupiter:"Capricorn",
   Venus:"Virgo",Saturn:"Aries","North Node":"Sagittarius","South Node":"Gemini",
 };
+const R_SIGN_LORDS: Record<string, string> = {
+  Aries: "Mars", Taurus: "Venus", Gemini: "Mercury", Cancer: "Moon", Leo: "Sun", Virgo: "Mercury",
+  Libra: "Venus", Scorpio: "Mars", Sagittarius: "Jupiter", Capricorn: "Saturn", Aquarius: "Saturn", Pisces: "Jupiter",
+};
+
+const AVASTHAS_EN = AVASTHA_NAMES.en;
+
+function getAvasthaIdx(longitude: number, sign: string): number {
+  const signNum = R_SIGN_TO_NUM[sign] ?? 1;
+  const degInSign = longitude % 30;
+  const bracket = Math.min(Math.floor(degInSign / 6), 4);
+  const oddIdx = [0, 1, 2, 3, 4];
+  const evenIdx = [4, 3, 2, 1, 0];
+  return signNum % 2 === 1 ? oddIdx[bracket] : evenIdx[bracket];
+}
+
+function buildJanmaDetailsHtml(janma: MoonJanmaInfo, name?: string): string {
+  const items: [string, string][] = [
+    ...(name?.trim() ? [["Name", name.trim()] as [string, string]] : []),
+    ["Janma Rasi", janma.moon_sign],
+    ["Janma Nakshatra", formatNakshatraWithCharan(janma.nakshatra, janma.nakshatra_charan, "en")],
+    ["Nakshatra Lord", janma.nakshatra_lord],
+    ["Varna", translateVarna(janma.varna, "en")],
+    ["Vasya", translateVasya(janma.vasya, "en")],
+    ["Yoni", translateYoni(janma.yoni, "en")],
+    ["Gana", translateGana(janma.gana, "en")],
+    ["Nadi", translateNadi(janma.nadi, "en")],
+  ];
+
+  return `
+    <div style="border-radius:14px;border:1px solid #e2e8f0;margin-bottom:4px;">
+      ${sectionHeader("Janma Details")}
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px;background:#fafafa;">
+        ${items.map(([label, value]) => `
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;">
+            <p style="font-size:8px;text-transform:uppercase;letter-spacing:1.2px;color:#64748b;margin-bottom:4px;font-weight:700;">${label}</p>
+            <p style="font-size:12px;font-weight:700;color:#1e1b4b;line-height:1.3;">${value}</p>
+          </div>
+        `).join("")}
+      </div>
+    </div>`;
+}
 
 type RPt = [number, number];
 
@@ -105,7 +156,7 @@ function rGetInnerVertex(house: number, W: number, H: number): RPt {
 }
 
 function buildChartSvgHtml(chart: ChartResponse, compact = false): string {
-  const W = compact ? 540 : 900;
+  const W = compact ? 500 : 900;
   const H = compact ? Math.round((W * 640) / 900) : 640;
   const s = W / 900;
   const h1 = chart.houses.find(h => h.number === 1);
@@ -313,53 +364,112 @@ function matchChartsAndFooterPageHtml(
     `;
 }
 
-function buildPlanetTableRows(chart: ChartResponse): string {
-  return sortPlanetsForTable(
+function buildPlanetTableRows(chart: ChartResponse, compact = false): string {
+  const td = compact ? TD_COMPACT : TD;
+  const nakTd = compact ? NAK_TD_COMPACT : NAK_TD;
+  const cellFs = compact ? "9px" : "10px";
+  const nameFs = compact ? "10px" : "11px";
+  const symFs = compact ? "13px" : "15px";
+  const badgeFs = compact ? "8px" : "9px";
+  const ascLon = chart.angles.ascendant.longitude;
+  const ascSign = chart.angles.ascendant.sign;
+  const ascNak = getNakshatraFromLongitude(ascLon);
+
+  const ascRow = `
+    <tr style="background:#faf5ff;">
+      <td style="${td}"><strong style="font-size:${nameFs};color:#6d28d9;">↑ Ascendant</strong></td>
+      <td style="${td}font-size:${nameFs};font-weight:600;color:#1e1b4b;">${ascSign}</td>
+      <td style="${td}font-size:${cellFs};color:#64748b;">${R_SIGN_LORDS[ascSign] ?? "—"}</td>
+      <td style="${nakTd}font-size:${cellFs};color:#334155;">${ascNak.name}</td>
+      <td style="${td}font-size:${cellFs};color:#64748b;">${ascNak.lord}</td>
+      <td style="${td}text-align:center;font-size:${cellFs};color:#475569;">${ascNak.charan}</td>
+      <td style="${td}font-size:${cellFs};font-family:monospace;color:#334155;">${chart.angles.ascendant.formatted}</td>
+      <td style="${td}text-align:center;font-size:${cellFs};color:#94a3b8;">—</td>
+      <td style="${td}text-align:center;font-size:${cellFs};color:#94a3b8;">—</td>
+      <td style="${td}text-align:center;">${reportBadge("1", "background:#eef2ff;color:#3730a3;font-weight:700;border:1px solid #c7d2fe;min-width:24px;font-size:${badgeFs};")}</td>
+    </tr>`;
+
+  const planetRows = sortPlanetsForTable(
     chart.planets.filter((p) => !["Uranus", "Neptune", "Pluto"].includes(p.name)),
   )
     .map((p, idx) => {
+      const nak = getNakshatraFromLongitude(p.longitude);
+      const avasthaIdx = getAvasthaIdx(p.longitude, p.sign);
       const retro = p.retrograde;
       return `
     <tr style="background:${idx % 2 === 0 ? "#fff" : "#f8fafc"};">
-      <td style="${TD}">
-        <div class="report-cell-flex">
-          <span style="font-size:17px;line-height:1;display:inline-flex;align-items:center;flex-shrink:0;">${p.symbol}</span>
-          <strong style="font-size:12px;color:#0f172a;line-height:1.2;">${p.name}</strong>
+      <td style="${td}">
+        <div class="report-cell-flex" style="min-height:${compact ? "18px" : "22px"};gap:${compact ? "4px" : "6px"};">
+          <span style="font-size:${symFs};line-height:1;display:inline-flex;align-items:center;flex-shrink:0;">${p.symbol}</span>
+          <strong style="font-size:${nameFs};color:#0f172a;line-height:1.2;">${PLANET_NAMES.en[p.name] ?? p.name}</strong>
         </div>
       </td>
-      <td style="${TD}font-size:12px;font-weight:600;color:#1e1b4b;">${p.sign}</td>
-      <td style="${TD}font-size:11px;color:#64748b;font-family:monospace;">${p.degree}°${String(p.minutes).padStart(2, "0")}'${String(p.seconds).padStart(2, "0")}"</td>
-      <td style="${TD}text-align:center;">
-        ${reportBadge(String(p.house), "background:#eef2ff;color:#3730a3;font-weight:700;border:1px solid #c7d2fe;min-width:28px;")}
+      <td style="${td}font-size:${nameFs};font-weight:600;color:#1e1b4b;">${p.sign}</td>
+      <td style="${td}font-size:${cellFs};color:#64748b;">${R_SIGN_LORDS[p.sign] ?? "—"}</td>
+      <td style="${nakTd}font-size:${cellFs};color:#334155;">${nak.name}</td>
+      <td style="${td}font-size:${cellFs};color:#64748b;">${nak.lord}</td>
+      <td style="${td}text-align:center;font-size:${cellFs};color:#475569;">${nak.charan}</td>
+      <td style="${td}font-size:${cellFs};font-family:monospace;color:#334155;">${p.degree}°${String(p.minutes).padStart(2, "0")}'${String(p.seconds).padStart(2, "0")}"</td>
+      <td style="${td}text-align:center;">
+        ${reportBadge(retro ? "- Retro" : "Direct", `background:${retro ? "#fef2f2" : "#f0fdf4"};color:${retro ? "#dc2626" : "#16a34a"};font-weight:700;border:1px solid ${retro ? "#fecaca" : "#bbf7d0"};font-size:${badgeFs};${compact ? "min-height:22px;height:22px;padding:0 8px;" : ""}`)}
       </td>
-      <td style="${TD}text-align:center;">
-        ${reportBadge(retro ? "- Retro" : "Direct", `background:${retro ? "#fef2f2" : "#f0fdf4"};color:${retro ? "#dc2626" : "#16a34a"};font-weight:700;border:1px solid ${retro ? "#fecaca" : "#bbf7d0"};`)}
+      <td style="${td}font-size:${cellFs};color:#475569;text-align:center;">${AVASTHAS_EN[avasthaIdx] ?? "—"}</td>
+      <td style="${td}text-align:center;">
+        ${reportBadge(String(p.house), `background:#eef2ff;color:#3730a3;font-weight:700;border:1px solid #c7d2fe;min-width:24px;font-size:${badgeFs};${compact ? "min-height:22px;height:22px;padding:0 8px;" : ""}`)}
       </td>
     </tr>`;
     })
     .join("");
+
+  return ascRow + planetRows;
 }
 
-function buildGrahaSthitiTableHtml(chart: ChartResponse): string {
-  return reportTableBlock(`
+function buildGrahaSthitiTableInner(chart: ChartResponse, compact = false): string {
+  const hdrPad = compact ? "10px 16px" : "13px 20px";
+  const hdrFs = compact ? "10px" : "11px";
+  const thFs = compact ? "7px" : "8px";
+  const thPad = compact ? TD_COMPACT : TD;
+  return `
       <div style="border-radius:14px;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
-          <span style="color:white;font-size:16px;line-height:1;">✦</span>
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Graha Sthiti · Planet Positions</p>
+        <div style="background:#1e1b4b;padding:${hdrPad};display:flex;align-items:center;gap:8px;">
+          <span style="color:white;font-size:${compact ? "14px" : "16px"};line-height:1;">✦</span>
+          <p style="color:white;font-size:${hdrFs};font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Graha Sthiti · Planet Positions</p>
         </div>
         <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
           <thead style="display:table-header-group;">
             <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:22%;">Planet</th>
-              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:18%;">Sign (Rashi)</th>
-              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:28%;">Degree</th>
-              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:12%;">House</th>
-              <th style="${TD}text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;width:20%;">Status</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Planet</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Sign</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Sign Lord</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Nakshatra</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Nak. Lord</th>
+              <th style="${thPad}text-align:center;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Charan</th>
+              <th style="${thPad}text-align:left;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Position</th>
+              <th style="${thPad}text-align:center;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Retro</th>
+              <th style="${thPad}text-align:center;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">Avastha</th>
+              <th style="${thPad}text-align:center;font-size:${thFs};color:#64748b;font-weight:700;text-transform:uppercase;">House</th>
             </tr>
           </thead>
-          <tbody>${buildPlanetTableRows(chart)}</tbody>
+          <tbody>${buildPlanetTableRows(chart, compact)}</tbody>
         </table>
-      </div>`);
+      </div>`;
+}
+
+function buildChartAndPlanetsPageHtml(chart: ChartResponse): string {
+  const chartSvg = buildChartSvgHtml(chart, true);
+  return `
+  <div class="report-pdf-chunk">
+    <div style="padding:12px 16px;display:flex;flex-direction:column;gap:12px;">
+      <div style="border-radius:14px;border:1px solid #e2e8f0;">
+        <div style="background:#1e1b4b;padding:10px 16px;display:flex;align-items:center;gap:8px;">
+          <span style="color:white;font-size:14px;line-height:1;">◈</span>
+          <p style="color:white;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Janma Kundli · Birth Chart</p>
+        </div>
+        <div style="padding:10px 12px;background:#fafafa;line-height:0;">${chartSvg}</div>
+      </div>
+      ${buildGrahaSthitiTableInner(chart, true)}
+    </div>
+  </div>`;
 }
 
 function fmtDashaDate(iso: string): string {
@@ -367,39 +477,52 @@ function fmtDashaDate(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
-function buildDashaTableHtml(dasha: DashaResponse): string {
+function buildDashaTableHtml(dasha: DashaResponse, moonJanma?: MoonJanmaInfo | null): string {
   const today = new Date().toISOString().slice(0, 10);
-  const rows = dasha.periods.map((row, i) => {
+  const nakLabel = moonJanma
+    ? formatNakshatraWithCharan(moonJanma.nakshatra, moonJanma.nakshatra_charan, "en")
+    : dasha.nakshatra_name;
+  const nakLord = moonJanma?.nakshatra_lord ?? dasha.nakshatra_lord;
+
+  const rowParts: string[] = [];
+  dasha.periods.forEach((row, i) => {
+    if (i > 0 && row.md !== dasha.periods[i - 1].md) {
+      rowParts.push(`
+        <tr>
+          <td colspan="5" style="padding:0;height:0;line-height:0;border-top:3px solid #4338ca;background:#eef2ff;"></td>
+        </tr>`);
+    }
     const isActive = row.start_date <= today && today < row.end_date;
     const isPast = row.end_date < today;
     const bg = isActive ? "#fefce8" : i % 2 === 0 ? "#fff" : "#f8fafc";
-    const opacity = isPast && !isActive ? "opacity:0.65;" : "";
-    return `
-      <tr style="background:${bg};${opacity}">
-        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;color:#1e1b4b;">${row.md}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:600;color:#334155;">${row.ad}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;color:#475569;">${row.pd}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#64748b;">${fmtDashaDate(row.start_date)}${isActive ? " ●" : ""}</td>
-        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#64748b;">${fmtDashaDate(row.end_date)}</td>
-      </tr>`;
-  }).join("");
+    const pastStyle = isPast && !isActive ? "color:#64748b;" : "";
+    rowParts.push(`
+      <tr style="background:${bg};">
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:700;color:#0f172a;${pastStyle}">${row.md}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:600;color:#1e293b;${pastStyle}">${row.ad}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:11px;font-weight:500;color:#1e293b;${pastStyle}">${row.pd}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#334155;${pastStyle}">${fmtDashaDate(row.start_date)}${isActive ? " ●" : ""}</td>
+        <td style="padding:7px 12px;border-bottom:1px solid #f1f5f9;font-size:10px;font-family:monospace;color:#334155;${pastStyle}">${fmtDashaDate(row.end_date)}</td>
+      </tr>`);
+  });
+  const rows = rowParts.join("");
 
   return `
     <div style="border-radius:14px;border:1px solid #e2e8f0;">
       ${sectionHeader("Vimshottari Dasha")}
       <div style="padding:12px 16px;background:#eef2ff;border-bottom:1px solid #e2e8f0;">
-        <p style="font-size:12px;color:#3730a3;font-weight:600;">
-          Birth Nakshatra: <strong>${dasha.nakshatra_name}</strong> · Lord: <strong>${dasha.nakshatra_lord}</strong>
+        <p style="font-size:12px;color:#1e1b4b;font-weight:600;">
+          Birth Nakshatra: <strong style="color:#0f172a;">${nakLabel}</strong> · Lord: <strong style="color:#0f172a;">${nakLord}</strong>
         </p>
       </div>
       <table style="width:100%;border-collapse:collapse;">
         <thead style="display:table-header-group;">
           <tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;">
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">MD</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">AD</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">PD</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">Start</th>
-            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#64748b;font-weight:700;text-transform:uppercase;">End</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#334155;font-weight:700;text-transform:uppercase;">MD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#334155;font-weight:700;text-transform:uppercase;">AD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#334155;font-weight:700;text-transform:uppercase;">PD</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#334155;font-weight:700;text-transform:uppercase;">Start</th>
+            <th style="padding:8px 12px;text-align:left;font-size:9px;color:#334155;font-weight:700;text-transform:uppercase;">End</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -538,11 +661,12 @@ function buildSadsatkutMangalPageHtml(
 export async function downloadKundliReport(chart: ChartResponse, req: ChartRequest) {
   const safeReq = normalizeChartRequest(req);
   const m = chart.meta;
+  const moonJanma = getMoonJanmaFromChart(chart);
   const today = new Date().toLocaleDateString("en-IN", {
     year: "numeric", month: "long", day: "numeric",
   });
 
-  const chartSvg = buildChartSvgHtml(chart);
+  const janmaSection = moonJanma ? buildJanmaDetailsHtml(moonJanma, safeReq.name) : "";
 
   let divisionalSection = "";
   let dashaSection = "";
@@ -562,7 +686,7 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
       if (v) gridItems.push({ label: vargaChartLabel(n), chart: v });
     }
     divisionalSection = divisionalChartsSectionHtml(gridItems);
-    dashaSection = `<div class="report-pdf-chunk">${buildDashaTableHtml(dasha)}</div>`;
+    dashaSection = `<div class="report-pdf-chunk">${buildDashaTableHtml(dasha, moonJanma)}</div>`;
   } catch (e) {
     alert(e instanceof Error ? e.message : "Failed to generate report data");
     return;
@@ -578,7 +702,7 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
         <div>
           <p style="font-size:9px;letter-spacing:4px;text-transform:uppercase;opacity:0.55;margin-bottom:8px;">Astrogyan · Vedic Astrology Report</p>
           <h1 style="font-size:30px;font-weight:900;letter-spacing:-0.5px;line-height:1;">Janma Kundli</h1>
-          <p style="font-size:13px;opacity:0.7;margin-top:6px;">Birth Chart · ${m.birth_place}</p>
+          <p style="font-size:13px;opacity:0.7;margin-top:6px;">${safeReq.name ? `${safeReq.name} · ` : ""}${m.birth_place}</p>
         </div>
         <div style="text-align:right;">
           <p style="font-size:10px;opacity:0.5;">${today}</p>
@@ -596,6 +720,8 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
             latitude: m.latitude,
             longitude: m.longitude,
           })} (${m.utc_offset})`],
+          ["UTC", m.utc_datetime],
+          ["Julian Day", m.julian_day.toFixed(4)],
           ["System", `${formatHouseSystemLabel(m.house_system)} · ${formatZodiacLabel(m.zodiac)}`],
         ].map(([l, v]) => `
           <div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:11px 14px;backdrop-filter:blur(4px);">
@@ -624,23 +750,16 @@ export async function downloadKundliReport(chart: ChartResponse, req: ChartReque
 
     <div style="padding:24px 28px;display:flex;flex-direction:column;gap:22px;">
 
-      ${reportKeepTogether(`
-      <div style="border-radius:14px;border:1px solid #e2e8f0;">
-        <div style="background:#1e1b4b;padding:13px 20px;display:flex;align-items:center;gap:10px;">
-          <span style="color:white;font-size:16px;line-height:1;">◈</span>
-          <p style="color:white;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;line-height:1.2;">Janma Kundli · Birth Chart</p>
-        </div>
-        <div style="padding:16px;background:#fafafa;">${chartSvg}</div>
-      </div>`)}
+      ${janmaSection}
 
-      ${buildGrahaSthitiTableHtml(chart)}
-
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 28px;border-top:1px solid #e2e8f0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid #e2e8f0;">
         <p style="font-size:10px;color:#94a3b8;">Generated by Astrogyan · Swiss Ephemeris · Lahiri Ayanamsa</p>
         <p style="font-size:10px;color:#94a3b8;">${new Date().toLocaleString("en-IN")}</p>
       </div>
     </div>
   </div>
+
+  ${buildChartAndPlanetsPageHtml(chart)}
 
   ${divisionalSection}
 

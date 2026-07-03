@@ -177,7 +177,7 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
               ].map((h) => (
                 <th
                   key={h.en}
-                  className="px-2 py-1.5 text-left font-semibold text-gray-600 border-b border-gray-200 whitespace-nowrap"
+                  className="px-2 py-1.5 text-left font-semibold text-gray-800 border-b border-gray-200 whitespace-nowrap"
                 >
                   {h[lang]}
                 </th>
@@ -196,7 +196,7 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
                     isActive
                       ? "bg-yellow-50 ring-1 ring-inset ring-yellow-300"
                       : isPast
-                      ? "opacity-50 hover:opacity-80 hover:bg-gray-50"
+                      ? "opacity-75 hover:opacity-100 hover:bg-gray-50"
                       : "hover:bg-gray-50"
                   }`}
                 >
@@ -209,13 +209,13 @@ export default function DashantariDashaTable({ req, lang = "en" }: Props) {
                   <td className="px-2 py-1 whitespace-nowrap" style={{ color: pColor(row.pd) }}>
                     {translate(row.pd)}
                   </td>
-                  <td className="px-2 py-1 text-gray-600 whitespace-nowrap font-mono">
+                  <td className="px-2 py-1 text-gray-800 whitespace-nowrap font-mono">
                     {fmtDate(row.start_date)}
                     {isActive && (
                       <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-green-500 align-middle" />
                     )}
                   </td>
-                  <td className="px-2 py-1 text-gray-600 whitespace-nowrap font-mono">
+                  <td className="px-2 py-1 text-gray-800 whitespace-nowrap font-mono">
                     {fmtDate(row.end_date)}
                   </td>
                 </tr>
