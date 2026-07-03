@@ -58,9 +58,9 @@ const LABELS: Record<Lang, Record<string, string>> = {
     impactTypes: "Life themes",
     variantNote: "Variant insight",
     variantPositive: "Potential",
-    conventionalRemedies: "Conventional",
-    modernRemedies: "Modern",
-    positiveNote: "Positive channel",
+    conventionalRemedies: "Conventional Remedies",
+    modernRemedies: "Modern Remedies",
+    positiveNote: "Positive Aspect",
     matched: "Matched",
     notMatched: "Not matched",
     rajaYogas: "Raja Yogas",
@@ -109,8 +109,8 @@ const LABELS: Record<Lang, Record<string, string>> = {
     impactTypes: "जीवन विषय",
     variantNote: "प्रकार विश्लेषण",
     variantPositive: "संभावना",
-    conventionalRemedies: "पारंपरिक",
-    modernRemedies: "आधुनिक",
+    conventionalRemedies: "पारंपरिक उपाय",
+    modernRemedies: "आधुनिक उपाय",
     positiveNote: "सकारात्मक",
     matched: "मेल",
     notMatched: "नहीं",
@@ -160,8 +160,8 @@ const LABELS: Record<Lang, Record<string, string>> = {
     impactTypes: "જીવન વિષયો",
     variantNote: "પ્રકાર વિશ્લેષણ",
     variantPositive: "સંભાવના",
-    conventionalRemedies: "પરંપરાગત",
-    modernRemedies: "આધુનિક",
+    conventionalRemedies: "પરંપરાગત ઉપાય",
+    modernRemedies: "આધુનિક ઉપાય",
     positiveNote: "સકારાત્મક",
     matched: "મેળ",
     notMatched: "નથી",
@@ -471,7 +471,7 @@ export default function ChandalDoshaPanel({ chart, lang }: Props) {
             )}
 
             {(data.conventional_remedies || data.modern_remedies) && (
-              <DetailsPanel theme="chandal" variant="remedies" span={2}>
+              <DetailsPanel theme="chandal" title={t.remedies} variant="remedies" span={2}>
                 <RemediesGrid
                   conventional={data.conventional_remedies}
                   modern={data.modern_remedies}

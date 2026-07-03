@@ -33,13 +33,24 @@ class VariantRow(TypedDict):
 
 _UNIVERSAL_CONVENTIONAL = (
     "Thursday Guru worship; Om Graam Greem Graum Sah Gurave Namah (108×); Vishnu Sahasranama; "
-    "donate yellow items (turmeric, chana dal) to teachers or students; respect qualified gurus."
+    "Donate yellow items (turmeric, chana dal) to teachers or students; Respect qualified gurus."
 )
 
 _UNIVERSAL_MODERN = (
-    "Verify spiritual and professional mentors; maintain written ethical commitments; "
-    "avoid get-rich-quick schemes; seek counselling if religious doubt causes distress."
+    "Verify spiritual and professional mentors; Maintain written ethical commitments; "
+    "Avoid get-rich-quick schemes; Seek counselling if religious doubt causes distress."
 )
+
+
+def _capitalize_remedy_clauses(text: str) -> str:
+    """Capitalize the first letter of each semicolon-separated remedy clause."""
+    parts: list[str] = []
+    for clause in text.split(";"):
+        clause = clause.strip()
+        if not clause:
+            continue
+        parts.append(clause[0].upper() + clause[1:] if len(clause) > 1 else clause.upper())
+    return "; ".join(parts)
 
 _HOUSES: list[HouseRow] = [
     {
@@ -60,7 +71,7 @@ _HOUSES: list[HouseRow] = [
         ),
         "severity_baseline": "High",
         "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Offer water to Sun at sunrise for vitality.",
-        "modern_remedies": _UNIVERSAL_MODERN + " Regular health screening; identity-focused therapy if needed.",
+        "modern_remedies": _UNIVERSAL_MODERN + " Regular health screening; Identity-focused therapy if needed.",
     },
     {
         "house": 2,
@@ -76,7 +87,7 @@ _HOUSES: list[HouseRow] = [
         ),
         "positive_note": "Eloquent teacher; wealth through foreign or education channels; reform of family customs.",
         "severity_baseline": "High",
-        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Speak truthfully; donate food on Thursdays.",
+        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Speak truthfully; Donate food on Thursdays.",
         "modern_remedies": _UNIVERSAL_MODERN + " Family financial planning; honest communication practices.",
     },
     {
@@ -130,8 +141,8 @@ _HOUSES: list[HouseRow] = [
             "strong trikona channel when Jupiter is dignified."
         ),
         "severity_baseline": "Moderate-High",
-        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Support children's education; avoid gambling.",
-        "modern_remedies": _UNIVERSAL_MODERN + " Responsible parenting; avoid speculative trading without discipline.",
+        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Support children's education; Avoid gambling.",
+        "modern_remedies": _UNIVERSAL_MODERN + " Responsible parenting; Avoid speculative trading without discipline.",
     },
     {
         "house": 6,
@@ -145,7 +156,7 @@ _HOUSES: list[HouseRow] = [
             "Workplace politics; legal battles; unethical competition; "
             "service in morally grey institutions; hard-to-diagnose illness."
         ),
-        "positive_note": "Victory over powerful opponents when Jupiter is strong; healer in alternative medicine.",
+        "positive_note": "Victory over powerful opponents when Jupiter is strong; Healer in alternative medicine.",
         "severity_baseline": "Very High",
         "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Serve the sick humbly; Hanuman worship for courage in disputes.",
         "modern_remedies": _UNIVERSAL_MODERN + " Legal counsel early; workplace ethics training; chronic care screening.",
@@ -238,7 +249,7 @@ _HOUSES: list[HouseRow] = [
         ),
         "positive_note": "Large following as teacher; gains from foreign alliances; social reform movements.",
         "severity_baseline": "Moderate",
-        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Donate a portion of gains; avoid unethical networking.",
+        "conventional_remedies": _UNIVERSAL_CONVENTIONAL + " Donate a portion of gains; Avoid unethical networking.",
         "modern_remedies": _UNIVERSAL_MODERN + " Vet professional networks; realistic goal-setting.",
     },
     {
@@ -293,6 +304,10 @@ _VARIANTS: list[VariantRow] = [
 
 _BY_HOUSE: dict[int, HouseRow] = {r["house"]: r for r in _HOUSES}
 _BY_VARIANT: dict[str, VariantRow] = {r["variant"]: r for r in _VARIANTS}
+
+for _row in _HOUSES:
+    _row["conventional_remedies"] = _capitalize_remedy_clauses(_row["conventional_remedies"])
+    _row["modern_remedies"] = _capitalize_remedy_clauses(_row["modern_remedies"])
 
 
 def house_lookup(jupiter_house: int) -> HouseRow | None:
