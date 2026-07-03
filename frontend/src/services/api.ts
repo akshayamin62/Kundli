@@ -85,7 +85,7 @@ export async function calculateChart(req: ChartRequest): Promise<ChartResponse> 
 export async function calculateVarga(req: VargaRequest): Promise<ChartResponse> {
   const res = await apiFetch(`${API_URL}/api/chart/varga`, {
     method: "POST",
-    body: JSON.stringify(normalizeChartRequest(req)),
+    body: JSON.stringify({ ...normalizeChartRequest(req), n: req.n }),
   });
 
   if (!res.ok) {

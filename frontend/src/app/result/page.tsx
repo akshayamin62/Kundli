@@ -107,7 +107,7 @@ function vargaTitle(n: number): string {
 const QUICK_VARGAS = [9, 10, 3, 7, 12, 16, 20, 24, 30, 40, 45, 60];
 
 const JANMA_LABELS: Record<Lang, { rasi: string; nak: string }> = {
-  en: { rasi: "Janma Rasi", nak: "Janma Nakshatra" },
+  en: { rasi: "Rasi", nak: "Nakshatra" },
   hi: { rasi: "जन्म राशि", nak: "जन्म नक्षत्र" },
   gu: { rasi: "જન્મ રાશિ", nak: "જન્મ નક્ષત્ર" },
 };
