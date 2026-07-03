@@ -24,7 +24,7 @@ export default function MatchPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
         <div className="text-center mb-7">
           <h1 className="text-3xl font-bold text-gray-900 mb-1.5 tracking-tight">Kundli Milan</h1>
-          <p className="text-gray-500 text-sm">Ashtakoot Guna Matching — 36-point Vedic compatibility analysis</p>
+          <p className="text-gray-500 text-sm">Ashtakoot Guna Matching - 36-point Vedic compatibility analysis</p>
         </div>
         <MatchForm onResult={handleResult} />
       </main>

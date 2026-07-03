@@ -84,7 +84,7 @@ export default function HomePage() {
               </div> */}
               <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">💞Kundli Milan</h1>
               <p className="text-gray-500 text-base">
-                Ashtakoot Guna Matching — 36-point Vedic compatibility analysis
+                Ashtakoot Guna Matching - 36-point Vedic compatibility analysis
               </p>
             </div>
             <MatchForm onResult={handleMatchResult} />
